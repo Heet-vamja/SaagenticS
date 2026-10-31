@@ -19,8 +19,47 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-agentreadiness}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-agentreadiness}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      CRAWL_MAX_PAGES: ${CRAWL_MAX_PAGES:-20}
+      CRAWL_MAX_DEPTH: ${CRAWL_MAX_DEPTH:-3}
+      CRAWL_REQUEST_TIMEOUT: ${CRAWL_REQUEST_TIMEOUT:-10}
+      CRAWL_MAX_REDIRECTS: ${CRAWL_MAX_REDIRECTS:-5}
+      CRAWL_SITEMAP_ENTRIES: ${CRAWL_SITEMAP_ENTRIES:-500}
+      CRAWL_SITEMAP_DEPTH: ${CRAWL_SITEMAP_DEPTH:-3}
+      CRAWL_HTML_BYTES: ${CRAWL_HTML_BYTES:-2097152}
+      CRAWL_SITEMAP_BYTES: ${CRAWL_SITEMAP_BYTES:-2097152}
+      CRAWL_CONCURRENCY: ${CRAWL_CONCURRENCY:-3}
+      CRAWL_DURATION: ${CRAWL_DURATION:-300}
+      CRAWL_MIN_DELAY: ${CRAWL_MIN_DELAY:-0.1}
+      SCAN_DURATION: ${SCAN_DURATION:-120}
+      SCAN_MAX_ACTIVE: ${SCAN_MAX_ACTIVE:-2}
+      SCAN_QUEUE_LIMIT: ${SCAN_QUEUE_LIMIT:-30}
+      SCAN_QUEUE_WAIT: ${SCAN_QUEUE_WAIT:-600}
+      AUDIT_RENDER_PAGES: ${AUDIT_RENDER_PAGES:-3}
+      AUDIT_RENDER_TIMEOUT: ${AUDIT_RENDER_TIMEOUT:-8}
+      AUDIT_BROWSER_ENABLED: ${AUDIT_BROWSER_ENABLED:-true}
+      REPORT_SHARE_DAYS: ${REPORT_SHARE_DAYS:-7}
+      CRAWL_USER_AGENT: ${CRAWL_USER_AGENT:-AgentReadinessBot/0.1}
+      CRAWL_ALLOW_SUBDOMAINS: ${CRAWL_ALLOW_SUBDOMAINS:-false}
+      HF_TOKEN: ${HF_TOKEN:-}
+      HF_TOKENS: ${HF_TOKENS:-}
+      AGENT_MODEL: ${AGENT_MODEL:-Qwen/Qwen3-4B-Instruct-2507}
+      AGENT_LLM_MODE: ${AGENT_LLM_MODE:-hosted}
+      AGENT_LLM_BASE_URL: ${AGENT_LLM_BASE_URL:-https://router.huggingface.co/v1}
+      AGENT_LLM_TIMEOUT: ${AGENT_LLM_TIMEOUT:-25}
+      AGENT_LLM_RETRIES: ${AGENT_LLM_RETRIES:-2}
+      AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-700}
+      AGENT_INVALID_LIMIT: ${AGENT_INVALID_LIMIT:-3}
+      AGENT_OBSERVATION_CHARS: ${AGENT_OBSERVATION_CHARS:-12000}
+      AGENT_MAX_ELEMENTS: ${AGENT_MAX_ELEMENTS:-60}
+      AGENT_REQUEST_LIMIT: ${AGENT_REQUEST_LIMIT:-150}
+      AGENT_MAX_REDIRECTS: ${AGENT_MAX_REDIRECTS:-5}
+      AGENT_SCREENSHOTS: ${AGENT_SCREENSHOTS:-true}
+      AGENT_STRUCTURED_OUTPUT: ${AGENT_STRUCTURED_OUTPUT:-false}
+      AGENT_MAX_STEPS: ${AGENT_MAX_STEPS:-15}
+      AGENT_DURATION: ${AGENT_DURATION:-120}
+      AGENT_SCREENSHOT_DIR: /app/artifacts/agent
     ports:
-      - "127.0.0.1:8000:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -28,6 +67,7 @@ services:
       - ./backend/app:/app/app
       - ./backend/alembic:/app/alembic
       - ./backend/tests:/app/tests
+      - ./backend/artifacts:/app/artifacts
     command: ["sh", "-c", ".venv/bin/alembic upgrade head && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"]
     healthcheck:
       test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health', timeout=3)"]
@@ -40,7 +80,7 @@ services:
       BACKEND_URL: http://backend:8000
       NEXT_TELEMETRY_DISABLED: "1"
     ports:
-      - "127.0.0.1:3000:3000"
+      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
     depends_on:
       backend:
         condition: service_healthy

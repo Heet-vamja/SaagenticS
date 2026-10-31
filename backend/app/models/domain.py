@@ -34,6 +34,7 @@ class ScanStatus(str, enum.Enum):
 class WorkflowStatus(str, enum.Enum):
     PENDING = "PENDING"
     RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
     PASSED = "PASSED"
     FAILED = "FAILED"
 
@@ -82,13 +83,22 @@ class Scan(Base):
             name="scan_time_order",
         ),
         Index("ix_scans_project_status", "project_id", "status"),
+        Index("ix_scans_status_created_at", "status", "created_at"),
     )
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
     project_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("projects.id", ondelete="CASCADE"))
     status: Mapped[ScanStatus] = mapped_column(
         enum_type(ScanStatus, "scan_status"), default=ScanStatus.PENDING, server_default="PENDING"
     )
+    execution_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    pages_discovered: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    pages_crawled: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    pages_failed: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    error_summary: Mapped[str | None] = mapped_column(Text)
+    crawl_metadata: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, server_default="{}")
     overall_score: Mapped[float | None] = mapped_column(Float)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    audit_summary: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, server_default="{}")
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     project: Mapped[Project] = relationship(back_populates="scans")
@@ -117,6 +127,11 @@ class Page(Base):
     url: Mapped[str] = mapped_column(String(2048))
     status_code: Mapped[int | None] = mapped_column(Integer)
     title: Mapped[str | None] = mapped_column(Text)
+    meta_description: Mapped[str | None] = mapped_column(Text)
+    canonical_url: Mapped[str | None] = mapped_column(String(2048))
+    crawl_depth: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    content_type: Mapped[str | None] = mapped_column(String(255))
+    crawl_error: Mapped[str | None] = mapped_column(Text)
     # DeclarativeBase reserves the Python name metadata.
     page_metadata: Mapped[dict[str, Any]] = mapped_column(
         "metadata", JSON, default=dict, server_default="{}"
@@ -169,4 +184,54 @@ class WorkflowTest(Base):
     failure_reason: Mapped[str | None] = mapped_column(Text)
     evidence_location: Mapped[str | None] = mapped_column(Text)
     execution_duration: Mapped[float | None] = mapped_column(Float)
+    task_type: Mapped[str | None] = mapped_column(String(40))
+    task_description: Mapped[str | None] = mapped_column(Text)
+    model_identifier: Mapped[str | None] = mapped_column(String(200))
+    allowed_domains: Mapped[list[str]] = mapped_column(JSON, default=list, server_default="[]")
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    execution_deadline: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    steps_completed: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    final_url: Mapped[str | None] = mapped_column(String(2048))
+    agent_declared_outcome: Mapped[str | None] = mapped_column(Text)
+    metrics: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict, server_default="{}")
     scan: Mapped[Scan] = relationship(back_populates="workflow_tests")
+    steps: Mapped[list["AgentStep"]] = relationship(
+        cascade="all, delete-orphan", passive_deletes=True, back_populates="workflow_test"
+    )
+
+
+class AgentStep(Base):
+    __tablename__ = "agent_steps"
+    __table_args__ = (
+        UniqueConstraint("workflow_test_id", "step_number", name="uq_agent_step_number"),
+        CheckConstraint("step_number >= 1 AND duration_ms >= 0", name="agent_step_bounds"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    workflow_test_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("workflow_tests.id", ondelete="CASCADE"), index=True
+    )
+    step_number: Mapped[int] = mapped_column(Integer)
+    page_url: Mapped[str] = mapped_column(String(2048))
+    observation_summary: Mapped[dict[str, Any]] = mapped_column(JSON)
+    action_type: Mapped[str] = mapped_column(String(40))
+    action_arguments: Mapped[dict[str, Any]] = mapped_column(JSON)
+    reasoning_summary: Mapped[str] = mapped_column(String(300))
+    action_result: Mapped[dict[str, Any]] = mapped_column(JSON)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    screenshot_path: Mapped[str | None] = mapped_column(Text)
+    duration_ms: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    workflow_test: Mapped[WorkflowTest] = relationship(back_populates="steps")
+
+
+class ReportShare(Base):
+    __tablename__ = "report_shares"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    scan_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("scans.id", ondelete="CASCADE"), index=True
+    )
+    token_digest: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

@@ -43,7 +43,14 @@ class ScanRead(ReadModel):
     id: UUID
     project_id: UUID
     status: ScanStatus
+    pages_discovered: int
+    pages_crawled: int
+    pages_failed: int
+    error_summary: str | None
+    crawl_metadata: dict[str, Any]
     overall_score: float | None
+    created_at: datetime
+    audit_summary: dict[str, Any]
     started_at: datetime | None
     completed_at: datetime | None
 
@@ -80,3 +87,17 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class PageRead(ReadModel):
+    id: UUID
+    scan_id: UUID
+    url: str
+    status_code: int | None
+    title: str | None
+    meta_description: str | None
+    canonical_url: str | None
+    crawl_depth: int
+    content_type: str | None
+    crawl_error: str | None
+    page_metadata: dict[str, Any]

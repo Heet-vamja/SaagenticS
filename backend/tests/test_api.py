@@ -22,8 +22,9 @@ def test_project_scan_vertical_slice(client):
     assert client.get(f"/api/v1/scans/{scan['id']}/findings").json() == []
     assert client.get(f"/api/v1/scans/{scan['id']}/workflow-tests").json() == []
     report = client.get(f"/api/v1/scans/{scan['id']}/report")
-    assert report.status_code == 501
-    assert report.json()["error"]["code"] == "not_implemented"
+    assert report.status_code == 200
+    assert report.json()["audited"] is False
+    assert report.json()["score_kind"] == "STATIC_READINESS"
 
 
 def test_missing_records_and_validation(client):

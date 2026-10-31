@@ -1,4 +1,6 @@
+import asyncio
 import logging
+from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -8,13 +10,29 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from starlette.exceptions import HTTPException
 
+from app.api.agent_routes import router as agent_router
+from app.api.report_routes import router as report_router
 from app.api.routes import router
 from app.core.config import get_settings
 from app.db.session import engine
 from app.schemas.api import ErrorResponse
 from app.services.audits import RecordNotFound
+from app.services.crawls import recover_expired_scans
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    recovery = asyncio.create_task(recover_expired_scans())
+    try:
+        yield
+    finally:
+        recovery.cancel()
+        with suppress(asyncio.CancelledError):
+            await recovery
+
 
 app = FastAPI(
+    lifespan=lifespan,
     title="AgentReadiness API",
     version="0.1.0",
     responses={code: {"model": ErrorResponse} for code in (404, 422, 500, 501, 503)},
@@ -26,6 +44,8 @@ app.add_middleware(
     allow_headers=["Content-Type"],
 )
 app.include_router(router)
+app.include_router(agent_router)
+app.include_router(report_router)
 
 
 def error_response(status: int, code: str, message: str, details: list | None = None):
@@ -75,3 +95,8 @@ def health():
     with engine.connect() as connection:
         connection.execute(text("SELECT 1 FROM projects LIMIT 1"))
     return {"status": "ok", "database": "ok"}
+
+
+@app.exception_handler(ValueError)
+async def invalid_scope(_: Request, exc: ValueError):
+    return error_response(422, "invalid_crawl_scope", str(exc))

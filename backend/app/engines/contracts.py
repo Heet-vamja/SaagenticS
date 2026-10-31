@@ -1,4 +1,4 @@
-"""Future pipeline boundaries. No engine is wired to scan creation.
+"""Future audit/browser pipeline boundaries. The HTTP crawler uses concrete modules.
 
 Concrete implementations should live in separate crawling, auditing, workflows,
 scoring, recommendations and reports modules when those features are built.

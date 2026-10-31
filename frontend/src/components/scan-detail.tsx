@@ -1,122 +1,430 @@
 "use client";
-import Link from "next/link";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Clock3 } from "lucide-react";
+import { useCallback, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  Bot,
+  CheckCircle2,
+  FileSearch,
+  Globe2,
+  LoaderCircle,
+  ScanLine,
+} from "lucide-react";
 import { api } from "@/lib/api";
-import type { Finding, Scan } from "@/lib/types";
-import { EmptyState, ErrorState, LoadingState } from "./states";
-import { Status } from "./workspace";
-
+import { useResource } from "@/lib/use-resource";
+import type {
+  AgentTest,
+  CrawledPage,
+  Finding,
+  Project,
+  Scan,
+} from "@/lib/types";
+import { AgentHistory, AgentTesting } from "./agent-testing";
+import { Button } from "./ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "./ui/dialog";
+import {
+  CopyButton,
+  domainOf,
+  formatDate,
+  Metric,
+  PageHeading,
+  SectionHeader,
+  Status,
+} from "./product-ui";
+import { EmptyState, ErrorState, InlineError, LoadingState } from "./states";
+import { Findings } from "./findings";
+import { Tabs } from "./tabs";
+import { StaticScore } from "./static-report";
+type Data = {
+  scan: Scan;
+  project: Project;
+  pages: CrawledPage[];
+  findings: Finding[];
+  tests: AgentTest[];
+};
+const active = (d: Data) =>
+  d.scan.status === "PENDING" ||
+  d.scan.status === "RUNNING" ||
+  d.tests.some((t) => t.status === "PENDING" || t.status === "RUNNING");
 export function ScanDetail({ id }: { id: string }) {
-  const [data, setData] = useState<{ scan: Scan; findings: Finding[] } | null>(
-    null,
+  const router = useRouter();
+  const params = useSearchParams();
+  const [tab, setTab] = useState(
+    params.get("tab") === "agents" ? "agents" : "pages",
   );
-  const [error, setError] = useState("");
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let active = true;
-    Promise.all([api.scan(id), api.findings(id)])
-      .then(([scan, findings]) => {
-        if (active) {
-          setData({ scan, findings });
-          setError("");
-        }
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      });
-    return () => {
-      active = false;
-    };
-  }, [id, attempt]);
-  if (error)
-    return (
-      <ErrorState message={error} retry={() => setAttempt((n) => n + 1)} />
-    );
+  const [offset, setOffset] = useState(0);
+  const [selected, setSelected] = useState<CrawledPage | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [detailBusy, setDetailBusy] = useState<string | null>(null);
+  const [actionError, setActionError] = useState("");
+  const load = useCallback(async () => {
+    const scan = await api.scan(id);
+    const [project, pages, findings, tests] = await Promise.all([
+      api.project(scan.project_id),
+      api.pages(id, offset),
+      api.findings(id),
+      api.agentTests(id),
+    ]);
+    return { scan, project, pages, findings, tests };
+  }, [id, offset]);
+  const { data, error, retry } = useResource(load, active);
+  if (error) return <ErrorState message={error.message} retry={retry} />;
   if (!data) return <LoadingState />;
+  const { scan, project, pages, findings, tests } = data;
   return (
-    <>
-      <Link
-        href="/scans"
-        className="mb-6 inline-flex items-center gap-2 text-xs text-muted-foreground"
-      >
-        <ArrowLeft size={14} />
-        All scans
-      </Link>
-      <div className="mb-7 flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Scan details
-          </h1>
-          <p className="mt-2 break-all font-mono text-xs text-muted-foreground">
-            {data.scan.id}
-          </p>
-        </div>
-        <Status value={data.scan.status} />
+    <div className="fade-in">
+      <PageHeading
+        back={{ href: `/projects/${project.id}`, label: project.name }}
+        eyebrow="Website crawl / scan results"
+        title={domainOf(project.website_url)}
+        description={`Started ${formatDate(scan.started_at)} · ${project.website_url}`}
+        action={
+          <>
+            <Status value={scan.status} />
+            <Button
+              variant="outline"
+              disabled={busy}
+              onClick={async () => {
+                setBusy(true);
+                setActionError("");
+                try {
+                  const next = await api.createScan(project.id);
+                  router.push(`/scans/${next.id}`);
+                } catch (e) {
+                  setActionError(
+                    e instanceof Error ? e.message : "Could not start scan",
+                  );
+                } finally {
+                  setBusy(false);
+                }
+              }}
+            >
+              {busy ? (
+                <LoaderCircle size={13} className="animate-spin" />
+              ) : (
+                <ScanLine size={13} />
+              )}
+              New scan
+            </Button>
+          </>
+        }
+      />
+      <div className="-mt-5 mb-7 flex items-center gap-1 text-[9px] text-muted-foreground">
+        <span className="mono break-all">{scan.id}</span>
+        <CopyButton value={scan.id} />
       </div>
-      {data.scan.status === "PENDING" && (
-        <div className="mb-6 flex gap-3 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm leading-6 text-amber-900">
-          <Clock3 size={20} className="mt-1 shrink-0" />
-          <p>
-            This scan record is pending. The auditing engine is not connected
-            yet, so it will remain pending. No website requests have been made.
-          </p>
+      {actionError && (
+        <div className="mb-5">
+          <InlineError>{actionError}</InlineError>
         </div>
       )}
-      <div className="mb-6 grid gap-4 sm:grid-cols-3">
-        {[
-          {
-            label: "Overall score",
-            value:
-              data.scan.overall_score === null
-                ? "Not scored"
-                : `${data.scan.overall_score} / 100`,
-          },
-          {
-            label: "Started",
-            value: data.scan.started_at
-              ? new Date(data.scan.started_at).toLocaleString()
-              : "Not started",
-          },
-          {
-            label: "Completed",
-            value: data.scan.completed_at
-              ? new Date(data.scan.completed_at).toLocaleString()
-              : "Not completed",
-          },
-        ].map((x) => (
-          <div key={x.label} className="rounded-xl border bg-card p-5">
-            <p className="text-xs text-muted-foreground">{x.label}</p>
-            <p className="mt-3 text-lg font-medium">{x.value}</p>
+      {scan.error_summary && (
+        <div className="mb-5">
+          <InlineError>{scan.error_summary}</InlineError>
+        </div>
+      )}
+      {["RUNNING", "PENDING"].includes(scan.status) && (
+        <div
+          role="status"
+          className="mb-5 flex items-center gap-3 rounded-xl border border-primary/20 bg-accent-soft px-5 py-4"
+        >
+          <LoaderCircle size={16} className="animate-spin text-primary" />
+          <div>
+            <p className="text-xs font-medium">
+              {scan.status === "PENDING"
+                ? "Queued for scanning"
+                : scan.audit_summary?.phase === "BROWSER_CHECKS"
+                  ? "Comparing browser observations"
+                  : scan.audit_summary?.phase === "REPORT_READY"
+                    ? "Preparing your report"
+                    : "Discovering and checking your website"}
+            </p>
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              Progress refreshes automatically. Discovery → static checks →
+              browser sample → report. No LLM is called.
+            </p>
           </div>
-        ))}
+        </div>
+      )}
+      <div className="mb-7 grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Metric
+          label="Pages discovered"
+          value={scan.pages_discovered}
+          icon={Globe2}
+        />
+        <Metric
+          label="Pages crawled"
+          value={scan.pages_crawled}
+          icon={FileSearch}
+        />
+        <Metric
+          label="Failed pages"
+          value={scan.pages_failed}
+          icon={AlertTriangle}
+        />
+        <Metric label="Agent executions" value={tests.length} icon={Bot} />
       </div>
-      <section className="rounded-xl border bg-card">
-        <h2 className="border-b px-5 py-4 text-sm font-semibold">Findings</h2>
-        {data.findings.length === 0 ? (
-          <EmptyState
-            title="No findings yet."
-            description="Findings will appear here once deterministic checks can run and collect evidence."
-          />
-        ) : (
-          <div className="divide-y">
-            {data.findings.map((f) => (
-              <article key={f.id} className="p-5">
-                <p className="mb-2 text-xs text-muted-foreground">
-                  {f.category} · {f.severity}
-                </p>
-                <h3 className="font-medium">{f.title}</h3>
-                <p className="mt-2 text-sm text-muted-foreground">
-                  {f.description}
-                </p>
-                {f.recommendation && (
-                  <p className="mt-3 text-sm">{f.recommendation}</p>
-                )}
-              </article>
-            ))}
+      <StaticScore
+        summary={scan.audit_summary}
+        score={scan.overall_score}
+        scanId={scan.id}
+      />
+      <Tabs
+        value={tab}
+        onChange={setTab}
+        items={[
+          { value: "pages", label: "Crawled pages" },
+          { value: "agents", label: "Agent tests", count: tests.length },
+          {
+            value: "findings",
+            label: "Technical findings",
+            count: findings.length,
+          },
+          { value: "discovery", label: "Discovery details" },
+        ]}
+      >
+        {tab === "pages" && (
+          <section className="surface overflow-hidden">
+            <SectionHeader
+              title="Discovered pages, with evidence"
+              description="HTTP responses and extracted metadata from actual crawl attempts."
+            />
+            {pages.length === 0 ? (
+              <EmptyState
+                title={offset ? "No more pages" : "No crawled pages yet"}
+                description={
+                  offset
+                    ? "Return to the previous page to continue exploring results."
+                    : scan.status === "FAILED"
+                      ? "The scan stopped before pages could be stored. Review the failure above, then retry with the correct website URL."
+                      : "Pages appear here as the crawler finishes requests."
+                }
+                action={
+                  offset ? (
+                    <Button
+                      variant="outline"
+                      onClick={() => setOffset((n) => Math.max(0, n - 30))}
+                    >
+                      Previous page
+                    </Button>
+                  ) : undefined
+                }
+              />
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="data-table min-w-[800px]">
+                  <thead className="table-head">
+                    <tr>
+                      <th>Page URL / title</th>
+                      <th>HTTP status</th>
+                      <th>Depth</th>
+                      <th>Crawl result</th>
+                      <th>
+                        <span className="sr-only">Page details</span>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {pages.map((page) => (
+                      <tr key={page.id} className="table-row">
+                        <td className="max-w-[420px]">
+                          <button
+                            className="block max-w-full text-left"
+                            disabled={detailBusy !== null}
+                            onClick={async () => {
+                              setDetailBusy(page.id);
+                              try {
+                                setSelected(await api.page(id, page.id));
+                              } catch (e) {
+                                setActionError(
+                                  e instanceof Error
+                                    ? e.message
+                                    : "Could not load page details",
+                                );
+                              } finally {
+                                setDetailBusy(null);
+                              }
+                            }}
+                          >
+                            <span
+                              className="mono block max-w-full truncate text-[10px] text-primary"
+                              title={page.url}
+                            >
+                              {page.url}
+                            </span>
+                            <span className="mt-1.5 block truncate text-[11px] text-muted-foreground">
+                              {page.title ?? "No title found"}
+                            </span>
+                          </button>
+                        </td>
+                        <td>
+                          <span
+                            className={`rounded border px-2 py-1 font-mono text-[10px] ${page.status_code && page.status_code < 400 ? "border-primary/15 bg-accent-soft text-primary" : "border-danger/15 bg-danger/5 text-danger"}`}
+                          >
+                            {page.status_code ?? "—"}
+                          </span>
+                        </td>
+                        <td className="mono text-[10px]">{page.crawl_depth}</td>
+                        <td className="max-w-[250px]">
+                          <span
+                            className={`inline-flex items-center gap-1.5 text-[10px] ${page.crawl_error ? "text-danger" : "text-muted-foreground"}`}
+                          >
+                            {page.crawl_error ? (
+                              <AlertTriangle size={12} />
+                            ) : (
+                              <CheckCircle2
+                                size={12}
+                                className="text-primary"
+                              />
+                            )}
+                            {page.crawl_error ??
+                              (page.page_metadata.skipped
+                                ? "Skipped (non-HTML)"
+                                : "Crawled")}
+                          </span>
+                        </td>
+                        <td>
+                          {detailBusy === page.id && (
+                            <LoaderCircle className="animate-spin" size={14} />
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <div className="flex items-center justify-between border-t px-5 py-3">
+              <span className="text-[10px] text-muted-foreground">
+                Page {offset / 30 + 1}
+              </span>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  disabled={offset === 0}
+                  onClick={() => setOffset((n) => Math.max(0, n - 30))}
+                  className="h-8 px-3 text-[10px]"
+                >
+                  <ArrowLeft size={12} />
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  disabled={pages.length < 30}
+                  onClick={() => setOffset((n) => n + 30)}
+                  className="h-8 px-3 text-[10px]"
+                >
+                  Next
+                  <ArrowRight size={12} />
+                </Button>
+              </div>
+            </div>
+          </section>
+        )}
+        {tab === "agents" && (
+          <div className="space-y-6">
+            <AgentTesting scanId={id} />
+            <section className="surface overflow-hidden">
+              <SectionHeader
+                title="Execution history"
+                count={tests.length}
+                description="Agent-reported outcomes are always distinct from independently verified success."
+              />
+              {tests.length ? (
+                <AgentHistory tests={tests} />
+              ) : (
+                <EmptyState
+                  title="Your first agent journey starts here"
+                  description="Choose a task above. Each run records the model’s actions, observations, and available browser evidence."
+                />
+              )}
+            </section>
           </div>
         )}
-      </section>
-    </>
+        {tab === "findings" && <Findings findings={findings} />}{" "}
+        {tab === "discovery" && (
+          <section className="surface p-6">
+            <h2 className="section-title">Discovery diagnostics</h2>
+            <p className="mt-2 text-xs leading-6 text-muted-foreground">
+              Robots permissions and sitemap warnings recorded by this scan.
+            </p>
+            <pre tabIndex={0} className="code-panel mt-5">
+              {JSON.stringify(scan.crawl_metadata, null, 2)}
+            </pre>
+          </section>
+        )}
+      </Tabs>
+      <Dialog
+        open={selected !== null}
+        onOpenChange={(open) => {
+          if (!open) setSelected(null);
+        }}
+      >
+        <DialogContent className="max-h-[85vh] max-w-2xl overflow-y-auto">
+          <span className="eyebrow">Page evidence</span>
+          <DialogTitle className="mt-2 pr-5 text-xl font-semibold tracking-tight">
+            {selected?.title ?? "Page metadata"}
+          </DialogTitle>
+          <DialogDescription className="mono mt-3 break-all text-[10px] leading-5 text-muted-foreground">
+            {selected?.url}
+          </DialogDescription>
+          {selected && (
+            <>
+              <div className="my-6 grid grid-cols-3 gap-3">
+                {[
+                  ["HTTP status", selected.status_code ?? "Unknown"],
+                  ["Crawl depth", selected.crawl_depth],
+                  ["Result", selected.crawl_error ? "Failed" : "Crawled"],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-lg border bg-background p-3"
+                  >
+                    <p className="text-[9px] text-muted-foreground">{label}</p>
+                    <p className="mt-2 text-xs font-medium">{value}</p>
+                  </div>
+                ))}
+              </div>
+              {selected.crawl_error && (
+                <InlineError>{selected.crawl_error}</InlineError>
+              )}
+              <dl className="space-y-4 text-xs">
+                <div>
+                  <dt className="eyebrow text-[9px]">Meta description</dt>
+                  <dd className="mt-2 leading-6 text-muted-foreground">
+                    {selected.meta_description || "Not provided"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="eyebrow text-[9px]">Canonical URL</dt>
+                  <dd className="mono mt-2 break-all text-[10px] text-muted-foreground">
+                    {selected.canonical_url || "Not provided"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="eyebrow text-[9px]">Content type</dt>
+                  <dd className="mono mt-2 text-[10px] text-muted-foreground">
+                    {selected.content_type || "Unknown"}
+                  </dd>
+                </div>
+              </dl>
+              <details className="mt-6 text-xs">
+                <summary>Extracted metadata</summary>
+                <pre tabIndex={0} className="code-panel mt-3">
+                  {JSON.stringify(selected.page_metadata, null, 2)}
+                </pre>
+              </details>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

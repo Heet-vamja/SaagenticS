@@ -1,109 +1,211 @@
 "use client";
-
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Activity,
-  ArrowUpRight,
   BookOpen,
-  Boxes,
-  CircleHelp,
+  Bot,
+  ChevronRight,
+  FolderKanban,
   LayoutDashboard,
+  Menu,
+  PanelLeftClose,
   ScanLine,
-  Sparkles,
+  ShieldCheck,
 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
-
+import { Brand, ThemeToggle } from "./product-ui";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "./ui/dialog";
 const navigation = [
-  { href: "/", label: "Overview", icon: LayoutDashboard },
-  { href: "/projects", label: "Projects", icon: Boxes },
+  { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/scans", label: "Scans", icon: ScanLine },
+  { href: "/agent-tests", label: "Agent Tests", icon: Bot },
 ];
-
 export function Shell({ children }: { children: ReactNode }) {
-  const pathname = usePathname();
-  return (
-    <div className="min-h-screen lg:pl-[244px]">
-      <aside className="flex flex-col bg-[#202723] px-5 py-6 text-[#edf1e9] lg:fixed lg:inset-y-0 lg:left-0 lg:w-[244px]">
-        <Link
-          href="/"
-          className="mb-7 flex items-center gap-2.5 px-2 text-lg font-semibold tracking-tight"
+  const path = usePathname();
+  const [open, setOpen] = useState(false);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const [collapsed, setCollapsed] = useState(false);
+  const current =
+    navigation.find((n) => path.startsWith(n.href)) ?? navigation[0];
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const close = () => {
+      if (media.matches) setOpen(false);
+    };
+    media.addEventListener("change", close);
+    return () => media.removeEventListener("change", close);
+  }, []);
+  const renderSidebar = (compact: boolean) => (
+    <>
+      <div className="flex h-[78px] items-center justify-between border-b px-5">
+        <Brand compact={compact} />
+      </div>
+      <div className="p-4">
+        <div
+          className={cn(
+            "mb-7 flex items-center gap-3 rounded-lg border bg-background p-3",
+            compact && "justify-center px-0",
+          )}
         >
-          <span className="grid size-8 place-items-center rounded-lg bg-[#e8f1d9] text-[#283b24]">
-            <Activity size={21} />
-          </span>
-          AgentReadiness<span className="text-primary">.</span>
-        </Link>
-        <div className="mb-8 hidden items-center gap-3 rounded-lg border border-white/10 p-3 lg:flex">
-          <span className="grid size-8 place-items-center rounded-md bg-white/10 text-xs font-medium">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md border bg-card text-[10px] font-semibold">
             AR
           </span>
-          <div>
-            <p className="text-xs font-medium">Your workspace</p>
-            <p className="mt-1 text-[11px] text-white/45">
-              Development preview
-            </p>
-          </div>
+          {!compact && (
+            <div>
+              <p className="text-[11px] font-medium">Your workspace</p>
+              <p className="mt-0.5 text-[10px] text-muted-foreground">
+                Local workspace
+              </p>
+            </div>
+          )}
         </div>
-        <p className="mb-3 hidden px-3 text-[10px] font-medium uppercase tracking-[.16em] text-white/35 lg:block">
-          Workspace
-        </p>
-        <nav className="flex gap-1 lg:flex-col">
+        {!compact && <p className="eyebrow mb-3 px-3 text-[9px]">Workspace</p>}
+        <nav aria-label="Workspace" className="space-y-1">
           {navigation.map(({ href, label, icon: Icon }) => (
             <Link
               key={href}
               href={href}
+              title={compact ? label : undefined}
+              aria-current={path.startsWith(href) ? "page" : undefined}
+              onClick={() => setOpen(false)}
               className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-3 text-sm transition-colors",
-                (href === "/" ? pathname === href : pathname.startsWith(href))
-                  ? "bg-[#364039] text-[#e6f3d4]"
-                  : "text-white/55 hover:bg-white/5 hover:text-white",
+                "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[12px]",
+                path.startsWith(href)
+                  ? "bg-accent-soft font-medium text-primary"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                compact && "justify-center px-0",
               )}
             >
-              <Icon size={18} strokeWidth={1.7} />
-              {label}
+              <Icon size={17} strokeWidth={1.6} />
+              {!compact && label}
             </Link>
           ))}
         </nav>
-        <div className="mt-auto hidden pt-16 lg:block">
-          <div className="rounded-xl border border-white/10 bg-white/[.025] p-4">
-            <Sparkles size={19} className="mb-3 text-[#c8dcae]" />
-            <p className="text-sm font-medium">Built for what’s next.</p>
-            <p className="mt-2 text-xs leading-5 text-white/45">
-              A clearer view of how AI agents experience your website.
+      </div>
+      <div className="mt-auto p-4">
+        {!compact && (
+          <div className="mb-4 rounded-xl border bg-background p-4">
+            <span className="mb-3 inline-flex items-center gap-1.5 text-[10px] font-medium text-primary">
+              <span className="size-1.5 rounded-full bg-primary" />
+              Real agents. Real browsers.
+            </span>
+            <p className="text-[11px] leading-5 text-muted-foreground">
+              See what your website looks like from an agent’s perspective.
             </p>
           </div>
-          <a
-            href="http://localhost:8000/docs"
-            className="mt-5 flex items-center justify-between px-2 text-xs text-white/50"
-          >
-            <span className="flex items-center gap-2">
-              <BookOpen size={15} />
-              Local API documentation
-            </span>
-            <ArrowUpRight size={14} />
-          </a>
-        </div>
+        )}
+        <Link
+          href="/docs"
+          className={cn(
+            "flex items-center gap-3 rounded-lg p-3 text-xs text-muted-foreground hover:bg-muted",
+            compact && "justify-center",
+          )}
+          title="Documentation"
+        >
+          <BookOpen size={16} />
+          {!compact && (
+            <>
+              Documentation
+              <ChevronRight className="ml-auto" size={13} />
+            </>
+          )}
+        </Link>
+        <button
+          onClick={() => setCollapsed((v) => !v)}
+          className="mt-2 hidden w-full items-center justify-center rounded-lg border py-2.5 text-muted-foreground hover:bg-muted lg:flex"
+          aria-label={compact ? "Expand sidebar" : "Collapse sidebar"}
+        >
+          <PanelLeftClose size={15} className={compact ? "rotate-180" : ""} />
+        </button>
+      </div>
+    </>
+  );
+  return (
+    <div
+      className={cn(
+        "workspace-shell min-h-screen transition-[padding]",
+        collapsed ? "lg:pl-[84px]" : "lg:pl-[232px]",
+      )}
+    >
+      <a
+        href="#main-content"
+        className="sr-only fixed left-4 top-4 z-[100] rounded bg-card px-4 py-3 text-sm focus:not-sr-only"
+      >
+        Skip to content
+      </a>
+      <aside
+        className={cn(
+          "workspace-sidebar fixed inset-y-0 left-0 z-40 hidden flex-col border-r bg-card lg:flex",
+          collapsed ? "w-[84px]" : "w-[232px]",
+        )}
+      >
+        {renderSidebar(collapsed)}
       </aside>
-      <header className="flex h-[76px] items-center justify-between border-b border-border/70 bg-background px-6 lg:px-10">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          Workspace <span className="mx-1 text-border">/</span>
-          <span className="font-medium text-foreground">
-            {pathname === "/"
-              ? "Overview"
-              : pathname.startsWith("/projects")
-                ? "Projects"
-                : "Scans"}
-          </span>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            menuButton.current?.focus();
+          }}
+          className="left-0 top-0 flex h-dvh w-[280px] max-w-[85vw] translate-x-0 translate-y-0 flex-col gap-0 rounded-none border-0 border-r p-0"
+        >
+          <DialogTitle className="sr-only">Workspace navigation</DialogTitle>
+          <DialogDescription className="sr-only">
+            Navigate between your overview, projects, scans, and agent tests.
+          </DialogDescription>
+          {renderSidebar(false)}
+        </DialogContent>
+      </Dialog>
+      <header className="sticky top-0 z-30 flex h-[65px] items-center justify-between gap-3 border-b bg-background/95 px-5 backdrop-blur-sm sm:px-8">
+        <div className="flex min-w-0 items-center gap-3">
+          <button
+            className="grid size-9 place-items-center rounded-lg border bg-card lg:hidden"
+            ref={menuButton}
+            aria-label="Open navigation"
+            onClick={() => setOpen(true)}
+          >
+            <Menu size={18} />
+          </button>
+          <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+            <span className="hidden sm:inline">Workspace</span>
+            <ChevronRight className="hidden sm:block" size={12} />
+            <Link href={current.href} className="font-medium text-foreground">
+              {current.label}
+            </Link>
+            {path.split("/").filter(Boolean).length > 1 && (
+              <>
+                <ChevronRight size={12} />
+                <span className="truncate">
+                  {path.startsWith("/agent-tests")
+                    ? "Execution"
+                    : path.startsWith("/projects")
+                      ? "Project details"
+                      : "Scan results"}
+                </span>
+              </>
+            )}
+          </div>
         </div>
-        <span className="flex items-center gap-2 rounded-full border border-border bg-card px-3 py-1.5 text-[11px] text-muted-foreground">
-          <span className="size-1.5 rounded-full bg-amber-500" />
-          Foundation preview
-          <CircleHelp size={13} />
-        </span>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="hidden items-center gap-1.5 text-[10px] text-muted-foreground sm:flex">
+            <ShieldCheck size={13} />
+            Read-only testing
+          </span>
+          <ThemeToggle />
+        </div>
       </header>
-      <main className="mx-auto max-w-[1440px] px-5 py-9 sm:px-8 lg:px-10">
+      <main
+        id="main-content"
+        className="mx-auto max-w-[1480px] px-5 py-8 sm:px-8 lg:px-9 lg:py-9"
+      >
         {children}
       </main>
     </div>

@@ -1,15 +1,25 @@
-import { ArrowRight, LoaderCircle, Telescope } from "lucide-react";
+import { AlertCircle, ArrowRight, Telescope } from "lucide-react";
 import type { ReactNode } from "react";
 import { Button } from "./ui/button";
-
 export function LoadingState() {
   return (
-    <div
-      role="status"
-      className="flex min-h-64 items-center justify-center gap-3 text-sm text-muted-foreground"
-    >
-      <LoaderCircle className="animate-spin" size={18} />
-      Loading your workspace…
+    <div role="status" aria-label="Loading content" className="space-y-6">
+      <span className="sr-only">Loading content…</span>
+      <div className="skeleton h-7 w-48" />
+      <div className="skeleton h-3 w-72 max-w-full" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((n) => (
+          <div key={n} className="surface space-y-4 p-5">
+            <div className="skeleton h-3 w-20" />
+            <div className="skeleton h-8 w-12" />
+          </div>
+        ))}
+      </div>
+      <div className="surface space-y-6 p-6">
+        {[1, 2, 3, 4].map((n) => (
+          <div className="skeleton h-4 w-full" key={n} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -23,11 +33,21 @@ export function ErrorState({
   return (
     <div
       role="alert"
-      className="rounded-xl border border-red-200 bg-red-50 p-6"
+      className="surface flex flex-col items-start gap-4 p-6 sm:flex-row sm:items-center"
     >
-      <p className="mb-3 text-sm text-red-800">{message}</p>
+      <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-danger/10 text-danger">
+        <AlertCircle size={20} />
+      </span>
+      <div className="flex-1">
+        <h2 className="text-sm font-semibold">
+          Something needs your attention
+        </h2>
+        <p className="mt-1 break-words text-xs leading-6 text-muted-foreground">
+          {message}
+        </p>
+      </div>
       <Button variant="outline" onClick={retry}>
-        Try again
+        Try again <ArrowRight size={13} />
       </Button>
     </div>
   );
@@ -42,22 +62,26 @@ export function EmptyState({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex flex-col items-center px-5 py-16 text-center">
-      <div className="mb-5 grid size-14 place-items-center rounded-2xl border bg-background text-primary">
-        <Telescope size={25} strokeWidth={1.5} />
-      </div>
-      <h3 className="text-lg font-semibold tracking-tight">{title}</h3>
-      <p className="mb-6 mt-2 max-w-sm text-sm leading-relaxed text-muted-foreground">
+    <div className="flex flex-col items-center px-5 py-12 text-center">
+      <span className="mb-4 grid size-11 place-items-center rounded-xl border bg-muted/40 text-muted-foreground">
+        <Telescope size={20} strokeWidth={1.5} />
+      </span>
+      <h3 className="text-sm font-semibold tracking-tight">{title}</h3>
+      <p className="mt-2 max-w-sm text-xs leading-6 text-muted-foreground">
         {description}
       </p>
-      {action}
+      {action && <div className="mt-5">{action}</div>}
     </div>
   );
 }
-export function ComingSoon() {
+export function InlineError({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-      Coming next <ArrowRight size={12} />
-    </span>
+    <div
+      role="alert"
+      className="flex items-start gap-2 rounded-lg border border-danger/20 bg-danger/5 px-4 py-3 text-xs leading-6 text-danger"
+    >
+      <AlertCircle className="mt-1 shrink-0" size={14} />
+      <span className="min-w-0 break-words">{children}</span>
+    </div>
   );
 }

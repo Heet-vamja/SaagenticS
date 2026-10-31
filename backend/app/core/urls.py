@@ -1,4 +1,4 @@
-"""Submission validation only. A future transport must enforce network safety per hop."""
+"""Submission validation. engines/crawling/transport.py enforces connection safety."""
 
 import ipaddress
 
@@ -21,7 +21,7 @@ def validate_website_url(value: str) -> str:
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
-        pass  # DNS resolution belongs to the future request layer, not URL submission.
+        pass  # DNS resolution belongs to the validated transport, not URL submission.
     else:
         if not address.is_global:
             raise ValueError("Only public website addresses are supported")

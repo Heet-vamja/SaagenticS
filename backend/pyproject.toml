@@ -3,12 +3,18 @@ name = "agentreadiness-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
 dependencies = [
+  "httpx>=0.28,<0.29",
+  "httpcore>=1.0.9,<1.1",
+  "beautifulsoup4>=4.13,<5",
+  "defusedxml>=0.7.1,<1",
   "fastapi>=0.120,<1",
   "uvicorn[standard]>=0.38,<1",
   "pydantic-settings>=2.11,<3",
   "sqlalchemy>=2.0.44,<2.1",
   "alembic>=1.17,<2",
   "psycopg[binary]>=3.2,<4",
+  "protego>=0.4,<0.6",
+  "playwright>=1.58,<2",
 ]
 
 [dependency-groups]

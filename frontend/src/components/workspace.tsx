@@ -1,510 +1,347 @@
 "use client";
-
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import {
   ArrowRight,
-  ArrowUpRight,
-  Boxes,
-  Check,
+  Bot,
+  CheckCircle2,
   ChevronRight,
-  Circle,
+  FolderKanban,
   Globe2,
-  Layers3,
-  Plus,
   ScanLine,
   Search,
-  ShieldCheck,
-  Sparkles,
+  Waypoints,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Project, Scan } from "@/lib/types";
+import { useResource } from "@/lib/use-resource";
+import type { AgentTest, Project, Scan } from "@/lib/types";
 import { Button } from "./ui/button";
+import { ProjectDialog } from "./project-dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogTitle,
-  DialogTrigger,
-} from "./ui/dialog";
+  DomainIcon,
+  formatDate,
+  Metric,
+  PageHeading,
+  SectionHeader,
+  Status,
+  TextLink,
+  domainOf,
+} from "./product-ui";
 import { EmptyState, ErrorState, LoadingState } from "./states";
-
-export function ProjectDialog({
-  onCreated,
-}: {
-  onCreated: (project: Project) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button onClick={() => setError("")}>
-          <Plus size={16} />
-          New project
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
-        <DialogTitle className="text-xl font-semibold tracking-tight">
-          A new perspective on your website.
-        </DialogTitle>
-        <DialogDescription className="mb-6 mt-2 text-sm leading-6 text-muted-foreground">
-          Add a website to your workspace. You can create a scan record once
-          your project is saved.
-        </DialogDescription>
-        <form
-          onSubmit={async (e) => {
-            e.preventDefault();
-            const form = new FormData(e.currentTarget);
-            setBusy(true);
-            setError("");
-            try {
-              const project = await api.createProject(
-                String(form.get("name")),
-                String(form.get("url")),
-              );
-              onCreated(project);
-              setOpen(false);
-            } catch (e) {
-              setError(
-                e instanceof Error ? e.message : "Could not create project",
-              );
-            } finally {
-              setBusy(false);
-            }
-          }}
-          className="space-y-4"
-        >
-          <label className="block text-sm font-medium">
-            Project name
-            <input
-              name="name"
-              placeholder="My website"
-              maxLength={200}
-              required
-              className="field mt-2"
-            />
-          </label>
-          <label className="block text-sm font-medium">
-            Website URL
-            <input
-              name="url"
-              type="url"
-              placeholder="https://example.com"
-              maxLength={2048}
-              required
-              className="field mt-2"
-            />
-          </label>
-          {error && (
-            <p role="alert" className="text-sm text-red-700">
-              {error}
-            </p>
-          )}
-          <Button className="w-full" disabled={busy} type="submit">
-            {busy ? "Creating…" : "Create project"}
-            <ArrowRight size={16} />
-          </Button>
-          <p className="text-center text-xs text-muted-foreground">
-            Adding a project does not crawl your website.
-          </p>
-        </form>
-      </DialogContent>
-    </Dialog>
+export { ProjectDialog } from "./project-dialog";
+export { Status } from "./product-ui";
+type WorkspaceData = { projects: Project[]; scans: Scan[]; tests: AgentTest[] };
+const active = (data: WorkspaceData) =>
+  [...data.scans, ...data.tests].some(
+    (r) => r.status === "PENDING" || r.status === "RUNNING",
   );
-}
-
-export function Status({ value }: { value: Scan["status"] }) {
-  return (
-    <span className="inline-flex items-center gap-1.5 rounded-md border bg-background px-2 py-1 text-[11px] font-medium">
-      <span
-        className={`size-1.5 rounded-full ${value === "COMPLETED" ? "bg-green-600" : value === "FAILED" ? "bg-red-500" : "bg-amber-500"}`}
-      />
-      {value.toLowerCase()}
-    </span>
-  );
-}
-
 export function Workspace({
   view = "overview",
 }: {
   view?: "overview" | "projects" | "scans";
 }) {
-  const router = useRouter();
-  const [projects, setProjects] = useState<Project[]>([]);
-  const [scans, setScans] = useState<Scan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const [busy, setBusy] = useState<string | null>(null);
-  const [attempt, setAttempt] = useState(0);
-  useEffect(() => {
-    let active = true;
-    Promise.all([api.projects(), api.scans()])
-      .then(([p, s]) => {
-        if (active) {
-          setProjects(p);
-          setScans(s);
-          setError("");
-        }
-      })
-      .catch((e) => {
-        if (active) setError(e.message);
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [attempt]);
+  const load = useCallback(async () => {
+    const [projects, scans] = await Promise.all([api.projects(), api.scans()]);
+    const tests = await api.agentTestsForScans(scans);
+    return { projects, scans, tests };
+  }, []);
+  const { data, error, retry } = useResource(load, active);
+  if (error) return <ErrorState message={error.message} retry={retry} />;
+  if (!data) return <LoadingState />;
+  const { projects, scans, tests } = data;
+  const latest = [...scans].sort((a, b) =>
+    (b.started_at ?? "9999").localeCompare(a.started_at ?? "9999"),
+  );
   const filtered = projects.filter((p) =>
     `${p.name} ${p.website_url}`.toLowerCase().includes(search.toLowerCase()),
   );
-  const completed = scans.filter((s) => s.status === "COMPLETED");
-  const title =
-    view === "overview"
-      ? "Your agent-ready journey starts here."
-      : view === "projects"
-        ? "A home for every website."
-        : "Every scan. One clear view.";
-  const create = (
-    <ProjectDialog
-      onCreated={(p) => setProjects((previous) => [p, ...previous])}
-    />
-  );
   return (
-    <>
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-5">
-        <div>
-          <div className="mb-2.5 text-[10px] font-semibold uppercase tracking-[.2em] text-primary">
-            {view === "overview"
-              ? "See your website differently"
-              : "Your workspace"}
-          </div>
-          <h1 className="text-[28px] font-semibold leading-tight tracking-[-.04em] sm:text-[32px]">
-            {title}
-          </h1>
-          <p className="mt-3 text-sm text-muted-foreground">
-            {view === "scans"
-              ? "Track scan records and explore findings as your auditing engine takes shape."
-              : "Understand how AI agents discover, navigate, and interact with your website."}
-          </p>
-        </div>
-        {create}
-      </div>
+    <div className="fade-in">
+      <PageHeading
+        eyebrow="Your workspace"
+        title={
+          view === "overview"
+            ? "See your website through an agent’s eyes."
+            : view === "projects"
+              ? "Your projects"
+              : "Scan history"
+        }
+        description={
+          view === "overview"
+            ? "Understand what agents can discover—and what happens when they try to use it."
+            : view === "projects"
+              ? "Your websites, their scans, and every agent journey in one place."
+              : "Follow discovery progress and open the evidence behind every crawl."
+        }
+        action={<ProjectDialog onCreated={() => retry()} />}
+      />
       {view === "overview" && (
-        <section className="relative mb-7 overflow-hidden rounded-2xl border border-[#dce2d3] bg-[#edf1e6] p-7 sm:p-8">
-          <div className="relative z-10 max-w-lg">
-            <span className="mb-5 inline-flex items-center gap-1.5 rounded-full border border-[#cfdac3] px-2.5 py-1 text-[10px] font-medium text-[#536847]">
-              <Sparkles size={12} />A new kind of website readiness
-            </span>
-            <h2 className="max-w-sm text-[27px] font-medium leading-[1.2] tracking-[-.04em]">
-              The next visitor to your
-              <br />
-              website might be an agent.
-            </h2>
-            <p className="mb-6 mt-4 max-w-sm text-sm leading-6 text-[#67715f]">
-              Make space for the next wave of the web. Start with a project,
-              then build a clearer picture with every scan.
-            </p>
-            <Button
-              asChild
-              variant="outline"
-              className="border-[#cfdac3] bg-white/60"
-            >
-              <Link href="/projects">
-                Explore your projects
-                <ArrowUpRight size={15} />
+        <>
+          <section className="workspace-welcome relative mb-6 flex flex-wrap items-center justify-between gap-5 overflow-hidden rounded-xl border border-primary/15 bg-accent-soft px-6 py-6">
+            <div className="flex items-start gap-4">
+              <span className="hidden size-11 shrink-0 place-items-center rounded-xl border border-primary/15 bg-card/70 text-primary sm:grid">
+                <Waypoints size={23} strokeWidth={1.5} />
+              </span>
+              <div>
+                <h2 className="text-sm font-semibold tracking-tight">
+                  Your website has a new kind of visitor.
+                </h2>
+                <p className="mt-2 max-w-xl text-xs leading-6 text-muted-foreground">
+                  Give an AI agent a task. Watch its decisions. See exactly
+                  where it gets stuck.
+                </p>
+              </div>
+            </div>
+            <Button variant="outline" asChild className="bg-card">
+              <Link href="/agent-tests">
+                Explore agent tests
+                <ArrowRight size={13} />
               </Link>
             </Button>
+          </section>
+          <div className="mb-8 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <Metric
+              label="Total projects"
+              value={projects.length}
+              icon={FolderKanban}
+              detail="Websites in your workspace"
+            />
+            <Metric
+              label="Total scans"
+              value={scans.length}
+              icon={ScanLine}
+              detail="Discovery runs created"
+            />
+            <Metric
+              label="Completed scans"
+              value={scans.filter((s) => s.status === "COMPLETED").length}
+              icon={CheckCircle2}
+              detail="Crawls that reached completion"
+            />
+            <Metric
+              label="Agent tests executed"
+              value={tests.filter((t) => t.status !== "PENDING").length}
+              icon={Bot}
+              detail="Real execution records, no demo data"
+            />
           </div>
-          <div
-            aria-hidden="true"
-            className="absolute -right-10 top-8 hidden h-64 w-96 sm:block"
-          >
-            <div className="orbit orbit-one" />
-            <div className="orbit orbit-two" />
-            <div className="orbit orbit-three" />
-            <div className="absolute left-40 top-20 grid size-20 rotate-[-12deg] place-items-center rounded-2xl border border-[#b6c4a5] bg-[#e1e8d5] shadow-[0_14px_30px_#53684718]">
-              <ScanLine size={40} strokeWidth={1} className="text-[#687f50]" />
-            </div>
-            <span className="absolute left-16 top-5 size-3 rounded-full bg-[#b6c79f]" />
-            <span className="absolute right-16 top-44 size-4 rounded-full border-4 border-[#d1ddbf] bg-[#849b6e]" />
-          </div>
-        </section>
+        </>
       )}
-      {loading ? (
-        <LoadingState />
-      ) : error ? (
-        <ErrorState
-          message={error}
-          retry={() => {
-            setLoading(true);
-            setAttempt((n) => n + 1);
-          }}
-        />
-      ) : (
-        <>
-          {view === "overview" && (
-            <div className="mb-9 grid gap-4 sm:grid-cols-3">
-              {[
-                {
-                  label: "Total projects",
-                  value: projects.length,
-                  sub: "Websites in your workspace",
-                  icon: Boxes,
-                },
-                {
-                  label: "Scan records",
-                  value: scans.length,
-                  sub: "A record of your readiness journey",
-                  icon: ScanLine,
-                },
-                {
-                  label: "Completed scans",
-                  value: completed.length,
-                  sub: "Ready for review when available",
-                  icon: ShieldCheck,
-                },
-              ].map(({ label, value, sub, icon: Icon }) => (
-                <div key={label} className="rounded-xl border bg-card p-5">
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    {label}
-                    <Icon size={17} strokeWidth={1.5} />
-                  </div>
-                  <div className="my-3 text-3xl font-medium tracking-tight">
-                    {value}
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">{sub}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          <section className="overflow-hidden rounded-xl border bg-card">
-            <div className="flex flex-wrap items-center justify-between gap-4 border-b px-5 py-4">
-              <div className="flex items-center gap-2.5">
-                <h2 className="text-sm font-semibold">
-                  {view === "scans" ? "Scan history" : "Your projects"}
-                </h2>
-                <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-                  {view === "scans" ? scans.length : projects.length}
-                </span>
-              </div>
-              {view !== "scans" && (
-                <label className="flex items-center gap-2 text-muted-foreground">
-                  <Search size={14} />
+      {view !== "scans" && (
+        <section className="surface overflow-hidden">
+          <SectionHeader
+            title={view === "overview" ? "Recent projects" : "All projects"}
+            count={projects.length}
+            action={
+              view === "overview" ? (
+                <TextLink href="/projects">View all projects</TextLink>
+              ) : (
+                <label className="flex items-center gap-2 rounded-lg border bg-background px-3 py-2 text-muted-foreground">
+                  <Search size={13} />
                   <input
                     aria-label="Search projects"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search projects…"
-                    className="w-36 bg-transparent text-xs outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="w-36 bg-transparent text-[11px] outline-none"
                   />
                 </label>
-              )}
-            </div>
-            {view === "scans" ? (
-              scans.length === 0 ? (
-                <EmptyState
-                  title="A fresh start for your scan history."
-                  description="Create a project, then add your first scan record. Website crawling and testing will arrive in a future release."
-                  action={
-                    <Button asChild variant="outline">
-                      <Link href="/projects">
-                        View projects
-                        <ArrowRight size={15} />
-                      </Link>
-                    </Button>
-                  }
-                />
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-sm">
-                    <thead className="table-head">
-                      <tr>
-                        <th>Project</th>
-                        <th>Status</th>
-                        <th>Score</th>
-                        <th>
-                          <span className="sr-only">Details</span>
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {scans.map((s) => (
-                        <tr key={s.id} className="table-row">
-                          <td>
-                            {projects.find((p) => p.id === s.project_id)
-                              ?.name ?? s.project_id}
-                          </td>
-                          <td>
-                            <Status value={s.status} />
-                          </td>
-                          <td>{s.overall_score ?? "—"}</td>
+              )
+            }
+          />
+          {filtered.length === 0 ? (
+            <EmptyState
+              title={
+                search
+                  ? "No matching projects"
+                  : "Start with your first website"
+              }
+              description={
+                search
+                  ? "Try searching by project name or domain."
+                  : "Create a project to discover its pages and test real agent journeys."
+              }
+              action={
+                search ? (
+                  <Button variant="outline" onClick={() => setSearch("")}>
+                    Clear search
+                  </Button>
+                ) : (
+                  <ProjectDialog onCreated={() => retry()} />
+                )
+              }
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table min-w-[540px]">
+                <thead className="table-head">
+                  <tr>
+                    <th>Project</th>
+                    <th>Latest scan</th>
+                    <th>Pages crawled</th>
+                    <th>Agent tests</th>
+                    <th>
+                      <span className="sr-only">Open</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(view === "overview" ? filtered.slice(0, 4) : filtered).map(
+                    (project) => {
+                      const scan = latest.find(
+                        (s) => s.project_id === project.id,
+                      );
+                      const projectScanIds = new Set(
+                        scans
+                          .filter((s) => s.project_id === project.id)
+                          .map((s) => s.id),
+                      );
+                      return (
+                        <tr key={project.id} className="table-row">
                           <td>
                             <Link
-                              aria-label={`View scan ${s.id}`}
-                              href={`/scans/${s.id}`}
-                              className="inline-flex items-center gap-1 text-xs text-primary"
+                              href={`/projects/${project.id}`}
+                              className="group inline-flex items-center gap-3"
                             >
-                              View scan
-                              <ChevronRight size={14} />
+                              <DomainIcon className="size-9 rounded-lg" />
+                              <span>
+                                <span className="block text-xs font-medium group-hover:text-primary">
+                                  {project.name}
+                                </span>
+                                <span className="mono mt-1 block text-[10px] text-muted-foreground">
+                                  {domainOf(project.website_url)}
+                                </span>
+                              </span>
+                            </Link>
+                          </td>
+                          <td>
+                            {scan ? (
+                              <Status value={scan.status} />
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">
+                                Not scanned yet
+                              </span>
+                            )}
+                          </td>
+                          <td className="tabular-nums">
+                            {scan?.pages_crawled ?? "—"}
+                          </td>
+                          <td className="tabular-nums">
+                            {
+                              tests.filter((t) => projectScanIds.has(t.scan_id))
+                                .length
+                            }
+                          </td>
+                          <td>
+                            <Link
+                              href={`/projects/${project.id}`}
+                              aria-label={`Open ${project.name}`}
+                              className="grid size-8 place-items-center rounded-lg text-muted-foreground hover:bg-muted"
+                            >
+                              <ChevronRight size={15} />
                             </Link>
                           </td>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )
-            ) : filtered.length === 0 ? (
-              <EmptyState
-                title={
-                  search
-                    ? "No matching projects."
-                    : "Your first project is a possibility."
-                }
-                description={
-                  search
-                    ? "Try another name or website address."
-                    : "Add a website to give your readiness journey a home. Everything starts with a URL."
-                }
-                action={
-                  search ? (
-                    <Button variant="outline" onClick={() => setSearch("")}>
-                      Clear search
-                    </Button>
-                  ) : (
-                    create
-                  )
-                }
-              />
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead className="table-head">
-                    <tr>
-                      <th>Project</th>
-                      <th>Website</th>
-                      <th>Scans</th>
-                      <th>
-                        <span className="sr-only">Actions</span>
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((p) => (
-                      <tr key={p.id} className="table-row">
-                        <td>
-                          <span className="flex items-center gap-3">
-                            <span className="grid size-8 shrink-0 place-items-center rounded-lg border bg-background text-muted-foreground">
-                              <Globe2 size={16} />
-                            </span>
-                            <span className="font-medium">{p.name}</span>
-                          </span>
-                        </td>
-                        <td>
-                          <a
-                            className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary"
-                            href={p.website_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {new URL(p.website_url).hostname}
-                            <ArrowUpRight size={12} />
-                          </a>
-                        </td>
-                        <td>
-                          {scans.filter((s) => s.project_id === p.id).length}
-                        </td>
-                        <td className="text-right">
-                          <Button
-                            variant="outline"
-                            disabled={busy !== null}
-                            onClick={async () => {
-                              setBusy(p.id);
-                              try {
-                                const s = await api.createScan(p.id);
-                                setScans((prev) => [...prev, s]);
-                                router.push(`/scans/${s.id}`);
-                              } catch (e) {
-                                setError(
-                                  e instanceof Error
-                                    ? e.message
-                                    : "Could not create scan",
-                                );
-                              } finally {
-                                setBusy(null);
-                              }
-                            }}
-                          >
-                            <Plus size={14} />
-                            {busy === p.id ? "Creating…" : "Create scan"}
-                          </Button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </section>
-        </>
-      )}
-      {view === "overview" && (
-        <section className="mt-9">
-          <div className="mb-4 flex items-center gap-2">
-            <Layers3 size={16} className="text-muted-foreground" />
-            <h2 className="text-sm font-semibold">
-              A foundation for agent readiness
-            </h2>
-          </div>
-          <div className="grid gap-4 md:grid-cols-3">
-            {[
-              {
-                title: "01 / Connect your website",
-                text: "Create a project with your website URL. Keep your websites organized in one workspace.",
-                ready: true,
-              },
-              {
-                title: "02 / Understand the experience",
-                text: "Future audits will examine five dimensions, from discovery to reliable interaction.",
-                ready: false,
-              },
-              {
-                title: "03 / Turn insight into action",
-                text: "Evidence-based findings and recommendations will help you decide what to improve.",
-                ready: false,
-              },
-            ].map((x) => (
-              <div
-                key={x.title}
-                className="rounded-xl border border-dashed p-5"
-              >
-                <p className="mb-2 text-xs font-medium">{x.title}</p>
-                <p className="text-xs leading-5 text-muted-foreground">
-                  {x.text}
-                </p>
-                <span className="mt-4 inline-flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                  {x.ready ? <Check size={12} /> : <Circle size={10} />}
-                  {x.ready ? "Available now" : "Coming next"}
-                </span>
-              </div>
-            ))}
-          </div>
+                      );
+                    },
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
         </section>
       )}
-      <footer className="mt-9 flex flex-wrap items-center justify-between gap-2 border-t pt-5 text-[10px] text-muted-foreground">
-        <span>
-          AgentReadiness · A thoughtful foundation for an agentic web.
+      {view !== "projects" && (
+        <section
+          className={`surface overflow-hidden ${view === "overview" ? "mt-7" : ""}`}
+        >
+          <SectionHeader
+            title={view === "overview" ? "Recent scan activity" : "All scans"}
+            count={scans.length}
+            action={
+              view === "overview" ? (
+                <TextLink href="/scans">View scan history</TextLink>
+              ) : undefined
+            }
+          />
+          {scans.length === 0 ? (
+            <EmptyState
+              title="No scans yet"
+              description="Open a project and start a scan to discover its pages and inspect crawl results."
+              action={
+                <Button asChild variant="outline">
+                  <Link href="/projects">
+                    Go to projects
+                    <ArrowRight size={13} />
+                  </Link>
+                </Button>
+              }
+            />
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="data-table min-w-[580px]">
+                <thead className="table-head">
+                  <tr>
+                    <th>Website / Scan</th>
+                    <th>Status</th>
+                    <th>Pages</th>
+                    <th>Started</th>
+                    <th>
+                      <span className="sr-only">Results</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(view === "overview" ? latest.slice(0, 5) : latest).map(
+                    (scan) => (
+                      <tr key={scan.id} className="table-row">
+                        <td>
+                          <Link
+                            className="font-medium hover:text-primary"
+                            href={`/scans/${scan.id}`}
+                          >
+                            {projects.find((p) => p.id === scan.project_id)
+                              ?.name ?? "Website scan"}
+                          </Link>
+                          <p className="mono mt-1 text-[9px] text-muted-foreground">
+                            {scan.id.slice(0, 8)}
+                          </p>
+                        </td>
+                        <td>
+                          <Status value={scan.status} />
+                        </td>
+                        <td>
+                          {scan.pages_crawled}
+                          <span className="text-muted-foreground">
+                            {" "}
+                            / {scan.pages_discovered}
+                          </span>
+                        </td>
+                        <td className="text-[11px] text-muted-foreground">
+                          {formatDate(scan.started_at)}
+                        </td>
+                        <td>
+                          <TextLink href={`/scans/${scan.id}`}>
+                            View results
+                          </TextLink>
+                        </td>
+                      </tr>
+                    ),
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
+      )}
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 text-[10px] text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <Globe2 size={12} />
+          Your data, from actual crawl and execution records.
         </span>
-        <span>
-          Auditing, workflow testing, and scoring are not enabled yet.
-        </span>
-      </footer>
-    </>
+        <TextLink href="/docs">How to read your results</TextLink>
+      </div>
+    </div>
   );
 }
