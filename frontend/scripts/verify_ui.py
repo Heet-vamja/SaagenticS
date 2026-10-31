@@ -63,41 +63,53 @@ async def main():
                 page.on("pageerror", lambda error: errors.append(str(error)))
                 await page.goto(BASE, wait_until="networkidle")
                 await check_page(page, "landing-desktop")
-                # Real project creation through the shared dialog.
-                await page.goto(BASE + "/projects", wait_until="networkidle")
-                await page.get_by_role(
-                    "button", name="New project", exact=True
-                ).first.click()
-                project_name = f"Design QA {int(time.time())}"
-                await page.get_by_label("Project name", exact=True).fill(project_name)
-                await page.get_by_label("Website URL", exact=True).first.fill(
-                    "https://example.com/"
-                )
-                await page.get_by_role(
-                    "button", name="Create project", exact=True
-                ).click()
-                await page.get_by_role(
-                    "link", name=project_name, exact=False
-                ).first.wait_for()
-                project = next(
-                    x
-                    for x in api.get("/api/v1/projects").json()
-                    if x["name"] == project_name
-                )
-                records["project_id"] = project["id"]
-                records["project_ids"].append(project["id"])
+                # Reuse a prior isolated QA project when retrying after a failed assertion.
+                if previous.get("project_id"):
+                    project = api.get(
+                        f"/api/v1/projects/{previous['project_id']}"
+                    ).json()
+                    records["project_id"] = project["id"]
+                else:
+                    await page.goto(BASE + "/projects", wait_until="networkidle")
+                    await page.get_by_role(
+                        "button", name="New project", exact=True
+                    ).first.click()
+                    project_name = f"Design QA {int(time.time())}"
+                    await page.get_by_label("Project name", exact=True).fill(project_name)
+                    await page.get_by_label("Website URL", exact=True).first.fill(
+                        "https://example.com/"
+                    )
+                    await page.get_by_role(
+                        "button", name="Create project", exact=True
+                    ).click()
+                    await page.get_by_role(
+                        "link", name=project_name, exact=False
+                    ).first.wait_for()
+                    project = next(
+                        x
+                        for x in api.get("/api/v1/projects").json()
+                        if x["name"] == project_name
+                    )
+                    records["project_id"] = project["id"]
+                    records["project_ids"].append(project["id"])
                 (OUTPUT / "records.json").write_text(json.dumps(records))
                 # Hero URL CTA must reuse the existing project, start a scan and navigate.
-                await page.goto(BASE, wait_until="networkidle")
-                await page.get_by_label("Website URL", exact=True).first.fill(
-                    "https://example.com/"
-                )
-                await page.get_by_role(
-                    "button", name="Scan your website", exact=True
-                ).first.click()
-                await page.wait_for_url("**/scans/*", timeout=20000)
-                records["scan_id"] = page.url.split("/")[-1]
-                (OUTPUT / "records.json").write_text(json.dumps(records))
+                if previous.get("scan_id"):
+                    records["scan_id"] = previous["scan_id"]
+                    await page.goto(
+                        BASE + f"/scans/{records['scan_id']}", wait_until="networkidle"
+                    )
+                else:
+                    await page.goto(BASE, wait_until="networkidle")
+                    await page.get_by_label("Website URL", exact=True).first.fill(
+                        "https://example.com/"
+                    )
+                    await page.get_by_role(
+                        "button", name="Scan your website", exact=True
+                    ).first.click()
+                    await page.wait_for_url("**/scans/*", timeout=20000)
+                    records["scan_id"] = page.url.split("/")[-1]
+                    (OUTPUT / "records.json").write_text(json.dumps(records))
                 await page.get_by_role(
                     "heading", name="Discovered pages, with evidence"
                 ).wait_for()
@@ -121,19 +133,25 @@ async def main():
                     .is_visible()
                 )
                 await page.keyboard.press("Escape")
+                findings = api.get(
+                    f"/api/v1/scans/{records['scan_id']}/findings"
+                ).json()
                 await page.get_by_role(
                     "tab", name="Technical findings", exact=False
                 ).click()
-                await page.get_by_text(
-                    "No technical findings available", exact=True
-                ).wait_for()
+                if findings:
+                    await page.get_by_text(findings[0]["title"], exact=True).wait_for()
+                else:
+                    await page.get_by_text(
+                        "No issues recorded in this view", exact=True
+                    ).wait_for()
                 await page.get_by_role("tab", name="Agent tests", exact=False).click()
-                await page.get_by_text("Find Documentation", exact=True).click()
+                await page.get_by_text("Find Pricing", exact=True).click()
                 assert await page.get_by_role(
-                    "radio", name="Find Documentation", exact=False
+                    "radio", name="Find Pricing", exact=False
                 ).is_checked()
                 await page.get_by_role(
-                    "button", name="Run Agent Test", exact=True
+                    "button", name="Run Agent Task", exact=True
                 ).click()
                 await page.wait_for_url("**/agent-tests/*", timeout=20000)
                 records["agent_test_id"] = page.url.split("/")[-1]
@@ -149,9 +167,12 @@ async def main():
                         break
                     await asyncio.sleep(1)
                 assert test["status"] in ("COMPLETED", "FAILED")
-                await page.get_by_text(
-                    "Not independently verified.", exact=True
-                ).wait_for()
+                assurance_copy = {
+                    "rules": "Rule verified",
+                    "judged": "LLM judged · lower assurance",
+                    "unverified": "The agent claim was not independently verified.",
+                }[test.get("verification_method", "unverified")]
+                await page.get_by_text(assurance_copy, exact=True).wait_for()
                 if test.get("failure_reason") and "402" in test["failure_reason"]:
                     await page.get_by_text(
                         "Model request failed", exact=True
@@ -160,7 +181,12 @@ async def main():
                 steps = api.get(
                     f"/api/v1/agent-tests/{records['agent_test_id']}/steps"
                 ).json()
-                assert steps and test["verification"] == "NOT_INDEPENDENTLY_VERIFIED"
+                expected_verification = {
+                    "rules": "RULE_VERIFIED",
+                    "judged": "LLM_JUDGED",
+                    "unverified": "NOT_INDEPENDENTLY_VERIFIED",
+                }[test.get("verification_method", "unverified")]
+                assert steps and test["verification"] == expected_verification
                 screenshot = next((s for s in steps if s["has_screenshot"]), None)
                 if screenshot:
                     await page.get_by_role(
@@ -185,7 +211,7 @@ async def main():
                 await page.wait_for_url("**/scans/*", timeout=20000)
                 await page.goto(BASE + "/agent-tests", wait_until="networkidle")
                 await page.get_by_role(
-                    "link", name="Find Documentation", exact=True
+                    "link", name="Find Pricing", exact=True
                 ).first.wait_for()
                 await check_page(page, "agents-desktop")
                 await page.goto(BASE + "/dashboard", wait_until="networkidle")

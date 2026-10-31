@@ -14,6 +14,8 @@ import {
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/use-resource";
 import type {
+  AgentTaskSummary,
+  AgentTaskStepSummary,
   AuditSummary,
   Scan,
   ScanComparison,
@@ -22,7 +24,156 @@ import type {
 import { Brand, domainOf, formatDate, PageHeading, Status } from "./product-ui";
 import { Button } from "./ui/button";
 import { Findings } from "./findings";
+import { AgentTaskCards } from "./agent-task-cards";
 import { EmptyState, ErrorState, InlineError, LoadingState } from "./states";
+import {
+  AgentTaskStatusList,
+  ScanAgentTaskResults,
+} from "./scan-agent-task-results";
+
+type ReportWithAgentResults = StaticReport & {
+  score_components?: {
+    static_score?: number | null;
+    agent_score?: number | null;
+    fallback_reason?: string | null;
+    eligible_runs?: number;
+    excluded_infra_runs?: number;
+    inconclusive_runs?: number;
+    judged_runs?: number;
+    provisional?: boolean;
+  };
+  agent_tasks?: Array<{
+    id?: string;
+    task_type: AgentTaskSummary["task_type"];
+    description?: string;
+    status?: string;
+    outcome?: AgentTaskSummary["outcome"];
+    consistency?: boolean | null;
+    requested_runs?: number;
+    runs_completed?: number;
+    eligible_runs?: number;
+    runs?: Array<{
+      id?: string;
+      run_number: number;
+      status?: string;
+      outcome?: AgentTaskSummary["outcome"];
+      verification_method?: AgentTaskSummary["runs"][number]["verification_method"];
+      failure_category?: AgentTaskSummary["runs"][number]["failure_category"];
+      model?: string;
+      steps?: number;
+      duration_seconds?: number | null;
+      prompt_tokens?: number;
+      completion_tokens?: number;
+      estimated_cost_usd?: number | null;
+      step_details?: AgentTaskStepSummary[];
+    }>;
+  }>;
+};
+
+function taskCardsFromReport(
+  tasks: NonNullable<ReportWithAgentResults["agent_tasks"]>,
+): AgentTaskSummary[] {
+  return tasks.map((task) => ({
+    id: task.id,
+    task_type: task.task_type,
+    task_description: task.description,
+    status: task.status,
+    outcome: task.outcome,
+    consistency: task.consistency,
+    requested_runs: task.requested_runs,
+    runs_completed: task.runs_completed,
+    eligible_runs: task.eligible_runs,
+    runs: (task.runs ?? []).map((run) => ({
+      id: run.id,
+      run_number: run.run_number,
+      status: run.status,
+      outcome: run.outcome,
+      verification_method: run.verification_method,
+      failure_category: run.failure_category,
+      steps_completed: run.steps,
+      execution_duration: run.duration_seconds,
+      prompt_tokens: run.prompt_tokens,
+      completion_tokens: run.completion_tokens,
+      estimated_cost_usd: run.estimated_cost_usd,
+      model_identifier: run.model,
+      steps: run.step_details,
+    })),
+  }));
+}
+
+function ScoreComposition({
+  scoreKind,
+  score,
+  staticScore,
+  agentScore,
+  fallbackReason,
+}: {
+  scoreKind: string;
+  score: number | null;
+  staticScore: number | null;
+  agentScore?: number | null;
+  fallbackReason?: string | null;
+}) {
+  const combined = scoreKind === "COMBINED_READINESS";
+  const agentOnly = scoreKind === "AGENT_READINESS";
+  return (
+    <section
+      className="surface mb-5 p-5"
+      aria-label="Readiness score composition"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-sm font-semibold">
+          {combined
+            ? "Combined readiness"
+            : agentOnly
+              ? "Agent readiness"
+              : "Static readiness score"}
+        </h2>
+        <strong className="text-lg">
+          {score ?? "—"}
+          <span className="ml-1 text-xs font-normal text-muted-foreground">
+            /100
+          </span>
+        </strong>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">
+        {combined
+          ? `Combines the static score (${staticScore ?? "—"}) with agent task results (${agentScore ?? "—"}).`
+          : agentOnly
+            ? "Static checks were unavailable; this score uses agent task results only and has limited coverage."
+            : fallbackReason ||
+              "Agent results are missing or inconclusive, so the static score is shown as the fallback."}
+      </p>
+    </section>
+  );
+}
+
+export function ScanScoreComposition({ scan }: { scan: Scan }) {
+  const summary = scan.audit_summary as
+    | (AuditSummary & {
+        score_kind?: string;
+        static_score?: number | null;
+        agent?: {
+          agent_score?: number | null;
+          fallback_reason?: string | null;
+        };
+      })
+    | undefined;
+  if (!summary?.version && !summary?.score_kind) return null;
+  const scoreKind = summary?.score_kind ?? "STATIC_READINESS";
+  const staticScore =
+    summary?.static_score ??
+    (scoreKind === "STATIC_READINESS" ? scan.overall_score : null);
+  return (
+    <ScoreComposition
+      scoreKind={scoreKind}
+      score={scan.overall_score}
+      staticScore={staticScore}
+      agentScore={summary?.agent?.agent_score}
+      fallbackReason={summary?.agent?.fallback_reason}
+    />
+  );
+}
 
 export function StaticScore({
   summary,
@@ -112,41 +263,54 @@ export function ScoreHistory({ scans }: { scans: Scan[] }) {
   if (!scored.length) return null;
   return (
     <section className="surface mb-7 p-6">
-      <h2 className="section-title">Static score history</h2>
+      <h2 className="section-title">Readiness score history</h2>
       <p className="mt-2 text-xs text-muted-foreground">
-        Scores reflect sampled pages and coverage. Open a report to compare
-        evidence.
+        Scores reflect the rubric and evidence available on each scan. Open a
+        report to compare components and coverage.
       </p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {scored.map((scan) => (
-          <Link
-            href={`/scans/${scan.id}/report`}
-            className="rounded-lg border p-4 hover:bg-muted"
-            key={scan.id}
-          >
-            <span className="text-[10px] text-muted-foreground">
-              {formatDate(scan.started_at)}
-            </span>
-            <strong className="my-2 block text-2xl">
-              {scan.overall_score}
-              <small className="ml-1 text-xs font-normal text-muted-foreground">
-                /100
-              </small>
-            </strong>
-            <span className="block h-1 rounded bg-muted">
-              <span
-                className="block h-full rounded bg-primary/60"
-                style={{ width: `${scan.overall_score}%` }}
-              />
-            </span>
-            <small className="mt-2 block text-[9px] text-muted-foreground">
-              {scan.audit_summary?.version} ·{" "}
-              {scan.audit_summary?.provisional
-                ? "partial coverage"
-                : "evaluated sample"}
-            </small>
-          </Link>
-        ))}
+        {scored.map((scan) =>
+          (() => {
+            const summary = scan.audit_summary;
+            const kind = summary?.score_kind ?? "STATIC_READINESS";
+            return (
+              <Link
+                href={`/scans/${scan.id}/report`}
+                className="rounded-lg border p-4 hover:bg-muted"
+                key={scan.id}
+              >
+                <span className="text-[10px] text-muted-foreground">
+                  {formatDate(scan.started_at)}
+                </span>
+                <strong className="my-2 block text-2xl">
+                  {scan.overall_score}
+                  <small className="ml-1 text-xs font-normal text-muted-foreground">
+                    /100
+                  </small>
+                </strong>
+                <span className="block h-1 rounded bg-muted">
+                  <span
+                    className="block h-full rounded bg-primary/60"
+                    style={{ width: `${scan.overall_score}%` }}
+                  />
+                </span>
+                <small className="mt-2 block text-[9px] text-muted-foreground">
+                  {kind.replaceAll("_", " ")} · {summary?.version} ·{" "}
+                  {summary?.provisional
+                    ? "partial coverage"
+                    : "evaluated sample"}
+                </small>
+                {summary?.static_score != null &&
+                  summary.agent?.agent_score != null && (
+                    <small className="mt-2 block text-[9px] text-muted-foreground">
+                      Static {summary.static_score} · Agent{" "}
+                      {summary.agent.agent_score}
+                    </small>
+                  )}
+              </Link>
+            );
+          })(),
+        )}
       </div>
     </section>
   );
@@ -224,7 +388,54 @@ function Comparison({ id, projectId }: { id: string; projectId?: string }) {
             {compare.note}
             {compare.coverage_changed &&
               " Coverage changed between these scans."}
+            {compare.agent_coverage_changed &&
+              " Agent task coverage changed; compare task outcomes separately."}
           </p>
+          {compare.score_components && (
+            <div className="mt-4 grid gap-3 rounded-lg border bg-muted/30 p-4 text-[10px] sm:grid-cols-3">
+              <span>
+                Static score change:{" "}
+                {compare.score_components.static_delta == null
+                  ? "not comparable"
+                  : `${compare.score_components.static_delta > 0 ? "+" : ""}${compare.score_components.static_delta}`}
+              </span>
+              <span>
+                Agent score change:{" "}
+                {compare.score_components.agent_delta == null
+                  ? "not comparable"
+                  : `${compare.score_components.agent_delta > 0 ? "+" : ""}${compare.score_components.agent_delta}`}
+              </span>
+              <span>
+                {compare.score_components.score_comparable
+                  ? "Overall scores use comparable coverage."
+                  : "Overall score change is hidden because scoring coverage or weights differ."}
+              </span>
+            </div>
+          )}
+          {!!compare.agent_task_changes?.length && (
+            <div className="mt-4 rounded-lg border p-4">
+              <h3 className="text-xs font-medium">
+                Agent task outcome changes
+              </h3>
+              <div className="mt-3 space-y-2">
+                {compare.agent_task_changes.map((task) => (
+                  <div
+                    key={task.task_type}
+                    className="flex flex-wrap justify-between gap-2 text-[10px]"
+                  >
+                    <span className="font-medium">
+                      {task.task_type.replaceAll("_", " ")}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {task.before ?? "No earlier result"} →{" "}
+                      {task.after ?? "No current result"} ·{" "}
+                      {task.after_eligible_runs} eligible runs now
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           {(
             [
               ["Resolved", compare.resolved],
@@ -280,6 +491,10 @@ export function ReportView({
   const [copied, setCopied] = useState(false);
   if (error) return <ErrorState message={error.message} retry={retry} />;
   if (!data) return <LoadingState />;
+  const reportData = data as ReportWithAgentResults;
+  const staticScore =
+    reportData.score_components?.static_score ??
+    (data.score_kind === "STATIC_READINESS" ? data.scan.overall_score : null);
   const active = ["PENDING", "RUNNING"].includes(data.scan.status);
   const download = async (format: "json" | "csv" | "pdf") => {
     setBusy(format);
@@ -293,7 +508,7 @@ export function ReportView({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `agentreadiness-static-report.${format}`;
+      a.download = `agentreadiness-report.${format}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
@@ -442,10 +657,36 @@ export function ReportView({
         </div>
       ) : (
         <>
-          <StaticScore
-            summary={data.scan.audit_summary}
+          <ScoreComposition
+            scoreKind={data.score_kind}
             score={data.scan.overall_score}
+            staticScore={staticScore}
+            agentScore={reportData.score_components?.agent_score}
+            fallbackReason={reportData.score_components?.fallback_reason}
           />
+          <StaticScore summary={data.scan.audit_summary} score={staticScore} />
+          <section className="mb-7">
+            <h2 className="section-title mb-2">Agent task results</h2>
+            <p className="mb-5 text-xs leading-5 text-muted-foreground">
+              Each task shows its run outcome and verification level. Completion
+              alone does not establish success.{" "}
+              {scanId
+                ? "Recorded step replay is available below when captured."
+                : "Shared reports contain task summaries; replay stays in the scan workspace."}
+            </p>
+            {scanId ? (
+              <ScanAgentTaskResults scanId={scanId} />
+            ) : (
+              <>
+                <AgentTaskStatusList
+                  tasks={taskCardsFromReport(reportData.agent_tasks ?? [])}
+                />
+                <AgentTaskCards
+                  tasks={taskCardsFromReport(reportData.agent_tasks ?? [])}
+                />
+              </>
+            )}
+          </section>
           <section className="mb-7">
             <h2 className="section-title mb-2">Top priority fixes</h2>
             <p className="mb-5 text-xs text-muted-foreground">
@@ -472,7 +713,9 @@ export function ReportView({
               weighting. Categories use Access 30%, Readability 25%,
               Actionability 30%, Reliability 15%. Unknown checks are excluded
               and coverage is disclosed. Missing categories make the score
-              provisional. Agent task success contributes no points.
+              provisional. Agent task success contributes a separately weighted
+              component when eligible runs are available; incomplete or
+              infrastructure-only runs fall back to this static score.
             </p>
             <div className="mt-5 overflow-x-auto">
               <table className="data-table min-w-[650px]">

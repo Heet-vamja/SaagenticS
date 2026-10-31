@@ -41,7 +41,8 @@ import {
 import { EmptyState, ErrorState, InlineError, LoadingState } from "./states";
 import { Findings } from "./findings";
 import { Tabs } from "./tabs";
-import { StaticScore } from "./static-report";
+import { ScanScoreComposition, StaticScore } from "./static-report";
+import { ScanAgentTaskResults } from "./scan-agent-task-results";
 type Data = {
   scan: Scan;
   project: Project;
@@ -78,6 +79,18 @@ export function ScanDetail({ id }: { id: string }) {
   if (error) return <ErrorState message={error.message} retry={retry} />;
   if (!data) return <LoadingState />;
   const { scan, project, pages, findings, tests } = data;
+  const scoreSummary = scan.audit_summary as
+    | (typeof scan.audit_summary & {
+        score_kind?: string;
+        static_score?: number | null;
+      })
+    | undefined;
+  const staticScore =
+    scoreSummary?.static_score ??
+    (scoreSummary?.score_kind === "STATIC_READINESS" ||
+    !scoreSummary?.score_kind
+      ? scan.overall_score
+      : null);
   return (
     <div className="fade-in">
       <PageHeading
@@ -142,13 +155,16 @@ export function ScanDetail({ id }: { id: string }) {
                 ? "Queued for scanning"
                 : scan.audit_summary?.phase === "BROWSER_CHECKS"
                   ? "Comparing browser observations"
-                  : scan.audit_summary?.phase === "REPORT_READY"
-                    ? "Preparing your report"
-                    : "Discovering and checking your website"}
+                  : scan.audit_summary?.phase === "AGENT_TASKS"
+                    ? "Running real AI browser tasks"
+                    : scan.audit_summary?.phase === "REPORT_READY"
+                      ? "Preparing your report"
+                      : "Discovering and checking your website"}
             </p>
             <p className="mt-1 text-[11px] text-muted-foreground">
-              Progress refreshes automatically. Discovery → static checks →
-              browser sample → report. No LLM is called.
+              {scan.audit_summary?.phase === "AGENT_TASKS"
+                ? "Static checks are complete; task runs, actions and verification results are updating automatically."
+                : "Progress refreshes automatically. Discovery → static checks → browser sample → AI browser tasks → report."}
             </p>
           </div>
         </div>
@@ -171,9 +187,10 @@ export function ScanDetail({ id }: { id: string }) {
         />
         <Metric label="Agent executions" value={tests.length} icon={Bot} />
       </div>
+      <ScanScoreComposition scan={scan} />
       <StaticScore
         summary={scan.audit_summary}
-        score={scan.overall_score}
+        score={staticScore}
         scanId={scan.id}
       />
       <Tabs
@@ -331,6 +348,13 @@ export function ScanDetail({ id }: { id: string }) {
         {tab === "agents" && (
           <div className="space-y-6">
             <AgentTesting scanId={id} />
+            <section>
+              <SectionHeader
+                title="Agent task results"
+                description="Run outcomes, verification level, and recorded browser replay evidence."
+              />
+              <ScanAgentTaskResults scanId={id} />
+            </section>
             <section className="surface overflow-hidden">
               <SectionHeader
                 title="Execution history"

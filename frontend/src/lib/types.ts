@@ -46,7 +46,20 @@ export type CrawledPage = {
 };
 
 export type AgentTaskType =
-  "FIND_PRICING" | "FIND_DOCUMENTATION" | "FIND_SIGNUP_FORM";
+  "FIND_PRICING" | "FIND_CONTACT" | "FIND_DOCUMENTATION" | "FIND_SIGNUP_FORM";
+export type AgentOutcome =
+  "SUCCEEDED" | "FAILED" | "INCONCLUSIVE" | "UNAVAILABLE";
+export type AgentVerificationMethod = "rules" | "judged" | "unverified";
+export type AgentFailureCategory =
+  | "element_not_found"
+  | "blocked_by_captcha_or_bot_protection"
+  | "content_requires_js"
+  | "ambiguous_navigation"
+  | "step_limit"
+  | "loop"
+  | "malformed_output"
+  | "infra_error"
+  | "other";
 export type AgentTest = {
   id: string;
   scan_id: string;
@@ -64,7 +77,16 @@ export type AgentTest = {
   started_at: string | null;
   completed_at: string | null;
   metrics: Record<string, unknown>;
-  verification: "NOT_INDEPENDENTLY_VERIFIED";
+  verification: "NOT_INDEPENDENTLY_VERIFIED" | "RULE_VERIFIED" | "LLM_JUDGED";
+  task_test_id?: string | null;
+  run_number?: number;
+  outcome?: AgentOutcome | null;
+  verification_method?: AgentVerificationMethod;
+  verification_evidence?: Record<string, unknown>;
+  failure_category?: AgentFailureCategory | null;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  estimated_cost_usd?: number | null;
 };
 export type AgentStep = {
   id: string;
@@ -78,6 +100,87 @@ export type AgentStep = {
   error_message: string | null;
   duration_ms: number;
   has_screenshot: boolean;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  llm_latency_ms?: number;
+  error_category?: AgentFailureCategory | null;
+  screenshot_url?: string;
+};
+export type AgentConfig = {
+  model_identifier: string;
+  configured: boolean;
+  max_steps: number;
+  duration_seconds: number;
+  token_budget: number;
+  action_delay: number;
+  default_runs: number;
+  max_runs: number;
+  free_limits_enabled: boolean;
+  task_limit: number;
+  runs_limit: number;
+  tasks: { task_type: AgentTaskType; name: string; goal: string }[];
+};
+export type AgentTask = {
+  id: string;
+  scan_id: string;
+  task_type: AgentTaskType;
+  task_description: string;
+  requested_runs: number;
+  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+  outcome: AgentOutcome | null;
+  consistency: boolean | null;
+  eligible_runs: number;
+  runs_completed: number;
+  created_at: string;
+  started_at: string | null;
+  completed_at: string | null;
+  deadline: string | null;
+  policy_snapshot: Record<string, unknown>;
+  failure_reason: string | null;
+};
+export type AgentTaskRunSummary = {
+  id?: string;
+  run_number: number;
+  status?: string;
+  outcome?: AgentOutcome | null;
+  verification_method?: AgentVerificationMethod;
+  failure_category?: AgentFailureCategory | null;
+  failure_reason?: string | null;
+  steps_completed?: number;
+  execution_duration?: number | null;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  estimated_cost_usd?: number | null;
+  model_identifier?: string;
+  final_url?: string | null;
+  steps?: AgentTaskStepSummary[];
+};
+export type AgentTaskStepSummary = {
+  id?: string;
+  step_number: number;
+  page_url: string;
+  action_type: string;
+  reason?: string;
+  reasoning_summary?: string;
+  duration_ms: number;
+  error_message?: string | null;
+  has_screenshot?: boolean;
+  screenshot_url?: string;
+};
+/** Aggregate task summary used by workspace cards and redacted shared reports. */
+export type AgentTaskSummary = {
+  id?: string;
+  scan_id?: string;
+  task_type: AgentTaskType;
+  task_description?: string;
+  requested_runs?: number;
+  status?: string;
+  outcome?: AgentOutcome | null;
+  consistency?: boolean | null;
+  eligible_runs?: number;
+  runs_completed?: number;
+  failure_reason?: string | null;
+  runs: AgentTaskRunSummary[];
 };
 
 export type StaticCheck = {
@@ -97,6 +200,16 @@ export type AuditSummary = {
   phase?: string;
   score_kind?: string;
   score?: number | null;
+  static_score?: number | null;
+  agent?: {
+    agent_score?: number | null;
+    eligible_runs?: number;
+    eligible_tasks?: number;
+    excluded_infra_runs?: number;
+    inconclusive_runs?: number;
+    incomplete_tasks?: number;
+    fallback_reason?: string | null;
+  };
   category_scores?: Record<string, number | null>;
   weights?: Record<string, number>;
   coverage?: Record<string, { evaluated: number; total: number }>;
@@ -134,6 +247,22 @@ export type ScanComparison = {
   before: string | null;
   after: string;
   score_delta?: number | null;
+  score_components?: {
+    before?: Record<string, unknown>;
+    after?: Record<string, unknown>;
+    static_delta?: number | null;
+    agent_delta?: number | null;
+    score_comparable?: boolean;
+  };
+  agent_coverage_changed?: boolean;
+  agent_task_changes?: {
+    task_type: AgentTaskType;
+    before: AgentOutcome | null;
+    after: AgentOutcome | null;
+    changed: boolean;
+    before_eligible_runs: number;
+    after_eligible_runs: number;
+  }[];
   coverage_changed?: boolean;
   note?: string;
   added?: StaticCheck[];

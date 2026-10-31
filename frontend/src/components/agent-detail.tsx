@@ -26,7 +26,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { api } from "@/lib/api";
 import { useResource } from "@/lib/use-resource";
-import type { AgentStep, AgentTest } from "@/lib/types";
+import type { AgentStep, AgentTask, AgentTest } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { taskName } from "./agent-testing";
 import {
@@ -35,7 +35,6 @@ import {
   duration,
   PageHeading,
   Status,
-  VerificationNotice,
 } from "./product-ui";
 import { EmptyState, ErrorState, LoadingState } from "./states";
 import { Button } from "./ui/button";
@@ -43,6 +42,7 @@ const actions: Record<string, { label: string; icon: LucideIcon }> = {
   navigate: { label: "Navigate to page", icon: Globe2 },
   click: { label: "Click an element", icon: MousePointer2 },
   fill: { label: "Fill a permitted field", icon: FormInput },
+  type_text: { label: "Type permitted search text", icon: FormInput },
   select_option: { label: "Select an option", icon: Layers },
   scroll: { label: "Scroll the page", icon: ArrowDown },
   get_page_snapshot: { label: "Observe the page", icon: Eye },
@@ -52,9 +52,57 @@ const actions: Record<string, { label: string; icon: LucideIcon }> = {
   invalid: { label: "Action rejected", icon: AlertTriangle },
   interrupted: { label: "Execution interrupted", icon: Clock3 },
 };
-type Data = { test: AgentTest; steps: AgentStep[] };
+type Data = {
+  test: AgentTest;
+  steps: AgentStep[];
+  task: AgentTask | null;
+  runs: AgentTest[];
+};
 const active = (d: Data) =>
-  d.test.status === "PENDING" || d.test.status === "RUNNING";
+  d.test.status === "PENDING" ||
+  d.test.status === "RUNNING" ||
+  d.task?.status === "PENDING" ||
+  d.task?.status === "RUNNING";
+const outcomeTone: Record<string, string> = {
+  SUCCEEDED: "border-success/25 bg-success/5 text-success",
+  FAILED: "border-danger/25 bg-danger/5 text-danger",
+  INCONCLUSIVE: "border-warning/30 bg-warning/5 text-warning",
+  UNAVAILABLE: "border-border bg-muted text-muted-foreground",
+};
+const verificationLabels = {
+  rules: "Rule verified",
+  judged: "LLM judged · lower assurance",
+  unverified: "Unverified",
+} as const;
+const failureLabels: Record<string, string> = {
+  element_not_found: "Element not found",
+  blocked_by_captcha_or_bot_protection: "Bot protection or CAPTCHA",
+  content_requires_js: "Content requires JavaScript",
+  ambiguous_navigation: "Ambiguous navigation",
+  step_limit: "Step limit reached",
+  loop: "Repeated action loop",
+  malformed_output: "Malformed model output",
+  infra_error: "Inference or execution infrastructure",
+  other: "Other failure",
+};
+
+function Money({ value }: { value: number | null | undefined }) {
+  return value == null
+    ? "Not reported"
+    : `$${value.toFixed(value < 0.01 ? 5 : 3)}`;
+}
+
+function OutcomePill({ value }: { value: string | null | undefined }) {
+  if (!value)
+    return <span className="text-xs text-muted-foreground">Pending</span>;
+  return (
+    <span
+      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${outcomeTone[value] ?? "border-border bg-muted text-muted-foreground"}`}
+    >
+      {value.replaceAll("_", " ").toLowerCase()}
+    </span>
+  );
+}
 function FailureMessage({ message }: { message: string }) {
   const billing = message.includes("402");
   return (
@@ -262,16 +310,22 @@ export function AgentDetail({ id }: { id: string }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [follow, setFollow] = useState(true);
   const load = useCallback(async () => {
-    const [test, steps] = await Promise.all([
-      api.agentTest(id),
+    const test = await api.agentTest(id);
+    const [steps, task, runs] = await Promise.all([
       api.agentSteps(id),
+      test.task_test_id
+        ? api.agentTask(test.task_test_id)
+        : Promise.resolve(null),
+      test.task_test_id
+        ? api.agentTaskRuns(test.task_test_id)
+        : Promise.resolve([]),
     ]);
-    return { test, steps };
+    return { test, steps, task, runs };
   }, [id]);
   const { data, error, retry } = useResource(load, active);
   if (error) return <ErrorState message={error.message} retry={retry} />;
   if (!data) return <LoadingState />;
-  const { test, steps } = data;
+  const { test, steps, task, runs } = data;
   const current = active(data);
   const selected =
     (follow ? steps.at(-1) : steps.find((s) => s.id === selectedId)) ??
@@ -306,6 +360,67 @@ export function AgentDetail({ id }: { id: string }) {
         <span className="mono break-all text-[9px]">{test.id}</span>
         <CopyButton value={test.id} />
       </div>
+      {task && (
+        <section className="surface mb-6 overflow-hidden">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b px-5 py-4">
+            <div>
+              <p className="eyebrow text-[8px]">Aggregate task result</p>
+              <h2 className="mt-1 text-sm font-semibold">
+                {taskName(task.task_type)}
+              </h2>
+              <p className="mt-1 text-[10px] text-muted-foreground">
+                {task.eligible_runs} eligible runs · {task.runs_completed}/
+                {task.requested_runs} runs completed
+                {task.consistency === null
+                  ? " · consistency pending"
+                  : task.consistency
+                    ? " · consistent outcomes"
+                    : " · mixed outcomes"}
+              </p>
+            </div>
+            <OutcomePill value={task.outcome} />
+          </div>
+          {task.failure_reason && (
+            <p className="border-b px-5 py-3 text-[11px] leading-5 text-muted-foreground">
+              {task.failure_reason}
+            </p>
+          )}
+          <div className="divide-y">
+            {runs.map((run) => (
+              <div
+                key={run.id}
+                className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 ${run.id === test.id ? "bg-accent-soft/30" : ""}`}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="mono text-[9px] text-muted-foreground">
+                    RUN {String(run.run_number ?? 1).padStart(2, "0")}
+                  </span>
+                  <OutcomePill value={run.outcome} />
+                  <span className="text-[10px] text-muted-foreground">
+                    {
+                      verificationLabels[
+                        run.verification_method ?? "unverified"
+                      ]
+                    }
+                  </span>
+                </div>
+                {run.id === test.id ? (
+                  <span className="text-[10px] font-medium text-primary">
+                    Current run
+                  </span>
+                ) : (
+                  <Link
+                    href={`/agent-tests/${run.id}`}
+                    className="text-[10px] font-medium text-primary hover:underline"
+                  >
+                    Open replay
+                  </Link>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="surface mb-6 overflow-hidden">
         <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-[1.5fr_1fr_.65fr_.65fr]">
           <div className="min-w-0 bg-card p-4 sm:px-5">
@@ -355,8 +470,78 @@ export function AgentDetail({ id }: { id: string }) {
                 : "No completion outcome was reported."}
             </p>
           )}
-          <VerificationNotice />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-[9px] text-muted-foreground">Evaluation</span>
+            <span
+              className={`rounded-full border px-2.5 py-1 text-[9px] ${test.verification_method === "rules" ? "border-success/25 bg-success/5 text-success" : test.verification_method === "judged" ? "border-warning/30 bg-warning/5 text-warning" : "border-border bg-muted text-muted-foreground"}`}
+            >
+              {verificationLabels[test.verification_method ?? "unverified"]}
+            </span>
+            <OutcomePill value={test.outcome} />
+            {test.failure_category && (
+              <span className="rounded-full border px-2.5 py-1 text-[9px] text-muted-foreground">
+                {failureLabels[test.failure_category] ?? test.failure_category}
+              </span>
+            )}
+          </div>
+          {test.verification_method === "judged" && (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              This outcome was judged by the configured model from final page
+              evidence.
+            </p>
+          )}
+          {(test.verification_method ?? "unverified") === "unverified" && (
+            <p className="mt-2 text-[10px] text-muted-foreground">
+              The agent claim was not independently verified.
+            </p>
+          )}
+          {test.verification_evidence &&
+            Object.keys(test.verification_evidence).length > 0 && (
+              <details className="mt-3 border-t pt-3 text-[10px]">
+                <summary className="text-muted-foreground">
+                  Evidence used for evaluation
+                </summary>
+                <pre tabIndex={0} className="code-panel mt-2">
+                  {JSON.stringify(test.verification_evidence, null, 2)}
+                </pre>
+              </details>
+            )}
         </div>
+      </section>
+      <section className="surface mb-6">
+        <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
+          <div className="bg-card p-4">
+            <p className="eyebrow text-[8px]">Prompt tokens</p>
+            <p className="mono mt-2 text-sm">
+              {(test.prompt_tokens ?? 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-card p-4">
+            <p className="eyebrow text-[8px]">Completion tokens</p>
+            <p className="mono mt-2 text-sm">
+              {(test.completion_tokens ?? 0).toLocaleString()}
+            </p>
+          </div>
+          <div className="bg-card p-4">
+            <p className="eyebrow text-[8px]">Estimated cost</p>
+            <p className="mono mt-2 text-sm">
+              {Money({ value: test.estimated_cost_usd })}
+            </p>
+          </div>
+          <div className="bg-card p-4">
+            <p className="eyebrow text-[8px]">Run duration</p>
+            <p className="mono mt-2 text-sm">
+              {duration(test.execution_duration)}
+            </p>
+          </div>
+        </div>
+        {(test.outcome === "UNAVAILABLE" ||
+          test.failure_category === "infra_error") && (
+          <p className="border-t px-4 py-3 text-[10px] leading-5 text-muted-foreground">
+            This run was unavailable because of an inference or execution
+            service problem. It is excluded from site scoring.
+          </p>
+        )}
       </section>
       {test.failure_reason && (
         <div className="mb-6">

@@ -2,6 +2,8 @@ import type {
   AgentTest,
   AgentStep,
   AgentTaskType,
+  AgentTask,
+  AgentConfig,
   CrawledPage,
   Finding,
   Project,
@@ -132,6 +134,18 @@ export const api = {
   },
   agentTests: (scan: string) =>
     all<AgentTest>(`/scans/${encodeURIComponent(scan)}/agent-tests`),
+  agentConfig: () => request<AgentConfig>("/agent-config"),
+  agentTasks: (scan: string) =>
+    all<AgentTask>(`/scans/${encodeURIComponent(scan)}/agent-tasks`),
+  createAgentTask: (scan: string, task_type: AgentTaskType, runs?: number) =>
+    request<AgentTask>(`/scans/${encodeURIComponent(scan)}/agent-tasks`, {
+      method: "POST",
+      body: JSON.stringify({ task_type, ...(runs ? { runs } : {}) }),
+    }),
+  agentTask: (id: string) =>
+    request<AgentTask>(`/agent-tasks/${encodeURIComponent(id)}`),
+  agentTaskRuns: (id: string) =>
+    request<AgentTest[]>(`/agent-tasks/${encodeURIComponent(id)}/runs`),
   createAgentTest: (
     scan: string,
     task_type: AgentTaskType,

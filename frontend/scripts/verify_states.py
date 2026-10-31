@@ -67,7 +67,8 @@ async def main():
 
             await page.route("**/api/v1/agent-tests/ui-fixture**", agent_route)
             await page.goto(BASE + "/agent-tests/ui-fixture", wait_until="networkidle")
-            await page.get_by_text("Pending", exact=True).wait_for()
+            # Both the badge and the metadata row say Pending in this view.
+            await page.get_by_text("Pending", exact=True).first.wait_for()
             await check_page(page, "fixture-pending", screenshot=False)
             state["phase"] = "RUNNING"
             await page.get_by_text("Running", exact=True).wait_for(timeout=10000)
@@ -77,7 +78,9 @@ async def main():
             await page.get_by_text(
                 "Fixture agent reported pricing.", exact=True
             ).wait_for(timeout=10000)
-            await page.get_by_text("Not independently verified.", exact=True).wait_for()
+            await page.get_by_text(
+                "The agent claim was not independently verified.", exact=True
+            ).wait_for()
             await check_page(page, "fixture-completed", screenshot=False)
             before = state["requests"]
             await asyncio.sleep(3)
