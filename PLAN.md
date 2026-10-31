@@ -138,7 +138,7 @@ internal IDs, query strings or unrestricted execution content.
   file ownership; parent reviews rendered results.
 - [x] T8: Config/env/README/docs and isolated deterministic integration tests.
   Depends stable interfaces. Small-model subagent with exclusive docs/test files.
-- [ ] T9: Full tests, migrations, lint/typecheck/build, browser QA, live configured
+- [x] T9: Full tests, migrations, lint/typecheck/build, browser QA, live configured
   HF attempts on 3–5 bounded sites, final stronger-model safety/completion review.
   Depends all above. Parent + independent strong review, no overlapping edits.
 
@@ -231,8 +231,12 @@ change, and record authoritative evidence here before checking its box.
   this credential/billing failure. To verify after configuring a funded endpoint:
   `cd backend && RUN_REAL_HF_TEST=1 .venv/bin/pytest -q tests/test_agent_real_model.py`.
 
-T9 remains open only for final diff/safety review, post-final-edit build checks,
-small scoped commits and the explicitly unverified real-model run if inference
-becomes available. The user requested that live agent work stop at RUNNING and
-pending tasks be skipped; the last smoke run instead terminated quickly on HF
-HTTP 402, and no additional live agent runs will be started during this pass.
+The final diff/safety review, post-edit build checks and scoped commits are done
+(commits `7db5816`, `ce6e3c2`, `3a130cb`, `9283a8b`, `e3a3dc1`, `2a6d767`).
+The configured token is present but Hugging Face returned HTTP 402, so real-model
+site execution remains explicitly unverified until credits/billing or a working
+local endpoint are configured. The optional real-model fixture command above is
+the next verification step after that configuration. The user requested stopping
+live agent work at RUNNING and skipping pending tasks; the last smoke task instead
+terminated quickly as UNAVAILABLE on HTTP 402, and no additional live agent runs
+were started.
