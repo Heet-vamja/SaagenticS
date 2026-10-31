@@ -1,0 +1,11 @@
+# Optional managed-cloud build trust. This public CA bundle is mounted only while building.
+services:
+  backend:
+    build:
+      secrets: [proxy_ca]
+  frontend:
+    build:
+      secrets: [proxy_ca]
+secrets:
+  proxy_ca:
+    file: ${CLOUD_CA_BUNDLE:-/etc/ssl/certs/ca-certificates.crt}

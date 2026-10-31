@@ -1,0 +1,1 @@
+"""AgentReadiness modular monolith."""

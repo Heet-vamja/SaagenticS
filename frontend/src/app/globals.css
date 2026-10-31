@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+:root {
+  --background: #f8f9f5;
+  --foreground: #28302a;
+  --card: #ffffff;
+  --primary: #637d47;
+  --primary-foreground: #ffffff;
+  --muted: #f0f2ec;
+  --muted-foreground: #798074;
+  --border: #e4e7df;
+  --ring: #8aa66f;
+}
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-ring: var(--ring);
+  --font-sans: Arial, Helvetica, sans-serif;
+}
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  body {
+    background: var(--background);
+    color: var(--foreground);
+    font-family: Arial, Helvetica, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:not(:disabled) {
+    cursor: pointer;
+  }
+  a:focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 4px;
+  }
+}
+@layer components {
+  .field {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--background);
+    font-size: 14px;
+    outline: none;
+  }
+  .field:focus-visible {
+    box-shadow: 0 0 0 2px var(--ring);
+  }
+  .table-head {
+    background: #fafbf8;
+    color: var(--muted-foreground);
+    font-size: 10px;
+    font-weight: 500;
+  }
+  .table-head th {
+    position: relative;
+    padding: 13px 20px;
+    font-weight: 500;
+  }
+  .table-row {
+    border-top: 1px solid var(--border);
+  }
+  .table-row td {
+    padding: 16px 20px;
+  }
+  .orbit {
+    position: absolute;
+    border: 1px solid #c3cfb5;
+    border-radius: 50%;
+    transform: rotate(-27deg);
+  }
+  .orbit-one {
+    width: 270px;
+    height: 130px;
+    left: 40px;
+    top: 55px;
+  }
+  .orbit-two {
+    width: 340px;
+    height: 180px;
+    left: 0;
+    top: 30px;
+  }
+  .orbit-three {
+    width: 410px;
+    height: 230px;
+    left: -35px;
+    top: 5px;
+  }
+}
