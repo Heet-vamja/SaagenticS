@@ -121,12 +121,12 @@ internal IDs, query strings or unrestricted execution content.
 
 - [x] T0: Local baseline checkpoint and plan commit. Parent owns PLAN.md and review.
 - [x] T1: Shared action/result contracts and config interface. Depends T0. Parent.
-- [ ] T2: Native tool calling, JSON fallback, transient retries, usage/cost budget
+- [x] T2: Native tool calling, JSON fallback, transient retries, usage/cost budget
   accounting. Depends T1. Small-model subagent owns provider + provider tests only.
 - [ ] T3: Observation builder, safety tools, success rules/judge interface and
   bounded agent loop. Depends T1. Strong-model subagent owns browser/runner/success
   modules + their unit/fixture tests; no persistence/provider files.
-- [ ] T4: Models, migration, schemas and repository operations. Depends T1.
+- [x] T4: Models, migration, schemas and repository operations. Depends T1.
   Small-model subagent owns domain models, migration 0005, agent schemas/repository
   and focused persistence tests; no services/config/frontend edits.
 - [ ] T5: Task service, repeat aggregation, DB/IP admission, API and scan-stage
@@ -188,3 +188,12 @@ change, and record authoritative evidence here before checking its box.
   canonical tools while preserving legacy stored actions. Config now defines
   repeat/free/token/pacing/judge/score/IP limits. These are configuration only;
   downstream services must enforce them.
+
+### T2/T4 evidence
+
+- Provider reviewed for strict native tools, mode-neutral fallback, HF host/token
+  safety, UTF-8 budget reservation and configurable models. Mocked HTTP provider
+  tests: 19 passed; Ruff check/format passed. No live calls.
+- Migration 0005 applied to disposable PostgreSQL; Alembic check reports no new
+  operations. Persistence/schema tests: 5 passed, including atomic task claim and
+  cross-scan run/task composite-FK rejection. Legacy rows remain unverified.

@@ -43,11 +43,19 @@ def test_provider_calls_configured_open_model_retries_and_usage():
                     "choices": [
                         {
                             "message": {
-                                "content": '{"action":"finish","result":"ready","reason":"Observed the goal"}'
+                                "tool_calls": [
+                                    {
+                                        "type": "function",
+                                        "function": {
+                                            "name": "finish",
+                                            "arguments": '{"success":true,"reason":"Observed the goal"}',
+                                        },
+                                    }
+                                ]
                             }
                         }
                     ],
-                    "usage": {"total_tokens": 40},
+                    "usage": {"prompt_tokens": 30, "completion_tokens": 10, "total_tokens": 40},
                 },
             )
 
@@ -57,8 +65,11 @@ def test_provider_calls_configured_open_model_retries_and_usage():
         action = await provider.generate_action([{"role": "user", "content": "Find pricing"}])
         assert action.action == "finish"
         assert provider.retries == 1
-        assert provider.usage["total_tokens"] == 40
+        assert provider.usage == {"prompt_tokens": 30, "completion_tokens": 10, "total_tokens": 40}
         assert json.loads(calls[-1].content)["model"] == "Qwen/Qwen3-4B-Instruct-2507"
+        request = json.loads(calls[-1].content)
+        assert request["temperature"] == 0
+        assert request["tool_choice"] == "required"
         assert provider.client._trust_env is False
         await provider.close()
 
@@ -89,7 +100,7 @@ def test_credentials_not_sent_to_local_endpoint_and_errors_sanitized():
     assert "user@example.com" not in redact("user@example.com")
 
 
-def test_retry_budget_and_model_restriction():
+def test_retry_budget_and_configurable_model():
     async def scenario():
         calls = []
 
@@ -106,5 +117,5 @@ def test_retry_budget_and_model_restriction():
         await provider.close()
 
     asyncio.run(scenario())
-    with pytest.raises(InferenceError):
-        HuggingFaceProvider(Settings(agent_model="proprietary/model"))
+    provider = HuggingFaceProvider(Settings(agent_model="org/custom-open-model", hf_token="test"))
+    asyncio.run(provider.close())

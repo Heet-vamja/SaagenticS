@@ -60,7 +60,7 @@ class Settings(BaseSettings):
     agent_free_limits_enabled: bool = True
     agent_free_task_limit: int = Field(2, ge=1, le=2)
     agent_free_runs_per_task: int = Field(1, ge=1, le=1)
-    agent_token_budget: int = Field(16000, ge=1000, le=200000)
+    agent_token_budget: int = Field(32768, ge=1000, le=200000)
     agent_action_delay: float = Field(1, ge=1, le=10)
     agent_judge_enabled: bool = True
     agent_score_weight: float = Field(0.45, ge=0, le=1)
