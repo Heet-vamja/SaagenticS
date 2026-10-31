@@ -58,7 +58,7 @@ def test_real_browser_observation_navigation_tools_and_network_blocks(tmp_path):
                 AgentAction(
                     action="fill",
                     element_id=search["element_id"],
-                    value="plans",
+                    value="test",
                     reason="Inspect search",
                 )
             )
@@ -177,9 +177,9 @@ def test_prompt_injection_action_cannot_escape_browser_permissions():
         )
         runner = AgentRunner(browser, InjectedModel(), settings)
         rows = []
-        with pytest.raises(ValueError, match="consecutive"):
-            await runner.run("Find pricing", "https://fixture.example/", rows.append)
-        assert runner.metrics["invalid_actions"] == 3
+        result = await runner.run("Find pricing", "https://fixture.example/", rows.append)
+        assert result.outcome == "FAILED"
+        assert runner.metrics["invalid_actions"] == 1
         assert browser.closed
         assert not browser.browser.is_connected()
         assert all("169.254.169.254" not in url for _, url in calls)

@@ -6,7 +6,6 @@ transport. Browser cookies/authorization headers never enter the gateway or mode
 """
 
 import asyncio
-import json
 import re
 import secrets
 from pathlib import Path
@@ -36,6 +35,14 @@ CSP = (
     "img-src 'self' data:; font-src 'self' data:; connect-src 'none'; worker-src 'none'; "
     "frame-src 'none'; object-src 'none'; form-action 'none'; base-uri 'self'"
 )
+
+
+class SiteBlocked(ValueError):
+    """Visible access challenge; never attempt to bypass it."""
+
+
+class InvalidElement(ValueError):
+    """A stale, unknown or unavailable observation ID."""
 
 
 class AgentScope:
@@ -87,6 +94,7 @@ class BrowserSession:
         self.navigation_attempts = 0
         self.playwright = self.browser = self.context = self.page = self.proxy = None
         self.closed = False
+        self.observation_generation = 0
 
     async def start(self):
         async def deny(reader, writer):
@@ -193,83 +201,109 @@ class BrowserSession:
         for handle in self.elements.values():
             await handle.dispose()
         self.elements, self.element_info = {}, {}
+        self.observation_generation += 1
         prefix = secrets.token_hex(4)
-        items = []
-        handles = await self.page.locator(
-            "a[href],button,input,select,textarea,[role=button],[role=tab],summary"
-        ).element_handles()
-        for handle in handles[:400]:
-            if not await handle.is_visible():
-                await handle.dispose()
-                continue
-            info = await handle.evaluate(r"""e => ({tag:e.tagName.toLowerCase(), role:e.getAttribute('role') || ({A:'link',BUTTON:'button',INPUT:e.type==='search'?'searchbox':'textbox',SELECT:'combobox',TEXTAREA:'textbox',SUMMARY:'button'}[e.tagName] || null),
-              name:(e.getAttribute('aria-label') || (e.getAttribute('aria-labelledby') || '').split(/\s+/).map(id=>document.getElementById(id)?.textContent || '').join(' ').trim() || (e.labels ? [...e.labels].map(l=>l.innerText).join(' ') : '') || e.innerText || e.getAttribute('placeholder') || '').slice(0,200),
-              type:e.getAttribute('type') || (e.tagName==='BUTTON'?'submit':''),
-              href:e.tagName==='A'?e.href:null, field:e.getAttribute('name') || '',
-              required:!!e.required || e.getAttribute('aria-required')==='true', form:!!e.form, disabled:!!e.disabled || e.getAttribute('aria-disabled')==='true',
-              expanded:e.getAttribute('aria-expanded'),
-              options:e.tagName==='SELECT'?[...e.options].slice(0,30).map(o=>({value:o.value,label:o.label})):null})""")
-            key = f"{prefix}:{len(items) + 1}"
-            self.elements[key] = handle
-            self.element_info[key] = info
-            visible = {
-                k: redact(v, 200) if isinstance(v, str) else v
-                for k, v in info.items()
-                if k not in ("field", "href")
+        # Rank in-page controls before taking the cap, so a large footer/sidebar
+        # cannot crowd out the visible primary navigation. Only handles are used
+        # for execution; the model never supplies a selector.
+        candidates = await self.page.evaluate_handle(r"""() => {
+          const candidates = [...document.querySelectorAll(
+            'a[href],button,input,select,textarea,[role=button],[role=tab],summary')];
+          return candidates.filter(e => {
+            const r=e.getBoundingClientRect(), s=getComputedStyle(e);
+            return r.width && r.height && s.visibility !== 'hidden' && s.display !== 'none';
+          }).map((e,i) => {
+            const r=e.getBoundingClientRect();
+            const score=(r.bottom>0 && r.top<innerHeight && r.right>0 && r.left<innerWidth ? 4:0)
+              +(e.closest('nav,[role=navigation]')?2:0)+(e.closest('main,[role=main]')?1:0);
+            return {e,i,score};
+          }).sort((a,b)=>b.score-a.score || a.i-b.i).slice(0,150).map(x=>x.e);
+        }""")
+        properties = await candidates.get_properties()
+        items, lines = [], []
+        try:
+            for candidate in properties.values():
+                handle = candidate.as_element()
+                if handle is None:
+                    await candidate.dispose()
+                    continue
+                if len(items) >= min(150, self.settings.agent_max_elements):
+                    await handle.dispose()
+                    continue
+                info = await handle.evaluate(r"""e => ({tag:e.tagName.toLowerCase(), role:e.getAttribute('role') || ({A:'link',BUTTON:'button',INPUT:e.type==='search'?'searchbox':'textbox',SELECT:'combobox',TEXTAREA:'textbox',SUMMARY:'button'}[e.tagName] || 'control'),
+                  name:(e.getAttribute('aria-label') || (e.getAttribute('aria-labelledby') || '').split(/\s+/).map(id=>document.getElementById(id)?.textContent || '').join(' ').trim() || (e.labels ? [...e.labels].map(l=>{const c=l.cloneNode(true);c.querySelectorAll('input,textarea,select,[contenteditable]').forEach(e=>e.remove());return c.textContent;}).join(' ') : '') || (!['INPUT','TEXTAREA'].includes(e.tagName) ? e.innerText : '') || e.getAttribute('placeholder') || '').replace(/\s+/g,' ').trim().slice(0,80),
+                  type:e.getAttribute('type') || (e.tagName==='BUTTON'?'submit':''),
+                  href:e.tagName==='A'?e.href:null, field:e.getAttribute('name') || '',
+                  download:e.hasAttribute('download'),
+                  required:!!e.required || e.getAttribute('aria-required')==='true', form:!!e.form,
+                  disabled:!!e.disabled || e.getAttribute('aria-disabled')==='true'})""")
+                key = f"{prefix}:{len(items) + 1}"
+                visible = {
+                    k: redact(v, 80) if isinstance(v, str) else v
+                    for k, v in info.items()
+                    if k not in ("field", "href")
+                }
+                if info["href"]:
+                    visible["href"] = public_url(info["href"])[:300]
+                visible["element_id"] = key
+                detail = visible.get("href") or visible.get("type") or ""
+                line = f"[{key}] {visible['role']} | {visible['name']} | {detail}"
+                if sum(map(len, lines)) + len(line) > self.settings.agent_observation_chars - 600:
+                    await handle.dispose()
+                    continue
+                self.elements[key], self.element_info[key] = handle, info
+                items.append(sanitize(visible))
+                lines.append(line)
+        finally:
+            await candidates.dispose()
+        # Internal bounded metadata supports compatibility and deterministic checks.
+        # The runner exposes ONLY url/title/interactive_text to navigation inference.
+        text = await self.page.evaluate("""() => {
+            const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+            const parts=[];let node,length=0;
+            while((node=walker.nextNode()) && length<10000) {
+                const e=node.parentElement,r=e?.getBoundingClientRect();
+                if(e && r.width && r.height && getComputedStyle(e).visibility!=='hidden'
+                   && !e.closest('input,textarea,select,[contenteditable],script,style')) {
+                    parts.push(node.textContent);length+=node.textContent.length;
+                }
             }
-            if info["href"]:
-                visible["href"] = public_url(info["href"])
-            visible["element_id"] = key
-            items.append(sanitize(visible))
-            if len(items) >= self.settings.agent_max_elements:
-                break
-        for handle in handles:
-            if handle not in self.elements.values():
-                await handle.dispose()
-        # No values, cookies, storage, hidden text, DOM HTML or request headers.
-        headings = []
-        for heading in await self.page.locator("h1,h2,h3").element_handles():
-            if len(headings) < 15 and await heading.is_visible():
-                headings.append(await heading.inner_text())
-            await heading.dispose()
-        text = await self.page.locator("body").inner_text(timeout=5000)
-        observation = {
-            "url": public_url(self.page.url),
-            "title": redact(await self.page.title(), 200),
-            "headings": [redact(h, 200) for h in headings[:15]],
-            "elements": items,
-            "visible_text": redact(text, 3500),
-        }
-        while (
-            len(json.dumps(observation)) > self.settings.agent_observation_chars
-            and observation["elements"]
-        ):
-            removed = observation["elements"].pop()
-            key = removed["element_id"]
-            await self.elements.pop(key).dispose()
-            self.element_info.pop(key)
-        if len(json.dumps(observation)) > self.settings.agent_observation_chars:
-            observation["visible_text"] = observation["visible_text"][:300]
-            observation["headings"] = observation["headings"][:3]
+            return parts.join(' ').slice(0,10000);
+        }""")
         if re.search(
             r"verify you are human|captcha|access denied|checking your browser",
-            text[:4000],
+            text[:10000],
             re.IGNORECASE,
         ):
-            raise ValueError(
-                "Authentication, CAPTCHA or anti-bot page encountered; execution stopped"
-            )
-        return observation
+            raise SiteBlocked("CAPTCHA or anti-bot page encountered; execution stopped")
+        return {
+            "url": public_url(self.page.url),
+            "title": redact(await self.page.title(), 200),
+            "elements": items,
+            "interactive_text": "\n".join(lines),
+            "visible_text": redact(text, 3500),
+        }
+
+    async def verification_evidence(self):
+        from app.engines.agent.success import collect_evidence
+
+        return await collect_evidence(self.page)
 
     async def execute(self, action: AgentAction):
-        if action.action in ("click", "fill", "select_option"):
+        if action.action in ("click", "fill", "type_text", "select_option"):
             if action.element_id not in self.elements:
-                raise ValueError("Element ID is not from the latest observation")
+                raise InvalidElement("Element ID is not from the latest observation")
             element = self.elements[action.element_id]
             info = self.element_info[action.element_id]
-            if info["disabled"] or not await element.is_visible():
-                raise ValueError("Element is no longer available")
+            if (
+                info["disabled"]
+                or not await element.is_visible()
+                or not await element.evaluate("e => e.isConnected")
+            ):
+                raise InvalidElement("Element is no longer available")
             if action.action == "click":
+                if info.get("download"):
+                    raise ValueError("Downloads are blocked")
                 if info["tag"] == "a":
                     if not info["href"]:
                         raise ValueError("Link has no destination")
@@ -287,7 +321,7 @@ class BrowserSession:
                 ) or DANGEROUS.search(info["name"]):
                     raise ValueError("Submitting or state-changing controls are blocked")
                 await element.click(timeout=5000)
-            elif action.action == "fill":
+            elif action.action in ("fill", "type_text"):
                 if (
                     info["tag"] != "input"
                     or info["type"] not in ("text", "search", "")
@@ -296,7 +330,10 @@ class BrowserSession:
                     raise ValueError("Only non-sensitive text/search inputs may be filled")
                 if not re.search(r"search|filter", info["name"] + info["field"], re.IGNORECASE):
                     raise ValueError("Form entry is disabled except search/filter inspection")
-                await element.fill(action.value)
+                text = action.text if action.action == "type_text" else action.value
+                if text not in ("test", "example", "demo", "sample", "test search"):
+                    raise ValueError("Only fixed dummy text is permitted")
+                await element.fill(text)
             else:
                 if info["tag"] != "select" or SENSITIVE.search(info["name"] + info["field"]):
                     raise ValueError("Dropdown is not permitted")
@@ -310,8 +347,12 @@ class BrowserSession:
             await self.page.go_back(wait_until="domcontentloaded", timeout=10000)
         elif action.action == "get_page_snapshot":
             return {"snapshot": await self.observe()}
-        elif action.action == "finish":
-            return {"agent_declared_result": redact(action.result), "independently_verified": False}
+        elif action.action in ("finish", "give_up"):
+            return {
+                "agent_declared_result": redact(action.result or action.reason),
+                "agent_declared_success": action.success,
+                "independently_verified": False,
+            }
         self.scope.accept(self.page.url)
         return {"message": "Action executed", "url": public_url(self.page.url)}
 
@@ -345,7 +386,9 @@ class BrowserSession:
                     if self.playwright:
                         await self.playwright.stop()
                 finally:
-                    await self.fetcher.close()
-                    if self.proxy:
-                        self.proxy.close()
-                        await self.proxy.wait_closed()
+                    try:
+                        await self.fetcher.close()
+                    finally:
+                        if self.proxy:
+                            self.proxy.close()
+                            await self.proxy.wait_closed()
