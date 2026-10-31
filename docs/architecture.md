@@ -1,98 +1,108 @@
 # Architecture
 
-One Next.js frontend, one FastAPI process, one PostgreSQL database. FastAPI BackgroundTasks runs bounded asynchronous HTTP crawling in the API process. The static pipeline uses local Chromium without an AI provider. Browser-agent tasks additionally require a configured open-weight inference endpoint. No external queue, cache or object store is required.
+One Next.js frontend, one FastAPI process, one PostgreSQL database. The scan
+pipeline runs a bounded crawler and deterministic static audit, then optionally
+runs a separate bounded agent task stage. `AGENT_PIPELINE_ENABLED` controls the
+second stage; it is enabled by default. Static checks never call a model and their
+score/evidence stay available if inference is unavailable. No external queue, cache
+or object store is required.
 
-Browser → same-origin Next.js rewrite → `/api/v1` routes → service → repository → SQLAlchemy → PostgreSQL.
+```text
+Browser → same-origin Next.js rewrite → FastAPI routes → service → repository
+       → SQLAlchemy → PostgreSQL
+```
 
-Routes validate HTTP inputs and serialize DTOs. Services enforce business rules and own commits. Repositories query and flush but never commit. Sessions are request-scoped dependencies; closing them rolls back uncommitted work. FastAPI runs synchronous route handlers in its thread pool. Avoid async wrappers around blocking database calls.
+Routes validate inputs and serialize DTOs. Services own business rules and
+transactions. Repositories query and flush but never commit. Request-scoped
+sessions are injected into synchronous FastAPI route handlers. The in-process
+scheduler uses fresh sessions for background work. Use the single-worker
+development deployment described in the [README](../README.md); database-backed
+admission and deadlines protect stored jobs, but this is not a distributed worker
+fleet.
 
-Frontend App Router pages compose reusable client views. `src/lib/api.ts` owns requests and pagination, `types.ts` owns response types, and components share loading/error/empty states. shadcn/ui components are locally owned source using Radix, CVA and Tailwind, configured in `components.json`. No authentication exists; use this foundation only in a trusted local environment.
+The App Router frontend uses `src/lib/api.ts` for HTTP requests and pagination and
+`src/lib/types.ts` for response types. Workspace pages compose shared components
+with loading/error/empty states. Same-origin browser requests are proxied to the
+backend. Authentication, accounts and billing are out of scope; do not expose the
+workspace API publicly without an access-control layer.
 
-## Domain
+## Domain and persistence
 
-| Model | Rules |
+| Model | Responsibility |
 | --- | --- |
-| Project | UUID, nonblank name, normalized HTTP(S) URL, timezone-aware timestamps |
-| Scan | Project foreign key, PENDING initially, nullable score 0–100, ordered execution timestamps |
-| Page | Unique scan/URL, HTTP status 100–599 when known, JSON metadata |
-| Finding | Scan foreign key, optional page from same scan, category/severity, evidence, confidence 0–1 |
-| WorkflowTest | Scan foreign key, task/URL/status, optional failure/evidence, nonnegative duration in seconds |
+| `Project` | Named site and scan history |
+| `Scan` | Crawl/static status, frozen static score, pipeline progress and summaries |
+| `Page` | Bounded metadata for a fetched page; raw HTML is transient |
+| `Finding` | Evidence-backed issue with category, severity and recommendation |
+| `AgentTaskTest` | Task goal, repeat policy, aggregate outcome, verification counts and deadline |
+| `WorkflowTest` | One per-task run, numbered under an optional task parent |
+| `AgentStep` | Bounded per-run observation/action evidence, usage and error type |
+| `AdmissionBucket` | Hashed peer identity, operation, time window, count and expiry |
+| `ReportShare` | Expiring/revocable report capability stored as a token digest |
 
-UUIDs are generated in the application. String enums have database CHECK constraints. Scan statuses: PENDING, RUNNING, COMPLETED, FAILED. Workflow statuses: PENDING, RUNNING, PASSED, FAILED. Severity: INFO, LOW, MEDIUM, HIGH, CRITICAL.
+Task runs reuse `WorkflowTest` and `AgentStep`; no duplicate run or step tables are
+created. Legacy workflow rows stay parentless, with outcome unset and verification
+`unverified`. The composite task/scan foreign key prevents attaching a run to a
+task from another scan. Scan/project deletion cascades through their dependent
+records. The explicit Alembic migrations are independent of live ORM metadata and
+must be tested against a disposable PostgreSQL database.
 
-Initial dimension names are DISCOVERABILITY, UNDERSTANDABILITY, NAVIGABILITY, INTERACTABILITY, RELIABILITY. Static reports map these persistence categories to Access, Readability, Actionability and Reliability under the versioned static-v1 rubric. Agent task success is not included.
+Static report weights and checks use the versioned `static-v1` rubric. Agent
+outcome, verification and cost are stored separately from the agent-declared
+completion status. See [Agent Task Tests](agent-task-tests.md#outcome-and-assurance)
+for aggregation and score blending.
 
-Project deletion cascades to scans and results. Page deletion cascades page-specific findings. A composite foreign key ensures a finding's page belongs to its scan. Scan-level findings have null page IDs. Indexes support project/status and scan-result queries. SQLAlchemy reserves `metadata`, so `Page.page_metadata` maps to SQL column `metadata`. `updated_at` uses an ORM update hook; future raw SQL writers must maintain it explicitly.
+## Engine and service boundaries
 
-## Future engines
-
-Only `engines/contracts.py` holds future boundaries; no empty packages or fake implementations are generated. Add concrete modules when their features are implemented:
-
-| Module | Responsibility |
+| Area | Responsibility |
 | --- | --- |
-| crawling | Robots/sitemap discovery, scoped fetches, page snapshots |
-| auditing | Deterministic semantic, accessibility, metadata and structured-data checks |
-| workflows | Playwright tasks, failure evidence, traces |
-| scoring | Reproducible five-dimension scoring from actual observations |
-| recommendations | AI suggestions grounded in stored evidence |
-| reports | Assemble persisted scan results for export |
+| `engines/crawling` | URL scope, robots/sitemap handling, validated fetches and crawl orchestration |
+| `engines/static_audit` | Deterministic policy, metadata, semantics and structured-data checks |
+| `engines/agent` | Hugging Face-compatible inference, validated tools, browser observations and bounded runner |
+| `services/static_audits` | Persist static findings, score and coverage |
+| Agent task service | Claim tasks, persist runs, aggregate repeats, recover deadlines and apply admission limits |
+| `services/reports` | Compose report data, compare scans, export and enforce share boundaries |
 
-Deterministic checks must remain independent of AI availability. Scan creation persists PENDING and schedules crawling after the response is sent. `services/crawls.py` claims it atomically as RUNNING with a fresh session, commits each page and progress update, then marks COMPLETED or FAILED. The crawler uses settings rather than the legacy future browser `CrawlPolicy`. Scores remain null. See [crawler design](crawling.md). OpenAI and S3 secrets belong to later features.
+The agent provider first requests native calls with `tool_choice=required` and
+temperature zero. When the configured endpoint rejects tool calls, JSON-only output
+with the same strict schema is used. Both paths validate the same fixed action set.
+There is no heuristic route planner. Website observations are untrusted and remain
+separate from the system instruction. The browser routes network requests through
+the validated gateway and rejecting proxy; see [browser-agent details](browser-agent.md).
 
-The initial migration explicitly defines tables/checks/indexes independently of current ORM metadata. Review all autogenerated migrations. Test downgrades only on disposable databases, since the initial downgrade deletes all domain data.
+## Scan and agent pipeline
 
+Scan creation persists `PENDING` and schedules bounded crawl/static work after the
+HTTP response. Static audit functions are deterministic and run independently of
+model availability. Once static report preparation finishes, the enabled agent
+stage starts with a separate duration and concurrency budget. Agent failures,
+missing credentials and unavailable inference do not erase or relabel static
+evidence. Set `AGENT_PIPELINE_ENABLED=false` for a static-only execution.
 
-## Website crawling
+Agent task and run orchestration currently lives in `services/agents.py`, with
+separate policy/admission and result helpers. Task stages use atomic database
+claims and durable deadlines. Each run stores steps incrementally; repeat
+aggregation uses eligible verified/judged outcomes. Ties stay
+inconclusive, and infrastructure failures remain unavailable instead of becoming
+site failures. Per-IP scan/task admission uses PostgreSQL upserts and hashed
+identities; forwarded addresses are trusted only behind configured proxy CIDRs.
+See [agent task policy](agent-task-tests.md).
 
-`engines/crawling/urls.py` normalizes URLs and scopes hostnames/standard ports;
-`transport.py` validates every DNS answer at connection time, pins the numeric TCP
-destination and preserves origin-based TLS verification. HTTP redirects are manual.
-`parsers.py` contains robots, safe XML sitemap and HTML metadata parsing.
-`crawler.py` orchestrates bounded sitemap discovery and breadth-first HTML crawling.
-The engine is independently testable with injected mock transports and persistence callbacks.
+The static score remains a separate component. If eligible agent results exist,
+reports expose the agent component and, when a static score also exists, a combined
+score. When no eligible agent results exist, the report states why it retained the
+static score. A score is never a substitute for task-level verification details.
 
-Page rows retain final URL, status, title, description, canonical, discovery depth,
-content type, error and bounded JSON metadata (headings, language, internal links,
-requested redirect alias). HTML bodies are transient. The existing unique scan/URL
-constraint deduplicates redirect aliases. Scan counters count attempted page URLs,
-including failures and aliases; persisted rows count unique final URLs.
+## Reports and evidence
 
-Migration 0002 adds these fields, scan discovery diagnostics and an execution deadline.
-A periodic deadline reconciler closes expired PENDING/RUNNING records as FAILED,
-including legacy pending records without deadlines. It does not claim or expire
-another worker's live task before its deadline. No durable job retry exists.
+Workspace reports include static checks and agent task/run summaries. JSON, CSV and
+PDF exports use the same report service; the PDF renderer runs offline with
+JavaScript disabled and scanned-site network access blocked. Before/after
+comparisons retain separate static/agent coverage. Public shares are bearer
+capabilities stored as digests, expire and can be revoked. Shared report evidence
+omits internal IDs, raw observations and local paths. Screenshot previews use
+opaque HMAC references scoped to the share. See [agent task HTTP interfaces](agent-task-tests.md#http-interfaces).
 
-
-## Real LLM browser execution
-
-`engines/agent` implements structured actions, Hugging Face HTTP inference,
-read-only Playwright tools, bounded observations and a single Observe/Reason/Act
-runner. `services/agents.py` owns execution transactions; `AgentRecords` owns
-queries and claims; `schemas/agent.py` and `api/agent_routes.py` expose typed DTOs.
-Migration 0003 extends WorkflowTest and adds AgentStep. COMPLETED is an agent claim,
-never PASSED or an independent verification. The scan UI polls agent executions
-independently of crawl completion. See [browser-agent design and limits](browser-agent.md).
-
-
-## Frontend experience
-
-The public landing route `/` uses the existing project and scan endpoints for URL
-submission. The workspace overview is `/dashboard`, composed inside a shared
-responsive shell. Project/scan details reuse shared task selection, status, table
-and error components. `/agent-tests/{id}` is the dedicated two-panel execution
-viewer, polling existing test and step endpoints until a terminal state. It shows
-recorded screenshots and observations without implying independently verified success.
-`/docs` contains the implemented product/inference guide. See
-[frontend design and verification](frontend-design.md) for tokens, component ownership,
-route inventory and browser-check commands. No persistence or backend changes are
-required by the visual redesign.
-
-## Static audit/report pipeline
-
-`engines/static_audit` owns deterministic measurements and scoring;
-`services/static_audits` persists findings and score coverage using independent
-sessions. `services/reports` owns report aggregation, comparison and capability
-sharing; the offline PDF renderer is isolated from scanned HTML. Migration 0004
-adds audit summaries, queue timestamps and share records. Pending scans are stored
-in PostgreSQL and admitted under an advisory lock; the in-process scheduler retries
-pending work and expires interrupted runs. See [static audits](static-audits.md).
+The system does not include a durable external queue, object storage, user identity
+or account/billing features. Production deployment needs its own access control,
+artifact retention, edge TLS and egress controls.

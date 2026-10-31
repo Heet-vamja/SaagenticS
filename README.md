@@ -1,6 +1,6 @@
 # AgentReadiness
 
-Modular monolith for understanding how AI agents experience websites. Projects and background website crawling are implemented: robots.txt, sitemap discovery, bounded internal HTTP crawling, persisted metadata and live progress. A real open-weight LLM browser-agent execution path is also implemented; real-model task completion remains unverified until a usable inference endpoint is configured. Deterministic audits, static readiness scores, evidence-backed fixes, reports, comparisons, sharing and exports are implemented. Accounts/billing and verified agent task evaluation remain deferred.
+Modular monolith for understanding how AI agents experience websites. Projects and bounded website crawling feed deterministic static audits, reports and readiness scores. When enabled, a separate agent stage follows static report preparation and evaluates bounded website tasks with a configured Hugging Face-compatible open-weight model endpoint. Static checks remain deterministic and retain their own frozen score. Accounts and billing are out of scope. Real-model task success is pending explicit live verification; mock-model integration tests do not establish it.
 
 ## Docker development
 
@@ -22,6 +22,12 @@ docker compose up -d --wait
 ```
 
 The database volume survives stop/down. `docker compose down -v` destroys local data; use only for an intentional reset.
+
+For static-only scans, set `AGENT_PIPELINE_ENABLED=false` in `.env`. The default
+is enabled. Agent policy, cost and network settings are listed in
+[Agent Task Tests](docs/agent-task-tests.md); blank token-price settings mean cost
+is unknown, not zero. Do not expose the local Compose ports directly to the public
+internet.
 
 Managed cloud builds use the optional combined-CA trust override:
 
@@ -104,7 +110,7 @@ curl --fail http://localhost:8000/api/v1/scans/SCAN_ID/pages/PAGE_ID
 
 `POST /api/v1/projects/{project_id}/scans` starts a crawl; the existing `POST /api/v1/scans` remains compatible and also starts execution. Both return a persisted PENDING scan immediately; polling `GET /api/v1/scans/{id}` provides progress. Page lists and detail use `/scans/{id}/pages` and `/scans/{id}/pages/{page_id}`. In the UI, create a project, open its details and click **Start Scan**. The project and scan views poll active work and show metadata when a page URL is selected.
 
-Lists accept `limit=1..100` and nonnegative `offset`. `/api/v1/scans` lists scans. `/scans/{id}/workflow-tests` returns stored workflow records, initially empty. `/scans/{id}/report` returns the deterministic static report and its coverage. Missing records return **404**, invalid requests **422**, database failures **503**, using `{ "error": { "code", "message", "details" } }`.
+Lists accept `limit=1..100` and nonnegative `offset`. `/api/v1/scans` lists scans. `/scans/{id}/workflow-tests` returns stored workflow records. `/scans/{id}/report` returns static checks and, when available, agent task summaries and score components. The new task/config and report evidence routes are documented in [Agent Task Tests](docs/agent-task-tests.md). Missing records return **404**, invalid requests **422**, database failures **503**, using `{ "error": { "code", "message", "details" } }`.
 
 ## Structure
 
@@ -126,7 +132,7 @@ backend/
   app/repositories/         database access
   app/services/             business rules and transactions
   app/engines/crawling/     URL security, validated transport, parsers, crawl orchestration
-  app/engines/contracts.py  later engine contracts
+  app/engines/agent/        provider, bounded browser runner and result contracts
   alembic/versions/         explicit reversible migrations
   tests/                    API, health, URL and database tests
 docs/                       architecture and development/security notes
@@ -138,36 +144,42 @@ AGENTS.md                   guidance for future coding sessions
 
 See [frontend design, routes and browser checks](docs/frontend-design.md).
 
-See [architecture](docs/architecture.md) and [development](docs/development.md). See [crawler behavior and limitations](docs/crawling.md). See [static audits, scoring, queue, reports and exports](docs/static-audits.md). Next recommended feature: usable model inference and independent agent task evaluation.
+See [architecture](docs/architecture.md) and [development](docs/development.md). See [crawler behavior and limitations](docs/crawling.md), [static audits, scoring, queue, reports and exports](docs/static-audits.md), and [agent task tests](docs/agent-task-tests.md).
 
 
-## Real AI browser agent (Feature 2)
+## Agent task tests
 
-Open a scan and use **AI Agent Testing** to select pricing, documentation or signup/
-demo-form discovery. The Hugging Face model receives bounded observations and
-chooses structured actions that Playwright executes. Execution traces and masked
-screenshots are persisted. Agent-declared completion is always marked **not
-independently verified**.
+By default, scan execution runs the deterministic static stage first, then a
+separately bounded agent stage. The agent can find pricing, public contact details,
+and signup/demo forms. Each task records multiple run results, verification method,
+usage, aggregate outcome and consistency. A documentation task remains available
+for compatibility but is not in the default automated task set. The interface
+labels rule-verified, judge-assisted and unverified results separately.
 
-See [browser agent setup, API, security boundaries and real-model tests](docs/browser-agent.md).
-Default model: `Qwen/Qwen3-4B-Instruct-2507`; configure `HF_TOKEN` in `.env`, then
-`docker compose up --build -d --wait`. A compatible separate local server is also
-supported. The supplied inference credential returned HTTP 402 during verification;
-no successful real-model task is claimed. Deterministic tests use a mock LLM and
-real Chromium against local fixture files.
+See [agent task tests](docs/agent-task-tests.md) for default limits, API contracts,
+admission/IP handling, report/evidence boundaries and exact configuration. See
+[browser-agent implementation details](docs/browser-agent.md) for tool and browser
+safety. Choose a compatible model with `AGENT_MODEL`; hosted inference uses a
+Hugging Face token and router, while local mode uses an operator-managed compatible
+server. No alternate inference vendor is selected automatically.
 
 ## Redesigned frontend
 
 The public landing page is at `/`; the workspace overview is at `/dashboard`.
 Projects, scan results and the dedicated `/agent-tests/{id}` execution viewer use
-real API data. The illustrative landing preview is labeled as a demo. New scans produce static scores; independent agent task evaluation remains unimplemented. See the [frontend guide](docs/frontend-design.md)
+real API data. The illustrative landing preview is labeled as a demo. Scan results
+distinguish the static score from any agent component and disclose static fallback
+when no eligible agent evidence exists. See the [frontend guide](docs/frontend-design.md)
 for component structure, browser test commands, responsive checks and known limits.
 
 ## Deterministic audits and reports
 
-Start a new scan to generate static findings and scores; older scans are preserved
+Start a scan to generate static findings and scores; older scans are preserved
 unscored. Open **Open report, priority fixes and exports** from scan results.
 Reports support JSON/CSV/PDF, revocable expiring share links, before/after comparison
-and per-site static score history. No LLM is called by this pipeline. Defaults are
-20 pages, a 120-second execution budget, and a three-page browser sample.
+and per-site static score history. Static audit checks themselves never call an
+LLM. With the default pipeline enabled, a separate agent stage follows static report
+preparation. Disabling `AGENT_PIPELINE_ENABLED` leaves the static audit available.
+Defaults are 20 pages, a 120-second static execution budget, and a three-page
+browser sample.
 See [setup, rubric, APIs, tests and limitations](docs/static-audits.md).

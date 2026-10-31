@@ -123,20 +123,20 @@ internal IDs, query strings or unrestricted execution content.
 - [x] T1: Shared action/result contracts and config interface. Depends T0. Parent.
 - [x] T2: Native tool calling, JSON fallback, transient retries, usage/cost budget
   accounting. Depends T1. Small-model subagent owns provider + provider tests only.
-- [ ] T3: Observation builder, safety tools, success rules/judge interface and
+- [x] T3: Observation builder, safety tools, success rules/judge interface and
   bounded agent loop. Depends T1. Strong-model subagent owns browser/runner/success
   modules + their unit/fixture tests; no persistence/provider files.
 - [x] T4: Models, migration, schemas and repository operations. Depends T1.
   Small-model subagent owns domain models, migration 0005, agent schemas/repository
   and focused persistence tests; no services/config/frontend edits.
-- [ ] T5: Task service, repeat aggregation, DB/IP admission, API and scan-stage
+- [x] T5: Task service, repeat aggregation, DB/IP admission, API and scan-stage
   orchestration/recovery. Depends T2/T3/T4. Parent.
-- [ ] T6: Score blending, failure findings, reports/shares/export/comparison.
+- [x] T6: Score blending, failure findings, reports/shares/export/comparison.
   Depends T4/T5. Parent; strong review for infra exclusion and coverage semantics.
-- [ ] T7: Task cards, viewer/run selection, report/progress/history integration.
+- [x] T7: Task cards, viewer/run selection, report/progress/history integration.
   Depends stable T4/T5/T6 contracts. Small-model UI subagent with exclusive frontend
   file ownership; parent reviews rendered results.
-- [ ] T8: Config/env/README/docs and isolated deterministic integration tests.
+- [x] T8: Config/env/README/docs and isolated deterministic integration tests.
   Depends stable interfaces. Small-model subagent with exclusive docs/test files.
 - [ ] T9: Full tests, migrations, lint/typecheck/build, browser QA, live configured
   HF attempts on 3–5 bounded sites, final stronger-model safety/completion review.
@@ -197,3 +197,42 @@ change, and record authoritative evidence here before checking its box.
 - Migration 0005 applied to disposable PostgreSQL; Alembic check reports no new
   operations. Persistence/schema tests: 5 passed, including atomic task claim and
   cross-scan run/task composite-FK rejection. Legacy rows remain unverified.
+
+### T3/T5/T6/T7/T8 and final verification evidence
+
+- Browser loop exposes only the canonical tools, bounded interactive-only
+  observations and fresh element IDs. Deterministic pricing/contact/signup rules,
+  loop limits, invalid-action handling, isolated browser cleanup and network
+  gateway checks are covered by unit and local-fixture integration tests.
+- Scan-stage integration runs the configured built-in tasks after static audits,
+  records task/run progress, enforces anonymous admission limits and recovers
+  expired agent work to a completed static report. A 25-test focused run and the
+  full backend run cover API persistence, reports, scoring, exports and restart
+  recovery.
+- Report/share/export work keeps share URLs redacted and uses short-lived
+  share-scoped screenshot capabilities. The tamper test now changes a capability
+  byte rather than occasionally replacing a byte with itself.
+- Frontend includes task aggregates, run selection, evidence replay, truthful
+  verification labels, combined/static score context, and responsive agent,
+  scan, project and dashboard states. Live Playwright UI verification passed at
+  desktop, tablet, mobile and small-mobile sizes with WCAG/overflow checks; the
+  isolated state harness passed pending/running/completed/timeout/missing/error
+  paths. Screenshots are in `/private/tmp/agentreadiness-qa-final/`.
+- Backend: 147 passed, 4 intentionally skipped (opt-in real-HF runs), 1 warning.
+  Ruff check and format check pass. Frontend lint, TypeScript, Prettier, optimized
+  build and UI state/browser flows pass. Compose health endpoint is healthy.
+- Alembic 0005 is applied both to the disposable test DB and the running Compose
+  database; Compose database revision verified at `0005 (head)`. Test DB
+  `alembic check` reports no new operations.
+- Real inference was attempted once with the configured model and token, with a
+  120-token output cap and retries disabled. Hugging Face returned HTTP 402
+  (credits/billing required); the browser UI records this as `UNAVAILABLE` and
+  excludes it from site scoring. No real-model site runs were attempted after
+  this credential/billing failure. To verify after configuring a funded endpoint:
+  `cd backend && RUN_REAL_HF_TEST=1 .venv/bin/pytest -q tests/test_agent_real_model.py`.
+
+T9 remains open only for final diff/safety review, post-final-edit build checks,
+small scoped commits and the explicitly unverified real-model run if inference
+becomes available. The user requested that live agent work stop at RUNNING and
+pending tasks be skipped; the last smoke run instead terminated quickly on HF
+HTTP 402, and no additional live agent runs will be started during this pass.

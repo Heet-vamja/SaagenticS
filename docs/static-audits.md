@@ -1,6 +1,8 @@
 # Deterministic audits and static reports
 
-Static scans do not invoke an LLM. Accounts and billing remain deferred.
+Static audit checks do not invoke an LLM. By default, a separate bounded agent task
+stage follows static report preparation; set `AGENT_PIPELINE_ENABLED=false` for
+static-only scan execution. Accounts and billing remain deferred.
 
 A new scan runs discovery, HTML/policy checks, a bounded read-only browser sample,
 then report preparation. Findings are generated from measurements, not model text.
@@ -42,10 +44,12 @@ Legacy scans remain unchanged; re-scan a project to generate a static report.
   diagnostic headers are retained; cookies and authorization are not stored.
 
 Measurements are stored in Page metadata; full HTML is never persisted.
-Findings reuse the existing model. Scan.audit_summary stores versioned checks,
-coverage, phase and sub-scores. Scan.overall_score now stores the static score
-when `score_kind=STATIC_READINESS`; it must not be interpreted as verified task
-success or as the future combined agent/static score.
+Findings reuse the existing model. The static audit summary stores versioned checks,
+coverage, phase and sub-scores. Its static component is preserved when the later
+agent stage completes. A combined report score must not be presented as a static
+score or as proof that an agent task succeeded. See
+[Agent Task Tests](agent-task-tests.md#outcome-and-assurance) for the blended score
+and fallback contract.
 
 ## Scoring and priorities
 
@@ -89,7 +93,9 @@ bounded per process, not by a global browser fleet controller.
 Settings: `CRAWL_MAX_PAGES`, `CRAWL_MIN_DELAY`, `SCAN_DURATION`, `SCAN_MAX_ACTIVE`,
 `SCAN_QUEUE_LIMIT`, `SCAN_QUEUE_WAIT`, `AUDIT_RENDER_PAGES`, `AUDIT_RENDER_TIMEOUT`,
 `AUDIT_BROWSER_ENABLED`, `REPORT_SHARE_DAYS`. Configuration defaults are forwarded
-by Compose. Existing origin/domain/SSRF/streaming limits remain enforced.
+by Compose. The separate agent stage has its own duration/concurrency, token and
+per-IP budgets; see [agent task configuration](agent-task-tests.md#task-and-run-policy).
+Existing origin/domain/SSRF/streaming limits remain enforced.
 
 ## Reports, sharing and export
 
@@ -125,8 +131,9 @@ alongside score differences. Legacy scans cannot be compared as scored audits.
 ## Verification
 
 Migration `0004` adds Scan.created_at/audit_summary, a status/creation index and
-report_shares. It leaves existing results unscored. Run migrations before loading
-the new API; use a disposable test database for downgrade checks.
+report_shares. Migration `0005` adds agent task/run metadata while preserving old
+runs as unverified. Run migrations before loading the new API; use a disposable
+test database for downgrade checks.
 
 ```sh
 cd backend
@@ -144,8 +151,9 @@ npm run build
 
 The deterministic suite includes mocked site-policy/HTML fixtures, real Chromium
 JavaScript comparison, persistence, score/ranking/coverage, queue admission,
-comparison, share hashing/expiry/revocation and actual PDF bytes. A provider guard
-asserts the static execution path never calls the LLM. Real-model tests are excluded.
+comparison, share hashing/expiry/revocation and actual PDF bytes. Static audit
+checks never make inference calls. To test a static-only scan, disable
+`AGENT_PIPELINE_ENABLED`; real-model tests are excluded from deterministic runs.
 
 `frontend/scripts/verify_static.py` reviews locally persisted, explicitly named
 fixture scans. Set `STATIC_QA_RECORDS` to a JSON manifest with `project_id`, `before`
@@ -164,10 +172,8 @@ no model requests or external crawls. Test fixtures are removed after review.
 The local `schema_vocabulary.json` snapshot records its source/retrieval date.
 Vocabulary names are used offline; custom namespaces are not dereferenced.
 
-Verified locally: 83 deterministic backend tests pass with three real-model tests
-excluded. Migration 0004 downgrade/upgrade and Alembic checks pass. TypeScript,
-ESLint, formatting and production build pass. Ten rendered report/history/share
-checkpoints pass axe and overflow checks, including 768px, 390px and 320px layouts.
-A bounded manual static scan of the existing canonical Valorx project completed
-with 20 pages and no crawl failures. Its score is explicitly provisional because
-rendered comparisons are sampled; no agent or model was invoked.
+Historical static-only baseline, before the agent task stage: a bounded manual
+static scan completed with 20 pages and no crawl failures. Its score was explicitly
+provisional because rendered comparisons were sampled. That result did not invoke
+an agent or verify a real model. Run the current verification commands above for
+the state of the integrated worktree.
