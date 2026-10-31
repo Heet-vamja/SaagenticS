@@ -112,7 +112,9 @@ class Records:
                     status=ScanStatus.RUNNING,
                     started_at=datetime.now(UTC),
                     execution_deadline=datetime.now(UTC)
-                    + timedelta(seconds=settings.scan_duration + 15),
+                    + timedelta(
+                        seconds=settings.scan_duration + settings.agent_stage_duration + 30
+                    ),
                 )
             ).rowcount
             == 1
@@ -120,16 +122,38 @@ class Records:
 
     def expire_scans(self):
         now = datetime.now(UTC)
-        self.session.execute(
-            update(Scan)
-            .where(
-                Scan.status.in_([ScanStatus.PENDING, ScanStatus.RUNNING]),
-                or_(Scan.execution_deadline < now, Scan.execution_deadline.is_(None)),
-            )
-            .values(
-                status=ScanStatus.FAILED,
-                completed_at=now,
-                started_at=func.coalesce(Scan.started_at, now),
-                error_summary="Execution deadline expired; process may have restarted",
+        expired = list(
+            self.session.scalars(
+                select(Scan).where(
+                    Scan.status.in_([ScanStatus.PENDING, ScanStatus.RUNNING]),
+                    or_(Scan.execution_deadline < now, Scan.execution_deadline.is_(None)),
+                )
             )
         )
+        for scan in expired:
+            summary = dict(scan.audit_summary or {})
+            # Once deterministic evidence exists, a process restart during the
+            # separate agent stage preserves a usable static report.
+            agent_stage = (
+                scan.status == ScanStatus.RUNNING
+                and summary.get("phase") == "AGENT_TASKS"
+                and "static_score" in summary
+            )
+            scan.status = ScanStatus.COMPLETED if agent_stage else ScanStatus.FAILED
+            scan.completed_at = now
+            scan.started_at = scan.started_at or now
+            if agent_stage:
+                summary["phase"] = "COMPLETED"
+                summary["agent_stage"] = {
+                    "status": "UNAVAILABLE",
+                    "reason": "Agent stage was interrupted by a process restart; static results were retained.",
+                }
+                component = dict(summary.get("agent") or {})
+                component["fallback_reason"] = summary["agent_stage"]["reason"]
+                component["provisional"] = True
+                summary["agent"] = component
+                scan.audit_summary = summary
+                scan.overall_score = summary.get("static_score", scan.overall_score)
+                scan.error_summary = None
+            else:
+                scan.error_summary = "Execution deadline expired; process may have restarted"

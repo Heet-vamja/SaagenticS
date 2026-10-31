@@ -107,5 +107,23 @@ class AgentRecords:
                 status=WorkflowStatus.FAILED,
                 completed_at=now,
                 failure_reason="Agent execution deadline expired; process may have restarted",
+                outcome="UNAVAILABLE",
+                failure_category="infra_error",
             )
         )
+        expired_tasks = list(
+            self.session.scalars(
+                select(AgentTaskTest).where(
+                    AgentTaskTest.status.in_([ScanStatus.PENDING, ScanStatus.RUNNING]),
+                    AgentTaskTest.deadline < now,
+                )
+            )
+        )
+        for task in expired_tasks:
+            task.status = ScanStatus.COMPLETED
+            task.completed_at = now
+            task.failure_reason = "Agent execution deadline expired; process may have restarted"
+            task.outcome = "UNAVAILABLE"
+            task.consistency = None
+            task.runs_completed = task.requested_runs
+            task.eligible_runs = 0

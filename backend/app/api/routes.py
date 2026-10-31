@@ -1,9 +1,10 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
 from sqlalchemy.orm import Session
 
+from app.core.config import get_settings
 from app.db.session import get_session
 from app.schemas.api import (
     FindingRead,
@@ -14,6 +15,7 @@ from app.schemas.api import (
     ScanRead,
     WorkflowRead,
 )
+from app.services.agent_policy import client_identity
 from app.services.audits import AuditService, RecordNotFound
 from app.services.crawls import execute_scan
 
@@ -45,8 +47,10 @@ def get_project(project_id: UUID, service: Service):
 
 
 @router.post("/scans", response_model=ScanRead, status_code=201, tags=["Scans"])
-def create_scan(data: ScanCreate, service: Service, background_tasks: BackgroundTasks):
-    scan = service.create_scan(data.project_id)
+def create_scan(
+    data: ScanCreate, service: Service, background_tasks: BackgroundTasks, request: Request
+):
+    scan = service.create_scan(data.project_id, client_identity(request, get_settings()))
     background_tasks.add_task(execute_scan, scan.id)
     return scan
 
@@ -54,8 +58,10 @@ def create_scan(data: ScanCreate, service: Service, background_tasks: Background
 @router.post(
     "/projects/{project_id}/scans", response_model=ScanRead, status_code=201, tags=["Scans"]
 )
-def start_project_scan(project_id: UUID, service: Service, background_tasks: BackgroundTasks):
-    scan = service.create_scan(project_id)
+def start_project_scan(
+    project_id: UUID, service: Service, background_tasks: BackgroundTasks, request: Request
+):
+    scan = service.create_scan(project_id, client_identity(request, get_settings()))
     background_tasks.add_task(execute_scan, scan.id)
     return scan
 

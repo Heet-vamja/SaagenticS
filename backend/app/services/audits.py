@@ -10,6 +10,7 @@ from app.engines.crawling.urls import URLValidator
 from app.models.domain import Project, Scan, ScanStatus
 from app.repositories.records import Records
 from app.schemas.api import ProjectCreate
+from app.services.agent_policy import consume_admission, snapshot
 
 
 class RecordNotFound(Exception):
@@ -37,7 +38,7 @@ class AuditService:
             raise RecordNotFound("Scan not found")
         return scan
 
-    def create_scan(self, project_id: UUID) -> Scan:
+    def create_scan(self, project_id: UUID, identity="local") -> Scan:
         project = self.project(project_id)
         URLValidator(project.website_url, get_settings().crawl_allow_subdomains)
         self.records.admission_lock()
@@ -57,19 +58,27 @@ class AuditService:
             >= get_settings().scan_queue_limit
         ):
             raise HTTPException(429, "The scan queue is full. Please try again shortly.")
+        settings = get_settings()
+        consume_admission(self.session, identity, "scan", settings)
         scan = Scan(
             project_id=project_id,
             audit_summary={
                 "phase": "QUEUED",
                 "limits": {
-                    "max_pages": get_settings().crawl_max_pages,
-                    "total_seconds": get_settings().scan_duration,
-                    "browser_pages": get_settings().audit_render_pages,
+                    "max_pages": settings.crawl_max_pages,
+                    "total_seconds": settings.scan_duration,
+                    "browser_pages": settings.audit_render_pages,
                 },
+                "agent_policy": snapshot(settings),
             },
             status=ScanStatus.PENDING,
             execution_deadline=datetime.now(UTC)
-            + timedelta(seconds=get_settings().scan_queue_wait),
+            + timedelta(
+                seconds=settings.scan_queue_wait
+                + settings.scan_duration
+                + settings.agent_stage_duration
+                + 30
+            ),
         )
         self.records.add(scan)
         self.session.commit()

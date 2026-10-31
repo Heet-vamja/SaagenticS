@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.engines.agent.actions import TaskType
 from app.engines.agent.contracts import FailureCategory
@@ -42,7 +42,18 @@ class AgentTestRead(ReadModel):
     prompt_tokens: int = 0
     completion_tokens: int = 0
     estimated_cost_usd: float | None = None
-    verification: Literal["NOT_INDEPENDENTLY_VERIFIED"] = "NOT_INDEPENDENTLY_VERIFIED"
+    verification: Literal["NOT_INDEPENDENTLY_VERIFIED", "RULE_VERIFIED", "LLM_JUDGED"] = (
+        "NOT_INDEPENDENTLY_VERIFIED"
+    )
+
+    @model_validator(mode="after")
+    def set_verification_label(self):
+        self.verification = {
+            "rules": "RULE_VERIFIED",
+            "judged": "LLM_JUDGED",
+            "unverified": "NOT_INDEPENDENTLY_VERIFIED",
+        }[self.verification_method]
+        return self
 
 
 class AgentTaskCreate(BaseModel):

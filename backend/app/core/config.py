@@ -6,7 +6,9 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file="../.env", extra="ignore")
+    # Optional cost-rate variables may be present but intentionally blank in
+    # local .env files. Treat those as unset instead of failing startup.
+    model_config = SettingsConfigDict(env_file="../.env", extra="ignore", env_ignore_empty=True)
 
     database_url: str = (
         "postgresql+psycopg://agentreadiness:local-development-only@localhost:5432/agentreadiness"

@@ -34,6 +34,7 @@ def client(session, monkeypatch):
     # Never start live website requests or a production database recovery task.
     monkeypatch.setattr("app.api.routes.execute_scan", AsyncMock())
     monkeypatch.setattr("app.api.agent_routes.execute_agent_test", AsyncMock())
+    monkeypatch.setattr("app.api.agent_routes.execute_agent_task", AsyncMock())
 
     async def idle_recovery():
         await asyncio.Event().wait()
@@ -43,3 +44,12 @@ def client(session, monkeypatch):
     with TestClient(app) as test_client:
         yield test_client
     app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def disable_automatic_model_calls_in_tests(monkeypatch):
+    """Existing tests remain deterministic; opted-in agent tests inject a mock provider."""
+    from app.core.config import get_settings
+
+    settings = get_settings()
+    monkeypatch.setattr(settings, "agent_pipeline_enabled", False)

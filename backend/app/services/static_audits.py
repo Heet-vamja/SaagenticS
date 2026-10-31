@@ -127,7 +127,13 @@ def persist_audit(scan_id, checks, session_factory, phase="REPORT_READY"):
                         **values,
                     )
                 )
-        summary["limits"] = scan.audit_summary.get("limits", {})
+        previous = scan.audit_summary
+        summary["static_score"] = summary["score"]
+        summary["limits"] = previous.get("limits", {})
+        summary["agent_policy"] = previous.get("agent_policy")
+        for key in ("pages_discovered", "pages_crawled", "pages_failed"):
+            if key in previous:
+                summary[key] = previous[key]
         scan.audit_summary = summary
         scan.overall_score = summary["score"]
         session.commit()
