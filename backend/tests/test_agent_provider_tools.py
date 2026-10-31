@@ -10,6 +10,7 @@ from app.engines.agent.provider import (
     InferenceError,
     InvalidAction,
     TokenBudgetExceeded,
+    action_json_schema,
 )
 
 
@@ -56,6 +57,19 @@ def test_native_tool_action_is_canonical_and_requires_one_call():
         await provider.close()
 
     asyncio.run(scenario())
+
+
+def test_json_fallback_schema_matches_only_the_six_exposed_tools():
+    schema = action_json_schema()
+    assert [variant["properties"]["action"]["const"] for variant in schema["oneOf"]] == [
+        "click",
+        "type_text",
+        "navigate",
+        "scroll",
+        "finish",
+        "give_up",
+    ]
+    assert all(not variant.get("additionalProperties") for variant in schema["oneOf"])
 
 
 @pytest.mark.parametrize("calls", [[], [_tool()["choices"][0]["message"]["tool_calls"][0]] * 2])

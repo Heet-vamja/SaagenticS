@@ -63,6 +63,24 @@ _TOOL_SCHEMAS = {
 }
 
 
+def action_json_schema() -> dict:
+    """JSON-only fallback schema for the same six tools exposed by native calls."""
+    return {
+        "oneOf": [
+            {
+                "type": "object",
+                "properties": {
+                    "action": {"type": "string", "const": name},
+                    **properties,
+                },
+                "required": ["action", *_CANONICAL_TOOLS[name]],
+                "additionalProperties": False,
+            }
+            for name, properties in _TOOL_SCHEMAS.items()
+        ]
+    }
+
+
 class HuggingFaceProvider:
     def __init__(self, settings: Settings, transport=None):
         self.settings = settings
@@ -292,9 +310,7 @@ class HuggingFaceProvider:
 
     async def _json_generation(self, messages: list[dict], kind: str):
         model_schema = (
-            AgentAction.model_json_schema()
-            if kind == "action"
-            else TaskJudgment.model_json_schema()
+            action_json_schema() if kind == "action" else TaskJudgment.model_json_schema()
         )
         body = {
             "model": self.settings.agent_model,
