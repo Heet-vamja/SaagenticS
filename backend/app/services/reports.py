@@ -12,8 +12,17 @@ from sqlalchemy import select, update
 
 from app.core.config import get_settings
 from app.engines.agent.privacy import public_url, sanitize
-from app.models.domain import Finding, ReportShare, Scan, ScanStatus
+from app.models.domain import (
+    AgentStep,
+    AgentTaskTest,
+    Finding,
+    ReportShare,
+    Scan,
+    ScanStatus,
+    WorkflowTest,
+)
 from app.schemas.api import FindingRead, ProjectRead, ScanRead
+from app.services.agent_evidence import evidence_ref
 from app.services.audits import AuditService, RecordNotFound
 
 SEVERITY = {"CRITICAL": 5, "HIGH": 4, "MEDIUM": 3, "LOW": 2, "INFO": 1}
@@ -58,7 +67,7 @@ class ReportService:
         self.session = session
         self.audits = AuditService(session)
 
-    def report(self, scan_id: UUID, shared=False):
+    def report(self, scan_id: UUID, shared=False, share_token: str | None = None):
         scan = self.audits.scan(scan_id)
         project = self.audits.project(scan.project_id)
         findings = rank(
@@ -73,15 +82,44 @@ class ReportService:
                 seen.add(key)
             if len(priorities) == 5:
                 break
+        tasks = list(
+            self.session.scalars(
+                select(AgentTaskTest)
+                .where(AgentTaskTest.scan_id == scan_id)
+                .order_by(AgentTaskTest.created_at, AgentTaskTest.id)
+            )
+        )
+        task_results = [self._task_report(task, shared, share_token) for task in tasks]
+        agent = scan.audit_summary.get("agent")
+        score_kind = scan.audit_summary.get("score_kind", "STATIC_READINESS")
         result = {
             "project": ProjectRead.model_validate(project).model_dump(mode="json"),
             "scan": ScanRead.model_validate(scan).model_dump(mode="json"),
-            "score_kind": "STATIC_READINESS",
+            "score_kind": score_kind,
+            "score_components": {
+                "static_score": (agent or {}).get(
+                    "static_score", scan.audit_summary.get("static_score")
+                ),
+                "agent_score": (agent or {}).get("agent_score"),
+                "configured_weight": (agent or {}).get("configured_weight"),
+                "effective_weight": (agent or {}).get("effective_weight"),
+                "fallback_reason": (agent or {}).get("fallback_reason"),
+                "eligible_runs": (agent or {}).get("eligible_runs", 0),
+                "eligible_tasks": (agent or {}).get("eligible_tasks", 0),
+                "excluded_infra_runs": (agent or {}).get("excluded_infra_runs", 0),
+                "inconclusive_runs": (agent or {}).get("inconclusive_runs", 0),
+                "incomplete_tasks": (agent or {}).get("incomplete_tasks", 0),
+                "judged_runs": (agent or {}).get("judged_runs", 0),
+                "provisional": (agent or {}).get("provisional", False),
+            },
+            "agent_tasks": task_results,
             "rubric": scan.audit_summary.get("version"),
             "audited": bool(scan.audit_summary.get("version")),
             "findings": [FindingRead.model_validate(f).model_dump(mode="json") for f in findings],
             "priority_fixes": [priority_value(f, findings) for f in priorities],
-            "verification": "AGENT_TASK_SUCCESS_NOT_EVALUATED",
+            "verification": "AGENT_RESULTS_REPORTED"
+            if task_results
+            else "AGENT_TASK_SUCCESS_NOT_EVALUATED",
             "sharing": "ANYONE_WITH_LINK" if shared else "WORKSPACE",
         }
         if shared:
@@ -99,8 +137,10 @@ class ReportService:
                 "pages_failed": scan.pages_failed,
                 "started_at": scan.started_at.isoformat() if scan.started_at else None,
                 "completed_at": scan.completed_at.isoformat() if scan.completed_at else None,
-                "audit_summary": scan.audit_summary,
+                "audit_summary": self._public_summary(scan.audit_summary),
             }
+            # The report-level aggregate is already an explicit safe projection.
+            result["agent_tasks"] = task_results
             for collection in (result["findings"], result["priority_fixes"]):
                 for finding in collection:
                     finding["id"] = hashlib.sha256(
@@ -114,6 +154,8 @@ class ReportService:
                     ).hexdigest()[:20]
                     for key in ("scan_id", "page_id"):
                         finding.pop(key, None)
+                    for key in ("run_ref", "step_ref"):
+                        finding["evidence"].pop(key, None)
         if shared:
 
             def scrub(value):
@@ -127,6 +169,122 @@ class ReportService:
 
             result = scrub(result)
         return sanitize(result)
+
+    def _task_report(self, task, shared, share_token=None):
+        runs = list(
+            self.session.scalars(
+                select(WorkflowTest)
+                .where(WorkflowTest.task_test_id == task.id)
+                .order_by(WorkflowTest.run_number)
+            )
+        )
+        projected_runs = []
+        for run in runs:
+            evidence = self._verification_evidence(run.verification_evidence)
+            steps = list(
+                self.session.scalars(
+                    select(AgentStep)
+                    .where(AgentStep.workflow_test_id == run.id)
+                    .order_by(AgentStep.step_number)
+                )
+            )
+            projected_steps = []
+            for step in steps:
+                step_value = {
+                    "step_number": step.step_number,
+                    "page_url": public_url(step.page_url),
+                    "action_type": step.action_type,
+                    "reason": str(step.reasoning_summary or "")[:180],
+                    "duration_ms": step.duration_ms,
+                    "error_message": str(step.error_message)[:240] if step.error_message else None,
+                    "has_screenshot": bool(step.screenshot_path),
+                }
+                if not shared:
+                    step_value["id"] = str(step.id)
+                    step_value["screenshot_url"] = (
+                        f"/api/v1/agent-tests/{run.id}/steps/{step.id}/screenshot"
+                        if step.screenshot_path
+                        else None
+                    )
+                elif share_token and step.screenshot_path:
+                    run_ref = evidence_ref(share_token, task.scan_id, "run", run.id)
+                    step_ref = evidence_ref(share_token, task.scan_id, "step", step.id)
+                    step_value["screenshot_url"] = (
+                        f"/api/v1/shares/{share_token}/evidence/{run_ref}/{step_ref}.png"
+                    )
+                projected_steps.append(step_value)
+            projected = {
+                "run_number": run.run_number,
+                "status": run.status.value,
+                "outcome": run.outcome,
+                "verification_method": run.verification_method,
+                "failure_category": run.failure_category,
+                "model": run.model_identifier,
+                "steps": run.steps_completed,
+                "duration_seconds": run.execution_duration,
+                "prompt_tokens": run.prompt_tokens,
+                "completion_tokens": run.completion_tokens,
+                "estimated_cost_usd": run.estimated_cost_usd,
+                "evidence": evidence,
+                "final_url": public_url(run.final_url) if run.final_url else None,
+                "step_details": projected_steps,
+            }
+            if not shared:
+                projected["id"] = str(run.id)
+            projected_runs.append(projected)
+        result = {
+            "task_type": task.task_type,
+            "description": task.task_description,
+            "status": task.status.value,
+            "outcome": task.outcome,
+            "consistency": task.consistency,
+            "requested_runs": task.requested_runs,
+            "runs_completed": task.runs_completed,
+            "eligible_runs": task.eligible_runs,
+            "runs": projected_runs,
+        }
+        if not shared:
+            result["id"] = str(task.id)
+        return result
+
+    @staticmethod
+    def _verification_evidence(evidence):
+        """Return task evidence fields that are useful and safe to share."""
+        allowed = {
+            "url",
+            "pricing_context",
+            "prices",
+            "contact_context",
+            "public_email_count",
+            "public_address_count",
+            "public_phone_count",
+            "signup_context",
+            "documentation_context",
+            "documentation_content",
+            "challenge",
+            "not_found",
+            "requires_js",
+        }
+        safe = {key: value for key, value in evidence.items() if key in allowed}
+        if isinstance(safe.get("prices"), list):
+            safe["prices"] = [str(value)[:80] for value in safe["prices"][:15]]
+        forms = evidence.get("forms")
+        if isinstance(forms, list):
+            field_count = sum(
+                len(form.get("fields", []))
+                for form in forms[:10]
+                if isinstance(form, dict) and isinstance(form.get("fields", []), list)
+            )
+            safe["forms"] = [{"field_count": min(field_count, 300)}]
+        if "url" in safe:
+            safe["url"] = public_url(str(safe["url"]))
+        return sanitize(safe)
+
+    @staticmethod
+    def _public_summary(summary):
+        """Strip operational policy and any execution-level material from shares."""
+        safe = {key: value for key, value in summary.items() if key != "agent_policy"}
+        return sanitize(safe)
 
     def compare(self, scan_id, before=None):
         current = self.audits.scan(scan_id)
@@ -192,17 +350,55 @@ class ReportService:
                 resolved.append(item)
             elif state != "FAIL":
                 not_retested.append(item)
+        old_agent = a.get("agent") or {}
+        new_agent = b.get("agent") or {}
+        old_tasks = self._task_outcomes(previous.id)
+        new_tasks = self._task_outcomes(current.id)
+        old_basis = self._score_basis(previous, old_agent)
+        new_basis = self._score_basis(current, new_agent)
+        score_comparable = old_basis == new_basis
         delta = (
             round(current.overall_score - previous.overall_score, 1)
-            if current.overall_score is not None and previous.overall_score is not None
+            if score_comparable
+            and current.overall_score is not None
+            and previous.overall_score is not None
             else None
         )
+        agent_comparable = self._scored_task_types(old_agent) == self._scored_task_types(new_agent)
+        task_changes = [
+            {
+                "task_type": task_type,
+                "before": old_tasks.get(task_type, {}).get("outcome"),
+                "after": new_tasks.get(task_type, {}).get("outcome"),
+                "changed": old_tasks.get(task_type, {}).get("outcome")
+                != new_tasks.get(task_type, {}).get("outcome"),
+                "before_eligible_runs": old_tasks.get(task_type, {}).get("eligible_runs", 0),
+                "after_eligible_runs": new_tasks.get(task_type, {}).get("eligible_runs", 0),
+            }
+            for task_type in sorted(set(old_tasks) | set(new_tasks))
+        ]
         return sanitize(
             {
                 "available": True,
                 "before": str(previous.id),
                 "after": str(current.id),
                 "score_delta": delta,
+                "score_components": {
+                    "before": self._score_components(previous, old_agent),
+                    "after": self._score_components(current, new_agent),
+                    "static_delta": self._delta(
+                        old_agent.get("static_score", a.get("static_score")),
+                        new_agent.get("static_score", b.get("static_score")),
+                    ),
+                    "agent_delta": self._delta(
+                        old_agent.get("agent_score"), new_agent.get("agent_score")
+                    )
+                    if agent_comparable
+                    else None,
+                    "score_comparable": score_comparable,
+                },
+                "agent_coverage_changed": self._coverage(old_agent) != self._coverage(new_agent),
+                "agent_task_changes": task_changes,
                 "added": added,
                 "resolved": resolved,
                 "unchanged": unchanged,
@@ -211,6 +407,76 @@ class ReportService:
                 "note": "An absent or unknown check is not counted as fixed. Score changes may reflect changed coverage.",
             }
         )
+
+    @staticmethod
+    def _delta(before, after):
+        return round(after - before, 1) if before is not None and after is not None else None
+
+    @staticmethod
+    def _score_components(scan, agent):
+        summary = scan.audit_summary
+        return {
+            "score_kind": summary.get("score_kind", "STATIC_READINESS"),
+            "static_score": agent.get("static_score", summary.get("static_score")),
+            "agent_score": agent.get("agent_score"),
+            "effective_weight": agent.get("effective_weight"),
+            "fallback_reason": agent.get("fallback_reason"),
+            "eligible_runs": agent.get("eligible_runs", 0),
+            "excluded_infra_runs": agent.get("excluded_infra_runs", 0),
+            "inconclusive_runs": agent.get("inconclusive_runs", 0),
+            "judged_runs": agent.get("judged_runs", 0),
+        }
+
+    @staticmethod
+    def _coverage(agent):
+        return tuple(
+            agent.get(key, 0)
+            for key in (
+                "eligible_runs",
+                "eligible_tasks",
+                "excluded_infra_runs",
+                "inconclusive_runs",
+                "incomplete_tasks",
+                "judged_runs",
+            )
+        ) + (ReportService._scored_task_types(agent),)
+
+    @staticmethod
+    def _scored_task_types(agent):
+        return tuple(
+            sorted(
+                task.get("task_type")
+                for task in agent.get("tasks", [])
+                if task.get("outcome") in ("SUCCEEDED", "FAILED")
+            )
+        )
+
+    @staticmethod
+    def _score_basis(scan, agent):
+        summary = scan.audit_summary
+        return (
+            summary.get("score_kind", "STATIC_READINESS"),
+            agent.get("effective_weight", 0),
+            ReportService._scored_task_types(agent),
+        )
+
+    def _task_outcomes(self, scan_id):
+        tasks = list(
+            self.session.scalars(
+                select(AgentTaskTest)
+                .where(AgentTaskTest.scan_id == scan_id)
+                .order_by(AgentTaskTest.created_at, AgentTaskTest.id)
+            )
+        )
+        return {
+            task.task_type: {
+                "outcome": task.outcome,
+                "eligible_runs": task.eligible_runs,
+                "runs_completed": task.runs_completed,
+                "consistency": task.consistency,
+            }
+            for task in tasks
+        }
 
     def history(self, project_id, limit, offset):
         self.audits.project(project_id)
@@ -299,4 +565,68 @@ def csv_export(report):
                 ]
             ]
         )
+    writer.writerow([])
+    writer.writerow(
+        [
+            "Record Type",
+            "Task",
+            "Task Outcome",
+            "Consistency",
+            "Run",
+            "Run Status",
+            "Run Outcome",
+            "Verification",
+            "Failure Category",
+            "Model",
+            "Steps",
+            "Duration Seconds",
+            "Prompt Tokens",
+            "Completion Tokens",
+            "Estimated Cost USD",
+            "Evidence URL",
+            "Evidence Summary",
+        ]
+    )
+    for task in report.get("agent_tasks", []):
+        if not task.get("runs"):
+            writer.writerow(
+                [
+                    cell(v)
+                    for v in [
+                        "task",
+                        task.get("description"),
+                        task.get("outcome"),
+                        task.get("consistency"),
+                    ]
+                ]
+            )
+        for run in task.get("runs", []):
+            evidence = run.get("evidence", {})
+            summary = "; ".join(
+                f"{key}={value}" for key, value in evidence.items() if key not in ("url", "title")
+            )
+            writer.writerow(
+                [
+                    cell(v)
+                    for v in [
+                        "agent_run",
+                        task.get("description"),
+                        task.get("outcome"),
+                        task.get("consistency"),
+                        run.get("run_number"),
+                        run.get("status"),
+                        run.get("outcome"),
+                        run.get("verification_method"),
+                        run.get("failure_category"),
+                        run.get("model"),
+                        run.get("steps"),
+                        run.get("duration_seconds"),
+                        run.get("prompt_tokens"),
+                        run.get("completion_tokens"),
+                        run.get("estimated_cost_usd"),
+                        evidence.get("url"),
+                        summary,
+                    ]
+                ]
+            )
     return stream.getvalue().encode("utf-8-sig")

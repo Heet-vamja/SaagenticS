@@ -58,12 +58,14 @@ class ReportFinding(BaseModel):
 class ReportRead(BaseModel):
     project: ReportProject
     scan: ReportScan
-    score_kind: Literal["STATIC_READINESS"]
+    score_kind: Literal["STATIC_READINESS", "AGENT_READINESS", "COMBINED_READINESS"]
+    score_components: dict[str, Any] = Field(default_factory=dict)
+    agent_tasks: list[dict[str, Any]] = Field(default_factory=list)
     rubric: str | None
     audited: bool
     findings: list[ReportFinding]
     priority_fixes: list[ReportFinding]
-    verification: Literal["AGENT_TASK_SUCCESS_NOT_EVALUATED"]
+    verification: Literal["AGENT_TASK_SUCCESS_NOT_EVALUATED", "AGENT_RESULTS_REPORTED"]
     sharing: Literal["WORKSPACE", "ANYONE_WITH_LINK"]
 
 
@@ -73,6 +75,9 @@ class ComparisonRead(BaseModel):
     before: UUID | None
     after: UUID
     score_delta: float | None = None
+    score_components: dict[str, Any] | None = None
+    agent_coverage_changed: bool | None = None
+    agent_task_changes: list[dict[str, Any]] = Field(default_factory=list)
     added: list[CheckRead] | None = None
     resolved: list[CheckRead] | None = None
     unchanged: list[CheckRead] | None = None
