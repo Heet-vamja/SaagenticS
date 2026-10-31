@@ -46,15 +46,32 @@ class Settings(BaseSettings):
     agent_structured_output: bool = False
     agent_max_output_tokens: int = Field(700, ge=100, le=1500)
     agent_max_steps: int = Field(15, ge=1, le=15)
-    agent_duration: float = Field(120, gt=0, le=120)
+    agent_duration: float = Field(90, gt=0, le=120)
     agent_invalid_limit: int = Field(3, ge=1, le=3)
     agent_observation_chars: int = Field(12000, ge=4000, le=20000)
-    agent_max_elements: int = Field(60, ge=1, le=100)
+    agent_max_elements: int = Field(150, ge=1, le=150)
     agent_request_limit: int = Field(150, ge=1, le=300)
     agent_max_redirects: int = Field(5, ge=0, le=5)
     agent_screenshot_dir: str = "./artifacts/agent"
     agent_screenshots: bool = True
     agent_browser_executable: str | None = None
+    agent_pipeline_enabled: bool = True
+    agent_runs_per_task: int = Field(2, ge=1, le=3)
+    agent_free_limits_enabled: bool = True
+    agent_free_task_limit: int = Field(2, ge=1, le=2)
+    agent_free_runs_per_task: int = Field(1, ge=1, le=1)
+    agent_token_budget: int = Field(16000, ge=1000, le=200000)
+    agent_action_delay: float = Field(1, ge=1, le=10)
+    agent_judge_enabled: bool = True
+    agent_score_weight: float = Field(0.45, ge=0, le=1)
+    agent_input_cost_per_million: float | None = Field(None, ge=0)
+    agent_output_cost_per_million: float | None = Field(None, ge=0)
+    agent_stage_duration: float = Field(600, ge=10, le=1800)
+    agent_max_active: int = Field(2, ge=1, le=8)
+    agent_ip_window_seconds: int = Field(3600, ge=60, le=86400)
+    agent_ip_scan_limit: int = Field(10, ge=1, le=1000)
+    agent_ip_task_limit: int = Field(20, ge=1, le=2000)
+    agent_trusted_proxy_cidrs: list[str] = []
 
 
 @lru_cache

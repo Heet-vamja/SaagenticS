@@ -119,8 +119,8 @@ internal IDs, query strings or unrestricted execution content.
 
 ## Checklist and dependencies (small reviewable tasks)
 
-- [ ] T0: Local baseline checkpoint and plan commit. Parent owns PLAN.md and review.
-- [ ] T1: Shared action/result contracts and config interface. Depends T0. Parent.
+- [x] T0: Local baseline checkpoint and plan commit. Parent owns PLAN.md and review.
+- [x] T1: Shared action/result contracts and config interface. Depends T0. Parent.
 - [ ] T2: Native tool calling, JSON fallback, transient retries, usage/cost budget
   accounting. Depends T1. Small-model subagent owns provider + provider tests only.
 - [ ] T3: Observation builder, safety tools, success rules/judge interface and
@@ -179,3 +179,12 @@ change, and record authoritative evidence here before checking its box.
   are historical, not proof of current availability; verify again only after tests.
 - Existing broad dirty worktree is preserved before scoped commits. No destructive
   reset, data wipe, auth/billing additions or proprietary runtime model substitution.
+
+### T0/T1 evidence
+
+- Local checkpoint `d094452` preserved prior implementation; secret-shaped file
+  scan and `.env` exclusion passed. Planning commit `793dedd`.
+- Shared contracts are in `engines/agent/contracts.py`; added contact task and
+  canonical tools while preserving legacy stored actions. Config now defines
+  repeat/free/token/pacing/judge/score/IP limits. These are configuration only;
+  downstream services must enforce them.
