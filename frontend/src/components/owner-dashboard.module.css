@@ -577,18 +577,6 @@
   font-size: 15px;
   color: var(--foreground);
 }
-.command {
-  max-width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 8px 12px;
-  background: var(--card);
-  color: var(--foreground);
-  font-family: var(--font-geist-mono), monospace;
-  font-size: 12px;
-  overflow-wrap: anywhere;
-  box-shadow: var(--shadow-card);
-}
 .emptyInline {
   display: grid;
   gap: 10px;
@@ -700,5 +688,175 @@
   .cardBody,
   .side {
     padding: 18px;
+  }
+}
+
+/* Jobs: one-line status for the latest run of each kind. */
+.jobLine {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  max-width: 40rem;
+  font-size: 12.5px !important;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.jobLine svg {
+  flex: none;
+  margin-top: 3px;
+}
+.jobLine[data-tone="danger"] {
+  color: var(--danger) !important;
+}
+.jobLine[data-tone="success"] {
+  color: var(--success) !important;
+}
+.jobTime {
+  color: var(--muted-foreground);
+}
+.hint {
+  display: block;
+  margin-top: 6px;
+  font-size: 12.5px !important;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--muted-foreground);
+}
+.labelMore {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  margin-bottom: 18px;
+}
+
+/* Agent lane panel */
+.lanePanel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+}
+.laneIntro {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 24px;
+}
+.laneIntro h2 {
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+.laneIntro > p {
+  max-width: 30rem;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
+.laneIcon {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  background: var(--lime);
+  color: #111111;
+}
+.laneActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.versions {
+  border-left: 1px solid var(--border);
+  padding: 20px 24px;
+}
+.versions ul {
+  display: grid;
+  margin-top: 8px;
+}
+.versions li {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 0;
+}
+.versions li + li {
+  border-top: 1px solid var(--border);
+}
+.versionNo {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.versionMeta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.versionStatus {
+  border-radius: 999px;
+  padding: 2px 9px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+.versionStatus[data-status="PUBLISHED"] {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.versionStatus[data-status="DRAFT"] {
+  background: var(--accent-soft);
+  color: var(--signal);
+}
+.versionStatus[data-status="REJECTED"] {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.versionParity {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--muted-foreground);
+}
+.versionsEmpty {
+  margin-top: 10px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--muted-foreground);
+}
+
+/* Add a site */
+.addGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.addGrid label {
+  font-size: 14px;
+  font-weight: 600;
+}
+.addGrid input {
+  font-weight: 400;
+}
+
+@media (max-width: 860px) {
+  .lanePanel,
+  .addGrid {
+    grid-template-columns: 1fr;
+  }
+  .versions {
+    border-top: 1px solid var(--border);
+    border-left: 0;
   }
 }

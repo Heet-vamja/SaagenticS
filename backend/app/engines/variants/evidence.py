@@ -68,8 +68,11 @@ async def _dev_page(
     """Local development only: one origin, bounded request count; GET only unless a
     QA run needs the site's own same-origin forms."""
     async with async_playwright() as playwright:
+        rules = settings.dev_browser_host_rules
         browser = await playwright.chromium.launch(
-            headless=True, executable_path=settings.agent_browser_executable
+            headless=True,
+            executable_path=settings.agent_browser_executable,
+            args=[f"--host-resolver-rules={rules}"] if rules else [],
         )
         context = await browser.new_context(
             accept_downloads=False,
@@ -165,7 +168,8 @@ async def collect_evidence(origin_url: str, settings: Settings) -> Evidence:
         async with asyncio.timeout(settings.variant_crawl_duration):
             async with open_page(origin, settings, request_limit) as (page, navigate):
                 responses = []
-                page.on("response", responses.append)
+                # Playwright needs a real function; it cannot wrap a builtin method.
+                page.on("response", lambda response: responses.append(response))
                 while queue and len(evidence.pages) < settings.variant_max_pages:
                     path = queue.pop(0)
                     responses.clear()

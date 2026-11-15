@@ -10,7 +10,11 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.db.session import get_session
 from app.repositories.edge import EdgeRecords
+from app.schemas.dashboard import JobCreate, SiteCreate
+from app.services.edge_sites import register_site
 from app.services.insights import build_sessions, overview
+from app.services.site_jobs import JobConflict, enqueue, job_view, recent_jobs
+from app.services.variants import publish_variant
 
 
 def require_dashboard(request: Request) -> None:
@@ -41,6 +45,15 @@ def sites(session: Db):
     }
 
 
+@router.post("/sites", status_code=201)
+def create_site(body: SiteCreate, session: Db):
+    try:
+        site = register_site(session, get_settings(), body.host, body.origin, body.name)
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return {"host": site.host, "name": site.name, "routing_enabled": site.routing_enabled}
+
+
 @router.get("/sites/{host}/overview")
 def site_overview(host: str, session: Db, days: Annotated[int, Query(ge=1, le=90)] = 7):
     try:
@@ -54,5 +67,55 @@ def refresh_sessions(host: str, session: Db):
     """Group new agent requests into sessions (deterministic; no model call)."""
     try:
         return build_sessions(host, _scoped(session))
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/sites/{host}/variants")
+def variants(host: str, session: Db):
+    records = EdgeRecords(session)
+    site = records.site_by_host(host.strip().lower())
+    if site is None:
+        raise HTTPException(404, f"{host} is not registered")
+    return {
+        "variants": [
+            {
+                "version": v.version,
+                "status": v.status,
+                "parity_passed": bool(v.parity.get("passed")),
+                "products": len(v.catalog.get("products", [])),
+                "pages": v.evidence_summary.get("pages", 0),
+                "created_at": v.created_at.isoformat(),
+                "published_at": v.published_at.isoformat() if v.published_at else None,
+            }
+            for v in records.variants(site.id, limit=10)
+        ]
+    }
+
+
+@router.post("/sites/{host}/variants/{version}/publish")
+def publish(host: str, version: int, session: Db):
+    try:
+        publish_variant(host, version, _scoped(session))
+    except ValueError as exc:
+        raise HTTPException(409, str(exc)) from exc
+    return {"published": version}
+
+
+@router.get("/sites/{host}/jobs")
+def jobs(host: str, session: Db):
+    try:
+        return {"jobs": [job_view(job) for job in recent_jobs(session, host)]}
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.post("/sites/{host}/jobs", status_code=202)
+def start_job(host: str, body: JobCreate, session: Db):
+    """Queue a job for the jobs worker. Nothing runs in this request."""
+    try:
+        return job_view(enqueue(session, host, body.kind))
+    except JobConflict as exc:
+        raise HTTPException(409, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc

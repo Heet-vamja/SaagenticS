@@ -139,6 +139,10 @@ docker compose exec edge .venv/bin/python -m app.cli.qa run \
   --host store.localhost --base-url http://store.localhost:8080
 ```
 
+From the dashboard you can also add a site and start variant builds, session labeling
+and QA. The buttons queue jobs that the `jobs` service runs (`docker compose up -d jobs`);
+restart it after backend code changes. Open work is tracked in `docs/TODO.md`.
+
 Session labels are model-judged; QA outcomes are rule-verified and shown separately. Only user-initiated agent fetchers are routable; search and training crawlers are always
 passed through (no cloaking) and logged as crawlers. Agent requests land in the
 `agent_requests` table with the agent, path (no query string), status, timing and a hashed

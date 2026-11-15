@@ -6,7 +6,7 @@ from urllib.parse import urlsplit
 from sqlalchemy.orm import Session
 
 from app.core.config import Settings
-from app.core.urls import validate_website_url
+from app.engines.crawling.urls import URLValidator
 from app.models.domain import EdgeSite
 from app.repositories.edge import EdgeRecords
 
@@ -39,7 +39,9 @@ def validate_origin(value: str, settings: Settings) -> str:
         raise ValueError("Origins cannot contain a path")
     origin = f"{parts.scheme}://{parts.netloc.lower()}"
     if not settings.edge_allow_private_origins:
-        validate_website_url(origin)
+        # Public host names on standard ports only. The router also connects through the
+        # DNS-validated transport, so a name that later resolves privately is refused.
+        URLValidator.normalize(origin + "/")
     return origin
 
 

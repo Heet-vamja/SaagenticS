@@ -116,6 +116,14 @@ class Settings(BaseSettings):
     qa_model: str = "gemini-3.8-flash"
     qa_max_steps: int = Field(20, ge=1, le=60)
     qa_task_timeout: float = Field(150, gt=0, le=900)
+    # Public router URL QA uses for a host. Local Docker: http://{host}:8080.
+    qa_base_url_template: str = Field("https://{host}", pattern=r"^https?://\{host\}(:\d{1,5})?$")
+    # Local development only: Chromium host-resolver rules for the contained dev browser,
+    # e.g. "MAP *.localhost edge" so the jobs worker reaches the router by its public name.
+    dev_browser_host_rules: str = Field("", max_length=200)
+    # Jobs worker (phase 5): dashboard-started builds, labeling and QA.
+    jobs_poll_interval: float = Field(3, gt=0, le=60)
+    job_max_duration: float = Field(3600, ge=60, le=14400)
 
 
 @lru_cache

@@ -1,6 +1,6 @@
 # AgentLane MVP: agent variants, edge routing and verified task success
 
-Status: phase 1 done; phases 2–4 implemented, awaiting a Gemini key for the first live runs and tests. Reviewed 2026-11-15.
+Status: phases 1 and 5 verified live; phases 2–4 implemented, awaiting a Gemini key for the first live model runs. Phase 6 planned. Open items: `docs/TODO.md`. Reviewed 2026-11-15.
 
 ## What the MVP proves
 
@@ -99,6 +99,17 @@ gets its own adapter in phase 4. Tests never call a live model.
    rates. Success rates and token usage are stored per run and compared on the
    dashboard. Cart and checkout tasks are left out: the variant offers no cart.
 
+8. **Onboarding and jobs** (phase 5, `services/site_jobs.py`, `cli/jobs.py`). The
+   owner adds a site (public host + origin) and starts variant builds, session
+   labeling and QA from the dashboard. The API only queues a `site_jobs` row; the
+   `jobs` worker (same image, `python -m app.cli.jobs worker`) claims jobs with
+   `FOR UPDATE SKIP LOCKED` and records the real outcome. One active job per site and
+   kind (partial unique index); jobs past `JOB_MAX_DURATION` are failed. Failures show
+   our own error message, or only the exception type for unexpected errors. A rejected
+   variant build is a finished job whose result says it was rejected. Locally, QA opens
+   `http://<host>:8080` and the contained browser maps `*.localhost` to the edge
+   container (`DEV_BROWSER_HOST_RULES`); production uses `https://<host>`.
+
 ## Routing rules
 
 - Routed agents are user-initiated fetchers only: ChatGPT-User, Claude-User,
@@ -114,9 +125,11 @@ gets its own adapter in phase 4. Tests never call a live model.
   answer every caller and are logged as agent traffic with the action name.
 - The router fails open: if the variant or logging is unavailable, the request is
   passed to the origin unchanged.
-- Each site proxies only to its own configured origin. The origin is validated
-  with the existing URL checks when the site is configured; the router never
-  fetches client-supplied URLs.
+- Each site proxies only to its own configured origin; the router never fetches
+  client-supplied URLs. Unless `EDGE_ALLOW_PRIVATE_ORIGINS` is on (local Docker only),
+  origins must be public host names on ports 80/443 when registered, and the router
+  connects through the crawler's DNS-validated transport, so a name that later
+  resolves to a private address is refused (502).
 - Hop-by-hop headers are stripped; `X-Forwarded-For/Proto/Host` are set. Query
   strings and client IPs are not stored raw: paths are stored without query
   strings and IPs as keyed hashes.
@@ -130,6 +143,7 @@ gets its own adapter in phase 4. Tests never call a live model.
 | `site_variants`, `variant_pages` | 2 | site_id, version, status (DRAFT/PUBLISHED/REJECTED/SUPERSEDED), catalog JSON, parity report, evidence summary, llms.txt, model, usage; path, markdown, html |
 | `edge_sites.delivery_rules` | 2 | owner-approved delivery estimates for `check_delivery` |
 | `agent_sessions` (+ `agent_requests.session_id`) | 3 | site_id, agent, client hash, started/ended, request/error/variant counts, task, outcome, failed_step, explanation, suggested_fix, label_source |
+| `site_jobs` | 5 | site_id, kind (build_variant/label_sessions/run_qa), status (PENDING/RUNNING/SUCCEEDED/FAILED), result, detail, created/started/finished |
 | `qa_runs` | 4 | site_id, batch, task, target (original/variant), outcome, verification, answer, steps, input/output tokens, duration, model |
 
 All tables come with reviewed Alembic migrations independent of ORM metadata.
@@ -148,6 +162,15 @@ All tables come with reviewed Alembic migrations independent of ORM metadata.
    dashboard views render from real logged traffic.
 4. **Agent QA.** Ten fixed tasks run on original and variant with rule
    verification; the comparison view shows success rates and token usage.
+
+5. **Onboarding and jobs.** A site can be added from the dashboard; build, label and
+   QA buttons queue jobs that the worker runs and records; the dashboard polls and
+   shows queued, running, failed (with reason) and finished states. Covered by
+   integration tests with stubbed execution; verified live up to the model call.
+6. **Google adapters and agents (planned).** Google's user-initiated agents in the
+   registry after checking their published user-agent tokens; a BigQuery
+   `RequestLogSink` behind the existing interface (PostgreSQL stays the default);
+   Cloud Run service definitions for app, edge, jobs and demo store.
 
 ## Out of scope (roadmap)
 

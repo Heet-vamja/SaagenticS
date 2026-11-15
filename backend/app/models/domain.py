@@ -18,6 +18,7 @@ from sqlalchemy import (
     UniqueConstraint,
     Uuid,
     func,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -578,3 +579,39 @@ class QARun(Base):
     duration_ms: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     model: Mapped[str] = mapped_column(String(200))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class SiteJob(Base):
+    """A dashboard-started job (variant build, session labeling or QA) for one site (phase 5).
+
+    The API only queues; the jobs worker claims and runs. At most one job of each kind
+    can be active per site.
+    """
+
+    __tablename__ = "site_jobs"
+    __table_args__ = (
+        CheckConstraint(
+            "kind IN ('build_variant','label_sessions','run_qa')", name="site_job_kind_valid"
+        ),
+        CheckConstraint(
+            "status IN ('PENDING','RUNNING','SUCCEEDED','FAILED')", name="site_job_status_valid"
+        ),
+        Index("ix_site_jobs_site_created", "site_id", "created_at"),
+        Index("ix_site_jobs_status_created", "status", "created_at"),
+        Index(
+            "uq_site_jobs_active",
+            "site_id",
+            "kind",
+            unique=True,
+            postgresql_where=text("status IN ('PENDING','RUNNING')"),
+        ),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    site_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("edge_sites.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(20))
+    status: Mapped[str] = mapped_column(String(10), default="PENDING", server_default="PENDING")
+    result: Mapped[dict | None] = mapped_column(JSON)
+    detail: Mapped[str | None] = mapped_column(String(300))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))

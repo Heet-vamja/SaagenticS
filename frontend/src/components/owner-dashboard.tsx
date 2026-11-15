@@ -1,5 +1,11 @@
 "use client";
-import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import {
   Bot,
   Check,
@@ -9,6 +15,7 @@ import {
   LoaderCircle,
   LogOut,
   Minus,
+  Plus,
   RefreshCw,
   Search,
   Sparkles,
@@ -18,10 +25,20 @@ import { api, ApiError } from "@/lib/api";
 import type {
   DashboardOverview,
   DashboardSite,
+  DashboardVariant,
   QATargetSummary,
+  SiteJob,
+  SiteJobKind,
 } from "@/lib/types";
 import { Button } from "./ui/button";
 import { InlineError } from "./states";
+import {
+  AddSiteForm,
+  isActive,
+  JobButton,
+  JobStatus,
+  LanePanel,
+} from "./owner-dashboard-lane";
 import styles from "./owner-dashboard.module.css";
 
 const TOKEN_KEY = "al-dashboard-token";
@@ -144,10 +161,6 @@ function OutcomeMark({ value }: { value: Outcome }) {
   );
 }
 
-function Command({ children }: { children: string }) {
-  return <code className={styles.command}>{children}</code>;
-}
-
 function QASide({
   lane,
   label,
@@ -250,6 +263,11 @@ export function OwnerDashboard() {
   const [data, setData] = useState<DashboardOverview | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [sitesLoaded, setSitesLoaded] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [jobs, setJobs] = useState<SiteJob[]>([]);
+  const [variants, setVariants] = useState<DashboardVariant[]>([]);
+  const wasActive = useRef(false);
 
   const fail = useCallback((e: unknown) => {
     if (e instanceof ApiError && e.status === 401) {
@@ -267,6 +285,7 @@ export function OwnerDashboard() {
       .dashboardSites(token)
       .then(({ sites }) => {
         setSites(sites);
+        setSitesLoaded(true);
         setHost((current) => current || sites[0]?.host || "");
       })
       .catch(fail);
@@ -289,6 +308,48 @@ export function OwnerDashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  const loadLane = useCallback(
+    () =>
+      token && host
+        ? Promise.all([
+            api.siteJobs(token, host),
+            api.siteVariants(token, host),
+          ])
+            .then(([jobList, variantList]) => {
+              const active = jobList.jobs.some(isActive);
+              // A job just finished: its results (variant, labels, QA) change the overview.
+              if (wasActive.current && !active) void load();
+              wasActive.current = active;
+              setJobs(jobList.jobs);
+              setVariants(variantList.variants);
+            })
+            .catch(fail)
+        : Promise.resolve(),
+    [token, host, load, fail],
+  );
+
+  useEffect(() => {
+    void loadLane();
+  }, [loadLane]);
+
+  const anyActive = jobs.some(isActive);
+  useEffect(() => {
+    if (!anyActive) return;
+    const timer = setInterval(() => void loadLane(), 4000);
+    return () => clearInterval(timer);
+  }, [anyActive, loadLane]);
+
+  const latest = (kind: SiteJobKind) => jobs.find((job) => job.kind === kind);
+  const start = (kind: SiteJobKind) =>
+    api
+      .startJob(token, host, kind)
+      .then((job) => {
+        wasActive.current = true;
+        setJobs((current) => [job, ...current]);
+        setError("");
+      })
+      .catch(fail);
 
   if (!token) {
     return (
@@ -364,11 +425,16 @@ export function OwnerDashboard() {
       <header className={styles.header}>
         <div className={styles.identity}>
           <span className={styles.avatar} aria-hidden="true">
-            {siteName.charAt(0).toUpperCase()}
+            {host ? siteName.charAt(0).toUpperCase() : <Plus size={24} />}
           </span>
           <div className="min-w-0">
             <p className="eyebrow">Agent lane dashboard</p>
-            <h1 className="mt-1">{data?.site.name ?? "Loading…"}</h1>
+            <h1 className="mt-1">
+              {data?.site.name ??
+                (sitesLoaded && !sites.length
+                  ? "Add your first site"
+                  : "Loading…")}
+            </h1>
             <p className={styles.meta}>
               <span className={styles.host}>{host}</span>
               {data &&
@@ -400,50 +466,62 @@ export function OwnerDashboard() {
               ))}
             </select>
           )}
-          <div
-            className={styles.segmented}
-            role="group"
-            aria-label="Time window"
-          >
-            {WINDOWS.map((value) => (
-              <button
-                key={value}
-                type="button"
-                aria-pressed={days === value}
-                aria-label={`Last ${value} days`}
-                onClick={() => setDays(value)}
+          {host && (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setAdding((value) => !value)}
+                aria-expanded={adding}
               >
-                {value}d
-              </button>
-            ))}
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={busy || !host}
-            onClick={async () => {
-              setBusy(true);
-              try {
-                await api.refreshSessions(token, host);
-                await load();
-              } catch (e) {
-                fail(e);
-              } finally {
-                setBusy(false);
-              }
-            }}
-          >
-            {busy ? (
-              <LoaderCircle
-                size={14}
-                className="animate-spin"
-                aria-hidden="true"
-              />
-            ) : (
-              <RefreshCw size={14} aria-hidden="true" />
-            )}
-            Refresh sessions
-          </Button>
+                <Plus size={14} aria-hidden="true" /> Add site
+              </Button>
+              <div
+                className={styles.segmented}
+                role="group"
+                aria-label="Time window"
+              >
+                {WINDOWS.map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-pressed={days === value}
+                    aria-label={`Last ${value} days`}
+                    onClick={() => setDays(value)}
+                  >
+                    {value}d
+                  </button>
+                ))}
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={busy || !host}
+                onClick={async () => {
+                  setBusy(true);
+                  try {
+                    await api.refreshSessions(token, host);
+                    await load();
+                  } catch (e) {
+                    fail(e);
+                  } finally {
+                    setBusy(false);
+                  }
+                }}
+              >
+                {busy ? (
+                  <LoaderCircle
+                    size={14}
+                    className="animate-spin"
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <RefreshCw size={14} aria-hidden="true" />
+                )}
+                Refresh sessions
+              </Button>
+            </>
+          )}
           <Button
             variant="ghost"
             size="sm"
@@ -465,12 +543,18 @@ export function OwnerDashboard() {
           <InlineError>{error}</InlineError>
         </div>
       )}
-      {!host && sites.length === 0 && !error && (
-        <div className={styles.emptyInline}>
-          <p>No sites are registered with the edge router yet.</p>
-          <Command>
-            python -m app.cli.edge_sites add --host … --origin … --name …
-          </Command>
+      {(adding || (sitesLoaded && sites.length === 0)) && (
+        <div className="mb-5">
+          <AddSiteForm
+            token={token}
+            onCancel={sites.length ? () => setAdding(false) : undefined}
+            onCreated={(site) => {
+              setSites((current) => [...current, site]);
+              setHost(site.host);
+              setData(null);
+              setAdding(false);
+            }}
+          />
         </div>
       )}
 
@@ -528,6 +612,18 @@ export function OwnerDashboard() {
               </div>
             </dl>
           </div>
+
+          <LanePanel
+            variants={variants}
+            job={latest("build_variant")}
+            onBuild={() => void start("build_variant")}
+            onPublish={(version) =>
+              void api
+                .publishVariant(token, host, version)
+                .then(() => Promise.all([load(), loadLane()]))
+                .catch(fail)
+            }
+          />
 
           <div className={styles.grid}>
             <div className={styles.shell}>
@@ -614,6 +710,17 @@ export function OwnerDashboard() {
                 </div>
                 {data.tasks.length && labeled ? (
                   <>
+                    {data.totals.unlabeled_sessions > 0 && (
+                      <div className={styles.labelMore}>
+                        <JobButton
+                          variant="outline"
+                          job={latest("label_sessions")}
+                          label={`Label ${data.totals.unlabeled_sessions} new`}
+                          onStart={() => void start("label_sessions")}
+                        />
+                        <JobStatus job={latest("label_sessions")} />
+                      </div>
+                    )}
                     <div className={styles.success}>
                       <Ring
                         value={
@@ -703,7 +810,19 @@ export function OwnerDashboard() {
                           was trying to do. These are model judgments, not
                           verified results.
                         </p>
-                        <Command>{`python -m app.cli.insights label --host ${host}`}</Command>
+                        <JobButton
+                          job={latest("label_sessions")}
+                          label="Label sessions with Gemini"
+                          onStart={() => void start("label_sessions")}
+                          disabled={!data.totals.sessions}
+                        />
+                        {!data.totals.sessions && (
+                          <p className={styles.hint}>
+                            Sessions appear once AI agents visit through the
+                            router.
+                          </p>
+                        )}
+                        <JobStatus job={latest("label_sessions")} />
                       </div>
                     </div>
                   </div>
@@ -734,6 +853,15 @@ export function OwnerDashboard() {
                   <Check size={12} aria-hidden="true" />
                   Rule-verified agent QA
                 </span>
+                {qa && (
+                  <JobButton
+                    variant="outline"
+                    job={latest("run_qa")}
+                    label="Run again"
+                    onStart={() => void start("run_qa")}
+                    disabled={!data.variant}
+                  />
+                )}
               </div>
             </div>
             {qa ? (
@@ -777,6 +905,9 @@ export function OwnerDashboard() {
                     `Tokens: ${qa.variant.tokens.toLocaleString()} on the lane vs ${qa.original.tokens.toLocaleString()} on the original. `}
                   Batch run {new Date(qa.created_at).toLocaleString()}.
                 </p>
+                <div className="px-3.5 pb-2">
+                  <JobStatus job={latest("run_qa")} />
+                </div>
               </>
             ) : (
               <div className={styles.preview}>
@@ -793,7 +924,19 @@ export function OwnerDashboard() {
                       QA runs the same ten tasks with Gemini Computer Use on
                       both versions and checks every answer by rules.
                     </p>
-                    <Command>{`python -m app.cli.qa run --host ${host} --base-url http://${host}:8080`}</Command>
+                    <JobButton
+                      job={latest("run_qa")}
+                      label="Run agent QA"
+                      onStart={() => void start("run_qa")}
+                      disabled={!data.variant}
+                    />
+                    {!data.variant && (
+                      <p className={styles.hint}>
+                        Publish an agent lane first; QA compares it with your
+                        original site.
+                      </p>
+                    )}
+                    <JobStatus job={latest("run_qa")} />
                   </div>
                 </div>
               </div>

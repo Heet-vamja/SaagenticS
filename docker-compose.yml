@@ -179,5 +179,30 @@ services:
       interval: 5s
       timeout: 5s
       retries: 20
+  jobs:
+    # Runs dashboard-started jobs (variant builds, session labeling, agent QA). Same
+    # image and model settings as the edge; reaches the router by its public host names.
+    image: saagentics-backend
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-agentreadiness}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-agentreadiness}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+      EDGE_ALLOW_PRIVATE_ORIGINS: ${EDGE_ALLOW_PRIVATE_ORIGINS:-true}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AGENT_LLM_PROVIDER: ${EDGE_LLM_PROVIDER:-gemini}
+      AGENT_MODEL: ${EDGE_MODEL:-gemini-3.8-flash}
+      AGENT_LLM_BASE_URL: ${EDGE_LLM_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      VARIANT_MAX_PAGES: ${VARIANT_MAX_PAGES:-50}
+      QA_MODEL: ${QA_MODEL:-gemini-3.8-flash}
+      # Local development only: QA opens http://<host>:8080, and the contained browser
+      # maps *.localhost to the edge container instead of its own loopback.
+      QA_BASE_URL_TEMPLATE: ${QA_BASE_URL_TEMPLATE:-http://{host}:8080}
+      DEV_BROWSER_HOST_RULES: ${DEV_BROWSER_HOST_RULES:-MAP *.localhost edge}
+    depends_on:
+      edge:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+    command: [".venv/bin/python", "-m", "app.cli.jobs", "worker"]
 volumes:
   postgres_data:

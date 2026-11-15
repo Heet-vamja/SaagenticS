@@ -214,3 +214,29 @@ def test_site_registration_normalizes_hosts_and_rejects_duplicates(session, monk
         register_site(
             session, get_settings(), "SHOP.example.com", "https://origin.example.com", "S"
         )
+
+
+def test_router_refuses_origins_that_resolve_privately(session, monkeypatch):
+    """With private origins off, the router connects through the DNS-validated transport."""
+    from app.models.domain import EdgeSite
+
+    built = []
+
+    def safe_transport(concurrency):
+        def refuse(request):
+            raise ValueError("DNS returned a non-public destination")
+
+        built.append(concurrency)
+        return httpx.MockTransport(refuse)
+
+    monkeypatch.setattr("app.edge.main.SafeTransport", safe_transport)
+    settings = get_settings().model_copy(update={"edge_allow_private_origins": False})
+    # Stored directly: registration would refuse it, but DNS can change after registration.
+    session.add(EdgeSite(host="shop.example.com", origin_url="http://localhost", name="S"))
+    session.flush()
+    app = create_app(session_factory=lambda: nullcontext(session), settings=settings)
+    with TestClient(app) as client:
+        response = client.get("/", headers={"host": "shop.example.com", "user-agent": CHROME})
+    assert built, "the validated transport must be used when private origins are off"
+    assert response.status_code == 502
+    assert "localhost" not in response.text

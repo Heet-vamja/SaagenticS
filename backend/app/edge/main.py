@@ -28,6 +28,7 @@ from app.core.config import Settings, get_settings
 from app.db.session import SessionLocal
 from app.edge.agents import Visitor, classify
 from app.edge.variants import VariantSnapshot, agent_surface, load_variant, variant_page
+from app.engines.crawling.transport import SafeTransport
 from app.repositories.edge import EdgeRecords
 from app.services.agent_policy import client_identity
 from app.services.edge_sites import normalize_host
@@ -92,6 +93,9 @@ def create_app(
     sink = sink or PostgresRequestLogSink(session_factory)
     cache: dict[str, tuple[float, SiteSnapshot | None]] = {}
     variants: dict[UUID, tuple[float, VariantSnapshot | None]] = {}
+    if transport is None and not settings.edge_allow_private_origins:
+        # Public origins only: DNS answers are checked at connect time (ports 80/443).
+        transport = SafeTransport(concurrency=100)
     client = httpx.AsyncClient(
         transport=transport,
         timeout=settings.edge_upstream_timeout,
@@ -223,7 +227,7 @@ def create_app(
                 client.build_request(request.method, target, headers=headers, content=body),
                 stream=True,
             )
-        except httpx.HTTPError:
+        except (httpx.HTTPError, ValueError):  # ValueError: refused non-public destination.
             await log(502, "router", 0)
             return error(502, "upstream_unavailable", "The website could not be reached")
 

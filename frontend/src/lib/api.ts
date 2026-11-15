@@ -18,6 +18,9 @@ import type {
   RobotsPreset,
   DashboardOverview,
   DashboardSite,
+  DashboardVariant,
+  SiteJob,
+  SiteJobKind,
 } from "./types";
 
 export class ApiError extends Error {
@@ -109,6 +112,36 @@ export const api = {
       `/dashboard/sites/${encodeURIComponent(host)}/overview?days=${days}`,
       { headers: bearer(token) },
     ),
+  createSite: (
+    token: string,
+    body: { host: string; origin: string; name: string },
+  ) =>
+    request<DashboardSite>("/dashboard/sites", {
+      method: "POST",
+      headers: bearer(token),
+      body: JSON.stringify(body),
+    }),
+  siteVariants: (token: string, host: string) =>
+    request<{ variants: DashboardVariant[] }>(
+      `/dashboard/sites/${encodeURIComponent(host)}/variants`,
+      { headers: bearer(token) },
+    ),
+  publishVariant: (token: string, host: string, version: number) =>
+    request<{ published: number }>(
+      `/dashboard/sites/${encodeURIComponent(host)}/variants/${version}/publish`,
+      { method: "POST", headers: bearer(token) },
+    ),
+  siteJobs: (token: string, host: string) =>
+    request<{ jobs: SiteJob[] }>(
+      `/dashboard/sites/${encodeURIComponent(host)}/jobs`,
+      { headers: bearer(token) },
+    ),
+  startJob: (token: string, host: string, kind: SiteJobKind) =>
+    request<SiteJob>(`/dashboard/sites/${encodeURIComponent(host)}/jobs`, {
+      method: "POST",
+      headers: bearer(token),
+      body: JSON.stringify({ kind }),
+    }),
   refreshSessions: (token: string, host: string) =>
     request<{ requests: number; created: number; extended: number }>(
       `/dashboard/sites/${encodeURIComponent(host)}/sessions`,

@@ -489,6 +489,29 @@ export type DashboardOverview = {
   qa: QASummary | null;
 };
 
+export type DashboardVariant = {
+  version: number;
+  status: "DRAFT" | "PUBLISHED" | "REJECTED" | "SUPERSEDED";
+  parity_passed: boolean;
+  products: number;
+  pages: number;
+  created_at: string;
+  published_at: string | null;
+};
+
+export type SiteJobKind = "build_variant" | "label_sessions" | "run_qa";
+
+export type SiteJob = {
+  id: string;
+  kind: SiteJobKind;
+  status: "PENDING" | "RUNNING" | "SUCCEEDED" | "FAILED";
+  result: Record<string, unknown> | null;
+  detail: string | null;
+  created_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+};
+
 export type QATargetSummary = {
   runs: number;
   passed: number;
