@@ -478,6 +478,9 @@ class AgentRequest(Base):
     response_bytes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     client_hash: Mapped[str] = mapped_column(String(64))
     user_agent: Mapped[str] = mapped_column(String(300))
+    session_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("agent_sessions.id", ondelete="SET NULL"), index=True
+    )
 
 
 class SiteVariant(Base):
@@ -516,3 +519,62 @@ class VariantPage(Base):
     path: Mapped[str] = mapped_column(String(300))
     markdown: Mapped[str] = mapped_column(Text)
     html: Mapped[str] = mapped_column(Text)
+
+
+class AgentSession(Base):
+    """Agent requests grouped by site, agent and client with an idle gap (phase 3).
+
+    Labels are model-judged from request logs (`label_source`), never rule-verified
+    task success; verified success comes only from QA runs.
+    """
+
+    __tablename__ = "agent_sessions"
+    __table_args__ = (
+        CheckConstraint(
+            "outcome IN ('SUCCEEDED','FAILED','UNKNOWN')", name="agent_session_outcome_valid"
+        ),
+        Index("ix_agent_sessions_site_started", "site_id", "started_at"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    site_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("edge_sites.id", ondelete="CASCADE"))
+    agent: Mapped[str] = mapped_column(String(80))
+    client_hash: Mapped[str] = mapped_column(String(64))
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    ended_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    request_count: Mapped[int] = mapped_column(Integer)
+    error_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    variant_count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    task: Mapped[str | None] = mapped_column(String(160))
+    outcome: Mapped[str] = mapped_column(String(10), default="UNKNOWN", server_default="UNKNOWN")
+    failed_step: Mapped[str | None] = mapped_column(String(300))
+    explanation: Mapped[str | None] = mapped_column(Text)
+    suggested_fix: Mapped[str | None] = mapped_column(Text)
+    label_source: Mapped[str] = mapped_column(String(10), default="none", server_default="none")
+    labeled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class QARun(Base):
+    """One agent QA attempt of a task on the original site or the variant (phase 4)."""
+
+    __tablename__ = "qa_runs"
+    __table_args__ = (
+        CheckConstraint("target IN ('original','variant')", name="qa_run_target_valid"),
+        CheckConstraint("outcome IN ('PASSED','FAILED','ERROR')", name="qa_run_outcome_valid"),
+        Index("ix_qa_runs_site_batch", "site_id", "batch_id"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    site_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("edge_sites.id", ondelete="CASCADE"))
+    batch_id: Mapped[uuid.UUID] = mapped_column(Uuid)
+    task_key: Mapped[str] = mapped_column(String(60))
+    task_prompt: Mapped[str] = mapped_column(Text)
+    target: Mapped[str] = mapped_column(String(10))
+    outcome: Mapped[str] = mapped_column(String(10))
+    verification: Mapped[str] = mapped_column(String(10), default="rules", server_default="rules")
+    answer: Mapped[str | None] = mapped_column(Text)
+    detail: Mapped[str | None] = mapped_column(String(300))
+    steps: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    input_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    output_tokens: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    model: Mapped[str] = mapped_column(String(200))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

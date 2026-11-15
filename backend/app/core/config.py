@@ -101,6 +101,8 @@ class Settings(BaseSettings):
     # Edge router. Private origins are only for local Docker development (the demo store).
     edge_allow_private_origins: bool = False
     edge_upstream_timeout: float = Field(30, gt=0, le=120)
+    # Owner dashboard API (phase 3). Disabled unless a token is configured.
+    edge_dashboard_token: SecretStr = SecretStr("")
     # Agent variant generation (crawl, Gemini extraction, render). Separate budgets from
     # per-step agent inference because one extraction reads many pages at once.
     variant_max_pages: int = Field(50, ge=1, le=200)
@@ -110,6 +112,10 @@ class Settings(BaseSettings):
     variant_token_budget: int = Field(400000, ge=10000, le=2000000)
     variant_max_output_tokens: int = Field(16000, ge=1000, le=65536)
     variant_llm_timeout: float = Field(180, gt=0, le=600)
+    # Agent QA with Gemini Computer Use (phase 4; native Gemini API only).
+    qa_model: str = "gemini-3.8-flash"
+    qa_max_steps: int = Field(20, ge=1, le=60)
+    qa_task_timeout: float = Field(150, gt=0, le=900)
 
 
 @lru_cache

@@ -11,7 +11,10 @@ from dataclasses import dataclass
 REGISTRY_VERSION = "2026-11-14"
 
 # (canonical name, kind, token matched case-insensitively as a whole word)
+QA_AGENT = "AgentLane-QA"
 _KNOWN = (
+    # Our own QA runs (phase 4): routed like an agent, excluded from dashboard traffic.
+    (QA_AGENT, "agent", QA_AGENT),
     ("ChatGPT-User", "agent", "ChatGPT-User"),
     ("Claude-User", "agent", "Claude-User"),
     ("Perplexity-User", "agent", "Perplexity-User"),

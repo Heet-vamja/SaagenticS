@@ -13,6 +13,7 @@ from starlette.exceptions import HTTPException
 
 from app.api.agent_routes import router as agent_router
 from app.api.customer_routes import router as customer_router
+from app.api.dashboard_routes import router as dashboard_router
 from app.api.fix_routes import router as fix_router
 from app.api.report_routes import router as report_router
 from app.api.routes import router
@@ -52,6 +53,7 @@ app.include_router(agent_router)
 app.include_router(report_router)
 app.include_router(fix_router)
 app.include_router(customer_router)
+app.include_router(dashboard_router)
 
 
 def error_response(status: int, code: str, message: str, details: list | None = None):
@@ -71,6 +73,7 @@ async def customer_surface(request: Request, call_next):
                 "/api/v1/free-reports/",
                 "/api/v1/verification/",
                 "/api/v1/webhooks/stripe",
+                "/api/v1/dashboard/",  # Owner dashboard; every route requires its token.
             )
         )
         if not public:

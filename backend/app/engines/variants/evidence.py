@@ -62,8 +62,11 @@ def uses_dev_browser(origin: str, settings: Settings) -> bool:
 
 
 @asynccontextmanager
-async def _dev_page(origin: str, settings: Settings, request_limit: int):
-    """Local development only: one origin, GET only, bounded request count."""
+async def _dev_page(
+    origin: str, settings: Settings, request_limit: int, user_agent: str, get_only: bool = True
+):
+    """Local development only: one origin, bounded request count; GET only unless a
+    QA run needs the site's own same-origin forms."""
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(
             headless=True, executable_path=settings.agent_browser_executable
@@ -72,7 +75,7 @@ async def _dev_page(origin: str, settings: Settings, request_limit: int):
             accept_downloads=False,
             service_workers="block",
             viewport={"width": 1280, "height": 800},
-            user_agent=settings.crawl_user_agent,
+            user_agent=user_agent,
         )
         count = 0
 
@@ -80,7 +83,11 @@ async def _dev_page(origin: str, settings: Settings, request_limit: int):
             nonlocal count
             count += 1
             request = route.request
-            if count > request_limit or request.method != "GET" or origin_of(request.url) != origin:
+            if (
+                count > request_limit
+                or (get_only and request.method != "GET")
+                or origin_of(request.url) != origin
+            ):
                 await route.abort("blockedbyclient")
             else:
                 await route.continue_()
@@ -102,14 +109,33 @@ async def _dev_page(origin: str, settings: Settings, request_limit: int):
 
 
 @asynccontextmanager
-async def _gateway_page(origin: str, settings: Settings, request_limit: int):
-    scoped = settings.model_copy(update={"agent_request_limit": request_limit})
+async def _gateway_page(
+    origin: str, settings: Settings, request_limit: int, user_agent: str, get_only: bool = True
+):
+    # BrowserSession is always read-only (GET only, form submission blocked).
+    scoped = settings.model_copy(
+        update={"agent_request_limit": request_limit, "crawl_user_agent": user_agent}
+    )
     session = BrowserSession(origin + "/", [], scoped, "variant-" + str(uuid4()))
     await session.start()
     try:
         yield session.page, session.navigate
     finally:
         await session.close()
+
+
+def open_page(
+    origin: str,
+    settings: Settings,
+    request_limit: int,
+    user_agent: str | None = None,
+    get_only: bool = True,
+):
+    """Context manager yielding (page, navigate) on the right browser for this origin."""
+    opener = _dev_page if uses_dev_browser(origin, settings) else _gateway_page
+    return opener(
+        origin, settings, request_limit, user_agent or settings.crawl_user_agent, get_only
+    )
 
 
 def _candidate_paths(values: list[str], base: str, origin: str) -> list[str]:
@@ -134,11 +160,10 @@ async def collect_evidence(origin_url: str, settings: Settings) -> Evidence:
     origin = origin_of(origin_url)
     evidence = Evidence(origin=origin)
     request_limit = settings.variant_max_pages * 20
-    opener = _dev_page if uses_dev_browser(origin, settings) else _gateway_page
     queue, seen, json_seen = ["/"], {"/"}, set()
     try:
         async with asyncio.timeout(settings.variant_crawl_duration):
-            async with opener(origin, settings, request_limit) as (page, navigate):
+            async with open_page(origin, settings, request_limit) as (page, navigate):
                 responses = []
                 page.on("response", responses.append)
                 while queue and len(evidence.pages) < settings.variant_max_pages:

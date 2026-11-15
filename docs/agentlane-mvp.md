@@ -1,6 +1,6 @@
 # AgentLane MVP: agent variants, edge routing and verified task success
 
-Status: phase 1 done; phase 2 implemented, awaiting a Gemini key for the first live build and tests. Reviewed 2026-11-15.
+Status: phase 1 done; phases 2–4 implemented, awaiting a Gemini key for the first live runs and tests. Reviewed 2026-11-15.
 
 ## What the MVP proves
 
@@ -74,19 +74,30 @@ gets its own adapter in phase 4. Tests never call a live model.
    `as_of` time. Delivery estimates come from owner-configured rules
    (`edge_sites set-delivery`), never from the store's login-gated endpoint. No
    action performs checkout, payment or account operations.
-5. **Session labeling** (phase 3). Requests are grouped into sessions
-   deterministically (site, agent, client hash, 30-minute idle gap). Gemini labels
-   each session with the task it was attempting, success or failure and the
-   failing step, from a schema-validated response. Labels are marked as
-   model-judged, separate from rule-verified QA results.
-6. **Dashboard** (phase 3). Three views: agents visiting, success rate per task,
-   and top failures with a Gemini-written explanation and suggested fix.
-   Suggestions are never applied automatically.
-7. **Agent QA** (phase 4). The same task (for example "buy size 9 shoes under
-   ₹3,000") runs on the original and on the variant through the Computer Use
-   driver inside the existing restricted browser. Success is checked by rules
-   against the demo store's order/cart state. Results and token usage are shown
-   side by side.
+5. **Session labeling** (phase 3, `app/engines/insights/`, `services/insights.py`).
+   Agent requests are grouped into sessions deterministically (site, agent, client
+   hash, 30-minute idle gap); a returning agent extends its session, which is then
+   relabeled. Gemini labels each session with the task it was attempting, the
+   outcome and the failing step, plus an explanation and a suggested fix, from a
+   schema-validated response. Labels are stored as `label_source="gemini"` and shown
+   as model-judged, separate from rule-verified QA results. QA traffic (the
+   `AgentLane-QA` identity) is excluded from sessions and agent statistics.
+6. **Dashboard** (phase 3, `/dashboard`, `api/dashboard_routes.py`). Three views:
+   agents visiting, success rate per task (model-judged) and top failures with a
+   Gemini-written explanation and suggested fix, plus the QA comparison. Every API
+   route requires the operator token `EDGE_DASHBOARD_TOKEN` (bearer, constant-time
+   comparison; the API is off when unset). Suggestions are never applied
+   automatically.
+7. **Agent QA** (phase 4, `app/engines/qa/`, `services/qa.py`). Ten fixed, read-only
+   demo-store tasks (prices, sizes in stock, cheapest product, returns window, free
+   delivery threshold, delivery estimate) run once on the original site and once
+   on the variant through the Gemini Computer Use driver (native Interactions API).
+   Original runs use a normal browser identity, which the router passes through;
+   variant runs use `AgentLane-QA`, which the router serves the variant. The final
+   answer is checked by rules against the store's known facts. Inference failures
+   and confirmation requests (never auto-confirmed) are ERROR and excluded from the
+   rates. Success rates and token usage are stored per run and compared on the
+   dashboard. Cart and checkout tasks are left out: the variant offers no cart.
 
 ## Routing rules
 
@@ -118,8 +129,8 @@ gets its own adapter in phase 4. Tests never call a live model.
 | `agent_requests` | 1 | site_id, received_at, agent, agent_kind, method, path, action, status, duration_ms, served_by, response_bytes, client_hash |
 | `site_variants`, `variant_pages` | 2 | site_id, version, status (DRAFT/PUBLISHED/REJECTED/SUPERSEDED), catalog JSON, parity report, evidence summary, llms.txt, model, usage; path, markdown, html |
 | `edge_sites.delivery_rules` | 2 | owner-approved delivery estimates for `check_delivery` |
-| `agent_sessions` | 3 | site_id, agent, started/ended, request count, task, outcome, failed_step, label_source |
-| `qa_runs` | 4 | site_id, task, target (original/variant), outcome, verification, steps, tokens |
+| `agent_sessions` (+ `agent_requests.session_id`) | 3 | site_id, agent, client hash, started/ended, request/error/variant counts, task, outcome, failed_step, explanation, suggested_fix, label_source |
+| `qa_runs` | 4 | site_id, batch, task, target (original/variant), outcome, verification, answer, steps, input/output tokens, duration, model |
 
 All tables come with reviewed Alembic migrations independent of ORM metadata.
 

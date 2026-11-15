@@ -127,7 +127,19 @@ curl -s "http://store.localhost:8080/agent-api/search?q=running&size=9&max_price
 ```
 
 A build is published only when its parity check passes; otherwise it is kept as
-`REJECTED` with the reasons. Only user-initiated agent fetchers are routable; search and training crawlers are always
+`REJECTED` with the reasons.
+
+Phases 3 and 4 add sessions, labels, agent QA and the owner dashboard at `/dashboard`
+(set `EDGE_DASHBOARD_TOKEN` in `.env` and recreate `backend`):
+
+```sh
+docker compose exec edge .venv/bin/python -m app.cli.insights sessions --host store.localhost
+docker compose exec edge .venv/bin/python -m app.cli.insights label --host store.localhost
+docker compose exec edge .venv/bin/python -m app.cli.qa run \
+  --host store.localhost --base-url http://store.localhost:8080
+```
+
+Session labels are model-judged; QA outcomes are rule-verified and shown separately. Only user-initiated agent fetchers are routable; search and training crawlers are always
 passed through (no cloaking) and logged as crawlers. Agent requests land in the
 `agent_requests` table with the agent, path (no query string), status, timing and a hashed
 client. `EDGE_ALLOW_PRIVATE_ORIGINS=true` exists only so local sites can point at the demo

@@ -23,6 +23,7 @@ services:
       DEV_EMAIL_SHORTCUT_ENABLED: ${DEV_EMAIL_SHORTCUT_ENABLED:-false}
       DEV_ACCESS_EMAIL: ${DEV_ACCESS_EMAIL:-}
       CUSTOMER_MODE_ENABLED: ${CUSTOMER_MODE_ENABLED:-true}
+      EDGE_DASHBOARD_TOKEN: ${EDGE_DASHBOARD_TOKEN:-}
       VERIFICATION_SECRET: ${VERIFICATION_SECRET:-}
       VERIFICATION_COOKIE_SECURE: ${VERIFICATION_COOKIE_SECURE:-true}
       PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}
@@ -162,6 +163,7 @@ services:
       AGENT_MODEL: ${EDGE_MODEL:-gemini-3.8-flash}
       AGENT_LLM_BASE_URL: ${EDGE_LLM_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
       VARIANT_MAX_PAGES: ${VARIANT_MAX_PAGES:-50}
+      QA_MODEL: ${QA_MODEL:-gemini-3.8-flash}
     ports:
       - "127.0.0.1:${EDGE_PORT:-8080}:8080"
     depends_on:
