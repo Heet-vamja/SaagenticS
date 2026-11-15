@@ -24,8 +24,9 @@ when done; link the commit or doc that closed them if useful.
   worker pool or always-on service, BigQuery sink verified against a real table. The
   production frontend image (`--target prod`) is built and verified locally.
 - Firebase Auth for the dashboard (optional adapter; the operator token is used today).
-- Google's agent tokens change: `Google-NotebookLM` is accepted until August 2026 per
-  Google's fetcher docs; drop it from the registry after that.
+- `Google-NotebookLM` is Gemini Notebook's former token; Google's docs listed it as supported
+  until August 2026, which has passed. Keeping it is harmless (it only recognizes old
+  clients); remove it once it no longer appears in request logs.
 - Optional: one real Shopify store to show the variant works outside the sandbox.
 - QA suite has no cart task ("buy size 9 under ₹3,000"); the variant offers no cart. Decide
   whether an `add_to_cart` action belongs in the MVP.
