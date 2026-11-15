@@ -33,6 +33,8 @@ from app.repositories.edge import EdgeRecords
 from app.services.agent_policy import client_identity
 from app.services.edge_sites import normalize_host
 from app.services.request_log import (
+    BigQueryRequestLogSink,
+    FanoutSink,
     PostgresRequestLogSink,
     RequestEvent,
     RequestLogSink,
@@ -90,7 +92,10 @@ def create_app(
     cache_seconds: float = 15.0,
 ) -> Starlette:
     settings = settings or get_settings()
-    sink = sink or PostgresRequestLogSink(session_factory)
+    if sink is None:
+        sink = PostgresRequestLogSink(session_factory)
+        if settings.edge_bigquery_table:
+            sink = FanoutSink([sink, BigQueryRequestLogSink(settings.edge_bigquery_table)])
     cache: dict[str, tuple[float, SiteSnapshot | None]] = {}
     variants: dict[UUID, tuple[float, VariantSnapshot | None]] = {}
     if transport is None and not settings.edge_allow_private_origins:

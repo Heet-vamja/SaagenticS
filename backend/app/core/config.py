@@ -101,6 +101,12 @@ class Settings(BaseSettings):
     # Edge router. Private origins are only for local Docker development (the demo store).
     edge_allow_private_origins: bool = False
     edge_upstream_timeout: float = Field(30, gt=0, le=120)
+    # Optional BigQuery copy of the agent request log ("project.dataset.table"). PostgreSQL
+    # stays the primary sink because the dashboard reads from it. Uses the metadata server.
+    edge_bigquery_table: str = Field(
+        "",
+        pattern=r"^$|^[a-z][a-z0-9-]{4,61}[a-z0-9]\.[A-Za-z0-9_]{1,1024}\.[A-Za-z0-9_-]{1,1024}$",
+    )
     # Owner dashboard API (phase 3). Disabled unless a token is configured.
     edge_dashboard_token: SecretStr = SecretStr("")
     # Agent variant generation (crawl, Gemini extraction, render). Separate budgets from

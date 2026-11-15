@@ -20,11 +20,12 @@ when done; link the commit or doc that closed them if useful.
 
 ## MVP gaps
 
-- Google's user-initiated agents are not in the router registry (`app/edge/agents.py`).
-  Verify the exact published user-agent tokens before adding them.
-- BigQuery request-log sink behind `RequestLogSink` (PostgreSQL stays the default).
-- Cloud Run deployment (app, edge router, jobs worker, demo store) and Firebase
-  Hosting/Auth as optional adapters.
+- First real Google Cloud deploy following `docs/deploy-cloud-run.md` (draft, unverified):
+  production frontend image (Dockerfile runs `npm run dev`), jobs as a worker pool or
+  always-on service, BigQuery sink verified against a real table.
+- Firebase Auth for the dashboard (optional adapter; the operator token is used today).
+- Google's agent tokens change: `Google-NotebookLM` is accepted until August 2026 per
+  Google's fetcher docs; drop it from the registry after that.
 - Optional: one real Shopify store to show the variant works outside the sandbox.
 - QA suite has no cart task ("buy size 9 under ₹3,000"); the variant offers no cart. Decide
   whether an `add_to_cart` action belongs in the MVP.

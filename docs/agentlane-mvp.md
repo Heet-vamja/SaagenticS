@@ -1,6 +1,6 @@
 # AgentLane MVP: agent variants, edge routing and verified task success
 
-Status: phases 1 and 5 verified live; phases 2–4 implemented, awaiting a Gemini key for the first live model runs. Phase 6 planned. Open items: `docs/TODO.md`. Reviewed 2026-11-15.
+Status: phases 1 and 5 verified live; phases 2–4 implemented, awaiting a Gemini key for the first live model runs; phase 6 adapters implemented and tested, Cloud Run deploy drafted but not run. Open items: `docs/TODO.md`. Reviewed 2026-11-15.
 
 ## What the MVP proves
 
@@ -113,7 +113,8 @@ gets its own adapter in phase 4. Tests never call a live model.
 ## Routing rules
 
 - Routed agents are user-initiated fetchers only: ChatGPT-User, Claude-User,
-  Perplexity-User and similar, kept in a versioned registry in code.
+  Perplexity-User, Google-Agent, Google-GeminiNotebook and similar, kept in a
+  versioned registry in code.
 - Search and training crawlers (Googlebot, Bingbot, GPTBot, ClaudeBot,
   PerplexityBot, CCBot and similar) are never routed. Serving them different
   content is cloaking. They are passed through and logged as crawlers.
@@ -167,10 +168,13 @@ All tables come with reviewed Alembic migrations independent of ORM metadata.
    QA buttons queue jobs that the worker runs and records; the dashboard polls and
    shows queued, running, failed (with reason) and finished states. Covered by
    integration tests with stubbed execution; verified live up to the model call.
-6. **Google adapters and agents (planned).** Google's user-initiated agents in the
-   registry after checking their published user-agent tokens; a BigQuery
-   `RequestLogSink` behind the existing interface (PostgreSQL stays the default);
-   Cloud Run service definitions for app, edge, jobs and demo store.
+6. **Google adapters and agents.** Google's user-triggered fetchers `Google-Agent` and
+   `Google-GeminiNotebook` (former token `Google-NotebookLM`) are routed like other
+   user-initiated agents; `GoogleOther` is a crawler. `EDGE_BIGQUERY_TABLE` streams a
+   copy of the request log to BigQuery (`BigQueryRequestLogSink`, metadata-server auth,
+   no SDK) while PostgreSQL stays primary; one failing sink never blocks another.
+   Cloud Run deployment is documented as a draft in `docs/deploy-cloud-run.md`, not yet
+   run against a real project.
 
 ## Out of scope (roadmap)
 

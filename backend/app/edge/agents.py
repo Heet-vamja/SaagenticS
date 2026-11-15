@@ -8,7 +8,7 @@ User-agents can be spoofed; classification never grants access to gated content.
 import re
 from dataclasses import dataclass
 
-REGISTRY_VERSION = "2026-11-14"
+REGISTRY_VERSION = "2026-11-15"
 
 # (canonical name, kind, token matched case-insensitively as a whole word)
 QA_AGENT = "AgentLane-QA"
@@ -19,8 +19,14 @@ _KNOWN = (
     ("Claude-User", "agent", "Claude-User"),
     ("Perplexity-User", "agent", "Perplexity-User"),
     ("MistralAI-User", "agent", "MistralAI-User"),
+    # Google user-triggered fetchers (developers.google.com/search/docs/crawling-indexing/
+    # google-user-triggered-fetchers). Google-NotebookLM is the former Gemini Notebook token.
+    ("Google-Agent", "agent", "Google-Agent"),
+    ("Google-GeminiNotebook", "agent", "Google-GeminiNotebook"),
+    ("Google-GeminiNotebook", "agent", "Google-NotebookLM"),
     ("Googlebot", "crawler", "Googlebot"),
     ("Google-InspectionTool", "crawler", "Google-InspectionTool"),
+    ("GoogleOther", "crawler", "GoogleOther"),
     ("Bingbot", "crawler", "bingbot"),
     ("GPTBot", "crawler", "GPTBot"),
     ("OAI-SearchBot", "crawler", "OAI-SearchBot"),

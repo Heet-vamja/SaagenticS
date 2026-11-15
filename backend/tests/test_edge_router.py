@@ -18,6 +18,11 @@ CHROME = (
 )
 CHATGPT = "Mozilla/5.0 AppleWebKit/537.36 (KHTML, like Gecko); compatible; ChatGPT-User/1.0; +https://openai.com/bot"
 GOOGLEBOT = "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"
+GEMINI_NOTEBOOK = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 "
+    "Safari/537.36 (compatible; Google-GeminiNotebook; "
+    "+https://developers.google.com/crawling/docs/crawlers-fetchers/google-gemininotebook)"
+)
 
 
 class OriginStream(httpx.AsyncByteStream):
@@ -37,6 +42,14 @@ class OriginStream(httpx.AsyncByteStream):
         ("Claude-User/1.0 (+Claude-User@anthropic.com)", "Claude-User", "agent"),
         ("Mozilla/5.0 (compatible; Perplexity-User/1.0)", "Perplexity-User", "agent"),
         (GOOGLEBOT, "Googlebot", "crawler"),
+        ("Mozilla/5.0 (compatible; Google-Agent)", "Google-Agent", "agent"),
+        (
+            GEMINI_NOTEBOOK,
+            "Google-GeminiNotebook",
+            "agent",
+        ),
+        ("Mozilla/5.0 (compatible; Google-NotebookLM)", "Google-GeminiNotebook", "agent"),
+        ("Mozilla/5.0 (compatible; GoogleOther)", "GoogleOther", "crawler"),
         ("Googlebot-Image/1.0", "Googlebot", "crawler"),
         ("Mozilla/5.0 (compatible; GPTBot/1.2; +https://openai.com/gptbot)", "GPTBot", "crawler"),
         ("Mozilla/5.0 (compatible; ClaudeBot/1.0)", "ClaudeBot", "crawler"),
