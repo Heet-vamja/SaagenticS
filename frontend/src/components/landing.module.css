@@ -550,11 +550,17 @@
   font-weight: 600;
   letter-spacing: -0.018em;
 }
+/* The step's price as a quiet chip: white (surface) with ink text. */
 .stepPrice {
-  margin-top: 6px;
-  font-size: 14px;
+  display: inline-block;
+  margin-top: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px 9px;
+  background: var(--card);
+  font-size: 13.5px;
   font-weight: 500;
-  color: var(--signal);
+  color: var(--foreground);
 }
 .steps p {
   margin-top: 12px;
@@ -686,7 +692,7 @@
   letter-spacing: -0.045em;
 }
 .planPaid .amount strong {
-  color: var(--brand-uv-light);
+  color: inherit;
 }
 .amount span {
   font-size: 15px;
@@ -723,7 +729,7 @@
   color: var(--success);
 }
 .planPaid li svg {
-  color: var(--brand-uv-light);
+  color: #b4b5b0;
 }
 .plan > a {
   margin-top: auto;
