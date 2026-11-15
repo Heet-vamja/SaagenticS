@@ -37,6 +37,16 @@ class JobRecords:
             .with_for_update(skip_locked=True)
         )
 
+    def has_active(self, site_id) -> bool:
+        return (
+            self.session.scalar(
+                select(SiteJob.id)
+                .where(SiteJob.site_id == site_id, SiteJob.status.in_(("PENDING", "RUNNING")))
+                .limit(1)
+            )
+            is not None
+        )
+
     def host_of(self, site_id) -> str:
         return self.session.scalar(select(EdgeSite.host).where(EdgeSite.id == site_id))
 

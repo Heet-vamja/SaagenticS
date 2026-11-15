@@ -19,7 +19,9 @@ import type {
   DashboardOverview,
   DashboardSite,
   DashboardVariant,
+  DeliveryRules,
   SiteJob,
+  SiteSettings,
   SiteJobKind,
 } from "./types";
 
@@ -64,6 +66,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       response.status,
     );
   }
+  if (response.status === 204) return undefined as T;
   if (body === null)
     throw new ApiError(
       "The service returned an unreadable response. Please try again.",
@@ -120,6 +123,33 @@ export const api = {
       method: "POST",
       headers: bearer(token),
       body: JSON.stringify(body),
+    }),
+  siteSettings: (token: string, host: string) =>
+    request<SiteSettings>(
+      `/dashboard/sites/${encodeURIComponent(host)}/settings`,
+      { headers: bearer(token) },
+    ),
+  updateSite: (
+    token: string,
+    host: string,
+    body: Partial<Pick<SiteSettings, "name" | "origin" | "routing_enabled">>,
+  ) =>
+    request<SiteSettings>(`/dashboard/sites/${encodeURIComponent(host)}`, {
+      method: "PATCH",
+      headers: bearer(token),
+      body: JSON.stringify(body),
+    }),
+  setDelivery: (token: string, host: string, rules: DeliveryRules | null) =>
+    request<SiteSettings>(
+      `/dashboard/sites/${encodeURIComponent(host)}/delivery`,
+      rules
+        ? { method: "PUT", headers: bearer(token), body: JSON.stringify(rules) }
+        : { method: "DELETE", headers: bearer(token) },
+    ),
+  removeSite: (token: string, host: string) =>
+    request<void>(`/dashboard/sites/${encodeURIComponent(host)}`, {
+      method: "DELETE",
+      headers: bearer(token),
     }),
   siteVariants: (token: string, host: string) =>
     request<{ variants: DashboardVariant[] }>(

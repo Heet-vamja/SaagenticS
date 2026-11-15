@@ -9,7 +9,7 @@ import json
 import re
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationError
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
 from app.engines.variants.contracts import Catalog
 
@@ -36,6 +36,16 @@ class DeliveryRules(BaseModel):
     estimates: list[DeliveryEstimate] = Field(default_factory=list, max_length=50)
     default_estimate: str = Field(min_length=1, max_length=80)
     free_delivery_over: float | None = Field(default=None, ge=0)
+
+    @field_validator("pin_pattern")
+    @classmethod
+    def _compiles(cls, value: str) -> str:
+        # Matched against PIN inputs of at most 20 characters, which bounds backtracking.
+        try:
+            re.compile(value)
+        except re.error as exc:
+            raise ValueError("PIN pattern is not a valid regular expression") from exc
+        return value
 
 
 class SearchInput(BaseModel):

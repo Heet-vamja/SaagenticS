@@ -190,3 +190,79 @@ def test_build_without_a_gemini_key_fails_before_rendering(session, factory, mon
     assert session.get(SiteJob, job.id).detail == (
         "InferenceError: Configure GEMINI_API_KEY for Gemini inference"
     )
+
+
+def _registered(dashboard):
+    assert dashboard.post("/api/v1/dashboard/sites", json=SITE, headers=AUTH).status_code == 201
+
+
+def test_owner_edits_a_site_and_pauses_routing(dashboard, session):
+    _registered(dashboard)
+    url = "/api/v1/dashboard/sites/store.localhost"
+    changed = dashboard.patch(
+        url, json={"name": "Northstar Shoes", "routing_enabled": False}, headers=AUTH
+    )
+    assert changed.status_code == 200
+    assert changed.json() == {
+        "host": "store.localhost",
+        "name": "Northstar Shoes",
+        "origin": "http://demo-store:4000",
+        "routing_enabled": False,
+        "delivery_rules": None,
+    }
+    assert dashboard.patch(url, json={"host": "other.localhost"}, headers=AUTH).status_code == 422
+    assert dashboard.patch(url, json={"origin": "ftp://x"}, headers=AUTH).status_code == 422
+    settings = dashboard.get(f"{url}/settings", headers=AUTH).json()
+    assert settings["origin"] == "http://demo-store:4000"  # Unchanged after a rejected edit.
+
+
+def test_owner_sets_and_clears_delivery_rules(dashboard):
+    _registered(dashboard)
+    url = "/api/v1/dashboard/sites/store.localhost/delivery"
+    rules = {
+        "pin_pattern": "^\\d{6}$",
+        "estimates": [{"prefixes": ["56"], "estimate": "2–3 working days"}],
+        "default_estimate": "3–5 working days",
+        "free_delivery_over": 1500,
+    }
+    saved = dashboard.put(url, json=rules, headers=AUTH)
+    assert saved.status_code == 200
+    assert saved.json()["delivery_rules"] == rules
+    bad = dashboard.put(url, json={**rules, "pin_pattern": "([0-9"}, headers=AUTH)
+    assert bad.status_code == 422
+    assert dashboard.delete(url, headers=AUTH).json()["delivery_rules"] is None
+
+
+def test_removing_a_site_cascades_and_waits_for_running_jobs(dashboard, session):
+    from app.models.domain import AgentRequest
+
+    _registered(dashboard)
+    site = session.scalar(select(EdgeSite).where(EdgeSite.host == "store.localhost"))
+    session.add(
+        AgentRequest(
+            site_id=site.id,
+            received_at=datetime.now(UTC),
+            agent="ChatGPT-User",
+            agent_kind="agent",
+            method="GET",
+            path="/",
+            status=200,
+            duration_ms=5,
+            served_by="origin",
+            response_bytes=10,
+            client_hash="a" * 64,
+            user_agent="x",
+        )
+    )
+    job = _job(session, site, kind="run_qa", status="RUNNING", started_at=datetime.now(UTC))
+    url = "/api/v1/dashboard/sites/store.localhost"
+    busy = dashboard.delete(url, headers=AUTH)
+    assert busy.status_code == 409
+    job.status = "FAILED"
+    session.flush()
+    assert dashboard.delete(url, headers=AUTH).status_code == 204
+    session.expire_all()
+    assert session.scalars(select(EdgeSite)).all() == []
+    assert session.scalars(select(AgentRequest)).all() == []
+    assert session.scalars(select(SiteJob)).all() == []
+    assert dashboard.delete(url, headers=AUTH).status_code == 404

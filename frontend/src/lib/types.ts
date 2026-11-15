@@ -499,6 +499,21 @@ export type DashboardVariant = {
   published_at: string | null;
 };
 
+export type DeliveryRules = {
+  pin_pattern: string;
+  estimates: { prefixes: string[]; estimate: string }[];
+  default_estimate: string;
+  free_delivery_over: number | null;
+};
+
+export type SiteSettings = {
+  host: string;
+  name: string;
+  origin: string;
+  routing_enabled: boolean;
+  delivery_rules: DeliveryRules | null;
+};
+
 export type SiteJobKind = "build_variant" | "label_sessions" | "run_qa";
 
 export type SiteJob = {

@@ -18,6 +18,7 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Settings,
   Sparkles,
   X,
 } from "lucide-react";
@@ -39,6 +40,7 @@ import {
   JobStatus,
   LanePanel,
 } from "./owner-dashboard-lane";
+import { SiteSettingsPanel } from "./owner-dashboard-settings";
 import styles from "./owner-dashboard.module.css";
 
 const TOKEN_KEY = "al-dashboard-token";
@@ -265,6 +267,7 @@ export function OwnerDashboard() {
   const [error, setError] = useState("");
   const [sitesLoaded, setSitesLoaded] = useState(false);
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [jobs, setJobs] = useState<SiteJob[]>([]);
   const [variants, setVariants] = useState<DashboardVariant[]>([]);
   const wasActive = useRef(false);
@@ -476,6 +479,14 @@ export function OwnerDashboard() {
               >
                 <Plus size={14} aria-hidden="true" /> Add site
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditing((value) => !value)}
+                aria-expanded={editing}
+              >
+                <Settings size={14} aria-hidden="true" /> Settings
+              </Button>
               <div
                 className={styles.segmented}
                 role="group"
@@ -541,6 +552,35 @@ export function OwnerDashboard() {
       {error && (
         <div className="mb-6">
           <InlineError>{error}</InlineError>
+        </div>
+      )}
+      {editing && host && (
+        <div className="mb-5">
+          <SiteSettingsPanel
+            key={host}
+            token={token}
+            host={host}
+            onClose={() => setEditing(false)}
+            onChanged={(settings) => {
+              setSites((current) =>
+                current.map((site) =>
+                  site.host === settings.host
+                    ? { ...site, name: settings.name }
+                    : site,
+                ),
+              );
+              void load();
+            }}
+            onRemoved={() => {
+              const rest = sites.filter((site) => site.host !== host);
+              setSites(rest);
+              setHost(rest[0]?.host ?? "");
+              setData(null);
+              setJobs([]);
+              setVariants([]);
+              setEditing(false);
+            }}
+          />
         </div>
       )}
       {(adding || (sitesLoaded && sites.length === 0)) && (

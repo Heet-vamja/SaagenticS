@@ -41,7 +41,5 @@ when done; link the commit or doc that closed them if useful.
 
 ## Engineering hygiene
 
-- Delivery rules can only be set from the CLI (`edge_sites set-delivery`).
-- Sites cannot be edited or removed from the dashboard (CLI or SQL only).
 - The jobs worker does not hot-reload; run `docker compose restart jobs` after backend
   code changes.

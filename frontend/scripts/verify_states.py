@@ -120,15 +120,17 @@ async def landing_and_reports(page):
     await page.goto(BASE + "/agent-tests/any", wait_until="networkidle")
     await page.get_by_label("Real AI agent testing, coming Christmas 2026").first.wait_for()
     await check_page(page, "agent-tests-coming-soon", screenshot=False)
-    await page.goto(BASE + "/projects", wait_until="networkidle")
-    assert page.url.rstrip("/") == BASE.rstrip("/"), page.url
+    await page.goto(BASE + "/projects")
+    await page.wait_for_url(BASE.rstrip("/") + "/")  # The workspace is not public.
 
 
 async def dashboard(browser):
     context = await browser.new_context(viewport={"width": 1440, "height": 1000},
                                         reduced_motion="reduce")
     page = await context.new_page()
-    api = {"sites": [], "jobs": [], "overview": overview(False), "job_polls": 0}
+    api = {"sites": [], "jobs": [], "overview": overview(False), "job_polls": 0, "calls": []}
+    settings = {"host": "store.fixture", "name": "Fixture Store", "origin": "https://origin.fixture",
+                "routing_enabled": True, "delivery_rules": None}
 
     async def route(route):
         request = route.request
@@ -144,6 +146,24 @@ async def dashboard(browser):
             return await route.fulfill(status=201, json=site)
         if url.endswith("/dashboard/sites"):
             return await route.fulfill(json={"sites": api["sites"]})
+        if url.endswith("/settings"):
+            return await route.fulfill(json=settings)
+        if url.endswith("/delivery"):
+            api["calls"].append((request.method, "delivery"))
+            rules = request.post_data_json if request.method == "PUT" else None
+            if rules and rules["pin_pattern"] == "([0-9":
+                return await fulfill(route, error(422, "PIN pattern is not a valid regular expression",
+                                                  "validation_error"))
+            settings["delivery_rules"] = rules
+            return await route.fulfill(json=settings)
+        if url.endswith("/dashboard/sites/store.fixture") and request.method == "PATCH":
+            api["calls"].append(("PATCH", request.post_data_json))
+            settings.update(request.post_data_json)
+            return await route.fulfill(json=settings)
+        if url.endswith("/dashboard/sites/store.fixture") and request.method == "DELETE":
+            api["calls"].append(("DELETE", "site"))
+            api["sites"].clear()
+            return await route.fulfill(status=204, body="")
         if url.endswith("/overview"):
             return await route.fulfill(json=api["overview"])
         if url.endswith("/variants"):
@@ -207,6 +227,38 @@ async def dashboard(browser):
         await page.get_by_text("4.5× fewer tokens", exact=True).wait_for()
         await page.get_by_text("Suggestions, not applied automatically", exact=True).wait_for()
         await check_page(page, f"dashboard-full-{theme}-{width}", screenshot=False)
+
+    await page.set_viewport_size({"width": 1440, "height": 1000})
+    await page.get_by_role("button", name="Settings").click()
+    panel = page.get_by_role("region", name="Site settings")
+    await panel.get_by_label("Origin").wait_for()
+    assert await panel.get_by_label("Origin").input_value() == "https://origin.fixture"
+    await check_page(page, "dashboard-settings", screenshot=False)
+    toggle = panel.get_by_label("Serve the agent lane to AI agents")
+    # The checkbox reflects the saved state, so it flips only after the server confirms.
+    await toggle.click()
+    await panel.get_by_text("Routing paused. Everyone gets your original site.").wait_for()
+    assert not await toggle.is_checked()
+    assert ("PATCH", {"routing_enabled": False}) in api["calls"]
+    await panel.get_by_label("Default estimate").fill("3–5 working days")
+    await panel.get_by_label("PIN code pattern").fill("([0-9")
+    await panel.get_by_role("button", name="Save delivery estimates").click()
+    await panel.get_by_text("PIN pattern is not a valid regular expression").wait_for()
+    await panel.get_by_label("PIN code pattern").fill("^\\d{6}$")
+    await panel.get_by_role("button", name="Add an area").click()
+    await panel.get_by_label("PIN prefixes, row 1").fill("11, 56")
+    await panel.get_by_label("Estimate, row 1").fill("2–3 working days")
+    await panel.get_by_role("button", name="Save delivery estimates").click()
+    await panel.get_by_text("Delivery estimates saved.").wait_for()
+    assert settings["delivery_rules"]["estimates"] == [
+        {"prefixes": ["11", "56"], "estimate": "2–3 working days"}
+    ], settings["delivery_rules"]
+    remove = panel.get_by_role("button", name="Remove site")
+    assert await remove.is_disabled(), "Removal needs the typed host"
+    await panel.get_by_label("Type store.fixture to confirm").fill("store.fixture")
+    await remove.click()
+    await page.get_by_role("heading", name="Add your first site").wait_for()
+    assert ("DELETE", "site") in api["calls"]
     await context.close()
 
 
@@ -222,7 +274,8 @@ async def main():
             await dashboard(browser)
             print(
                 "PASS refused address, expired/unavailable report with retry, customer-release "
-                "redirects, dashboard sign-in/rejected token/first site/job lifecycle/full overview.",
+                "redirects, dashboard sign-in/rejected token/first site/job lifecycle/full overview/"
+                "site settings (routing, delivery rules, removal).",
                 flush=True,
             )
         finally:

@@ -9,9 +9,17 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_session
+from app.engines.variants.actions import DeliveryRules
 from app.repositories.edge import EdgeRecords
-from app.schemas.dashboard import JobCreate, SiteCreate
-from app.services.edge_sites import register_site
+from app.schemas.dashboard import JobCreate, SiteCreate, SiteUpdate
+from app.services.edge_sites import (
+    SiteBusy,
+    register_site,
+    remove_site,
+    set_delivery_rules,
+    site_settings,
+    update_site,
+)
 from app.services.insights import build_sessions, overview
 from app.services.site_jobs import JobConflict, enqueue, job_view, recent_jobs
 from app.services.variants import publish_variant
@@ -119,3 +127,49 @@ def start_job(host: str, body: JobCreate, session: Db):
         raise HTTPException(409, str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/sites/{host}/settings")
+def get_site_settings(host: str, session: Db):
+    site = EdgeRecords(session).site_by_host(host.strip().lower())
+    if site is None:
+        raise HTTPException(404, f"{host} is not registered")
+    return site_settings(site)
+
+
+@router.patch("/sites/{host}")
+def patch_site(host: str, body: SiteUpdate, session: Db):
+    try:
+        site = update_site(session, get_settings(), host, **body.model_dump(exclude_unset=True))
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    return site_settings(site)
+
+
+@router.put("/sites/{host}/delivery")
+def put_delivery(host: str, body: DeliveryRules, session: Db):
+    """Owner-approved delivery estimates for the check_delivery action."""
+    try:
+        return site_settings(set_delivery_rules(session, host, body))
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.delete("/sites/{host}/delivery")
+def delete_delivery(host: str, session: Db):
+    try:
+        return site_settings(set_delivery_rules(session, host, None))
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.delete("/sites/{host}", status_code=204)
+def delete_site(host: str, session: Db):
+    try:
+        remove_site(session, host)
+    except LookupError as exc:
+        raise HTTPException(404, str(exc)) from exc
+    except SiteBusy as exc:
+        raise HTTPException(409, str(exc)) from exc

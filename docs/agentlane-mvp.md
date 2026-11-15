@@ -109,6 +109,11 @@ gets its own adapter in phase 4. Tests never call a live model.
    variant build is a finished job whose result says it was rejected. Locally, QA opens
    `http://<host>:8080` and the contained browser maps `*.localhost` to the edge
    container (`DEV_BROWSER_HOST_RULES`); production uses `https://<host>`.
+   Site settings in the dashboard edit the name and origin (the public host is the
+   routing key and cannot change), pause routing (everyone gets the original site;
+   agent requests are still logged), manage owner-approved delivery estimates, and
+   remove a site with typed confirmation. Removal cascades to the site's logs,
+   sessions, versions, jobs and QA runs and is refused while a job is active.
 
 ## Routing rules
 
