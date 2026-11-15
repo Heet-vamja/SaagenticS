@@ -20,7 +20,17 @@ from app.engines.agent.runner import AgentRunner
 @pytest.mark.parametrize("task_type", list(TASKS))
 def test_real_hugging_face_agent_on_local_fixture(task_type, tmp_path):
     async def scenario():
-        settings = get_settings().model_copy(update={"agent_screenshot_dir": str(tmp_path)})
+        settings = get_settings().model_copy(
+            update={
+                "agent_llm_provider": "huggingface",
+                "agent_llm_mode": "hosted",
+                "agent_model": os.environ.get("HF_MODEL", "Qwen/Qwen3-4B-Instruct-2507"),
+                "agent_llm_base_url": os.environ.get(
+                    "AGENT_LLM_BASE_URL", "https://router.huggingface.co/v1"
+                ),
+                "agent_screenshot_dir": str(tmp_path),
+            }
+        )
         browser = BrowserSession(
             "https://fixture.example/", [], settings, "real", fixture_transport()
         )

@@ -1,12 +1,12 @@
-"""Open-weight Hugging Face chat inference with bounded structured actions."""
+"""Open-weight chat inference with provider-specific transport and bounded actions."""
 
 import asyncio
 import json
-from typing import Protocol
+from typing import ClassVar, Protocol
 from urllib.parse import urlsplit
 
 import httpx
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import Settings
 from app.engines.agent.actions import AgentAction
@@ -32,6 +32,7 @@ class _ToolCallingUnsupported(InferenceError):
 class LLMProvider(Protocol):
     async def generate_action(self, messages: list[dict]) -> AgentAction: ...
     async def generate_judgment(self, messages: list[dict]) -> TaskJudgment: ...
+    async def health(self) -> dict: ...
     async def close(self) -> None: ...
 
 
@@ -81,8 +82,13 @@ def action_json_schema() -> dict:
     }
 
 
-class HuggingFaceProvider:
-    def __init__(self, settings: Settings, transport=None):
+class OpenAICompatibleProvider:
+    """Shared bounded chat-completions and action-validation implementation."""
+
+    provider_name = "openai-compatible"
+    max_response_bytes = 65536
+
+    def __init__(self, settings: Settings, transport=None, headers=None):
         self.settings = settings
         self.usage = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
         self.failures = 0
@@ -95,49 +101,30 @@ class HuggingFaceProvider:
             or len(model) > 200
             or any(char.isspace() or ord(char) < 32 for char in model)
         ):
-            raise InferenceError("Configure a nonempty Hugging Face model identifier")
+            raise InferenceError("Configure a nonempty model identifier")
         base = settings.agent_llm_base_url.rstrip("/")
         parsed = urlsplit(base)
-        if parsed.query or parsed.fragment or not parsed.hostname or "\\" in parsed.path:
+        if (
+            parsed.scheme not in ("http", "https")
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or not parsed.hostname
+            or "\\" in parsed.path
+        ):
             raise InferenceError("Inference endpoint URL is invalid")
         path_parts = parsed.path.split("/")
         if any(part in {".", ".."} for part in path_parts):
             raise InferenceError("Inference endpoint URL path is invalid")
-        if settings.agent_llm_mode == "hosted" and not self._allowed_hf_host(parsed):
-            raise InferenceError("Hosted mode requires an allowed Hugging Face HTTPS endpoint")
-        if settings.agent_llm_mode == "hosted" and parsed.path not in ("", "/", "/v1", "/v1/"):
-            raise InferenceError("Hosted inference endpoint path is not allowed")
-        token = settings.hf_token.get_secret_value()
-        if not token and settings.hf_tokens.get_secret_value():
-            token = settings.hf_tokens.get_secret_value().split(",")[0].strip()
-        if settings.agent_llm_mode == "hosted" and not token:
-            raise InferenceError("Configure HF_TOKEN for Hugging Face inference")
-        if settings.agent_llm_mode == "local":
-            token = ""
         self.client = httpx.AsyncClient(
             base_url=base + "/",
             transport=transport,
             trust_env=False,
             follow_redirects=False,
             timeout=settings.agent_llm_timeout,
-            headers={"Authorization": "Bearer " + token} if token else {},
+            headers=headers or {},
         )
-
-    @staticmethod
-    def _allowed_hf_host(parsed) -> bool:
-        host = (parsed.hostname or "").lower()
-        try:
-            return (
-                parsed.scheme == "https"
-                and parsed.username is None
-                and parsed.password is None
-                and parsed.port in (None, 443)
-                and (
-                    host == "router.huggingface.co" or host.endswith(".endpoints.huggingface.cloud")
-                )
-            )
-        except ValueError:
-            return False
 
     @property
     def estimated_cost_usd(self) -> float | None:
@@ -152,6 +139,49 @@ class HuggingFaceProvider:
 
     async def close(self):
         await self.client.aclose()
+
+    async def health(self) -> dict:
+        """Check OpenAI-compatible model discovery without generating tokens."""
+        try:
+            async with self.client.stream("GET", "models") as response:
+                if response.status_code != 200:
+                    return {
+                        "provider": self.provider_name,
+                        "model": self.settings.agent_model,
+                        "reachable": False,
+                        "model_available": False,
+                    }
+                content = bytearray()
+                async for chunk in response.aiter_bytes():
+                    content.extend(chunk)
+                    if len(content) > 65536:
+                        return {
+                            "provider": self.provider_name,
+                            "model": self.settings.agent_model,
+                            "reachable": True,
+                            "model_available": False,
+                        }
+            data = json.loads(content)
+            models = data.get("data", []) if isinstance(data, dict) else []
+            if not isinstance(models, list):
+                models = []
+            available = any(
+                isinstance(item, dict) and item.get("id") == self.settings.agent_model
+                for item in models
+            )
+            return {
+                "provider": self.provider_name,
+                "model": self.settings.agent_model,
+                "reachable": True,
+                "model_available": available,
+            }
+        except (httpx.HTTPError, TimeoutError, json.JSONDecodeError, UnicodeDecodeError):
+            return {
+                "provider": self.provider_name,
+                "model": self.settings.agent_model,
+                "reachable": False,
+                "model_available": False,
+            }
 
     @staticmethod
     def parse(content: str) -> AgentAction:
@@ -194,6 +224,9 @@ class HuggingFaceProvider:
         if self.usage["total_tokens"] + estimate + max_output > self.settings.agent_token_budget:
             raise TokenBudgetExceeded("Agent inference token budget would be exceeded")
         return estimate
+
+    def _sampling_parameters(self) -> dict:
+        return {"temperature": 0}
 
     @staticmethod
     def _tools() -> list[dict]:
@@ -254,7 +287,7 @@ class HuggingFaceProvider:
                     raw = bytearray()
                     async for chunk in response.aiter_bytes():
                         raw.extend(chunk)
-                        if len(raw) > 65536:
+                        if len(raw) > self.max_response_bytes:
                             self.failures += 1
                             raise InferenceError("Inference response exceeded size limit")
                 try:
@@ -315,7 +348,7 @@ class HuggingFaceProvider:
         body = {
             "model": self.settings.agent_model,
             "messages": messages,
-            "temperature": 0,
+            **self._sampling_parameters(),
             "max_tokens": self.settings.agent_max_output_tokens,
         }
         instruction = (
@@ -363,7 +396,7 @@ class HuggingFaceProvider:
         body = {
             "model": self.settings.agent_model,
             "messages": messages,
-            "temperature": 0,
+            **self._sampling_parameters(),
             "max_tokens": self.settings.agent_max_output_tokens,
             "tools": self._tools(),
             "tool_choice": "required",
@@ -393,3 +426,164 @@ class HuggingFaceProvider:
 
     async def generate_judgment(self, messages: list[dict]) -> TaskJudgment:
         return await self._json_generation(messages, "judgment")
+
+    async def generate_structured(self, messages: list[dict], schema: type[BaseModel]):
+        """One JSON object validated against `schema`; used for extraction and labeling.
+
+        The schema goes in the system message and the reply is validated locally, so the
+        call works on any OpenAI-compatible endpoint without provider-specific modes.
+        """
+        body = {
+            "model": self.settings.agent_model,
+            "messages": [
+                {
+                    "role": "system",
+                    "content": "Return only one JSON object matching this JSON schema, with "
+                    "no surrounding text: " + json.dumps(schema.model_json_schema()),
+                },
+                *messages,
+            ],
+            **self._sampling_parameters(),
+            "max_tokens": self.settings.agent_max_output_tokens,
+        }
+        self._reserve_budget(body)
+        data = await self._request(body)
+        message, _ = self._choice(data)
+        content = message.get("content")
+        if not isinstance(content, str):
+            raise InvalidAction("Model returned no JSON content")
+        content = content.strip()
+        if content.startswith("```"):
+            content = content.split("\n", 1)[-1].rsplit("```", 1)[0]
+        try:
+            return schema.model_validate_json(content)
+        except ValidationError as exc:
+            raise InvalidAction("Model returned JSON that does not match the schema") from exc
+
+
+class HuggingFaceProvider(OpenAICompatibleProvider):
+    """Hugging Face hosted/local endpoint configuration over shared chat behavior."""
+
+    provider_name = "huggingface"
+
+    def __init__(self, settings: Settings, transport=None):
+        base = settings.agent_llm_base_url.rstrip("/")
+        parsed = urlsplit(base)
+        if settings.agent_llm_mode == "hosted" and not self._allowed_hf_host(parsed):
+            raise InferenceError("Hosted mode requires an allowed Hugging Face HTTPS endpoint")
+        if settings.agent_llm_mode == "hosted" and parsed.path not in ("", "/", "/v1", "/v1/"):
+            raise InferenceError("Hosted inference endpoint path is not allowed")
+        token = settings.hf_token.get_secret_value()
+        if not token and settings.hf_tokens.get_secret_value():
+            token = settings.hf_tokens.get_secret_value().split(",")[0].strip()
+        if settings.agent_llm_mode == "hosted" and not token:
+            raise InferenceError("Configure HF_TOKEN for Hugging Face inference")
+        if settings.agent_llm_mode == "local":
+            token = ""
+        super().__init__(
+            settings,
+            transport=transport,
+            headers={"Authorization": "Bearer " + token} if token else {},
+        )
+
+    @staticmethod
+    def _allowed_hf_host(parsed) -> bool:
+        host = (parsed.hostname or "").lower()
+        try:
+            return (
+                parsed.scheme == "https"
+                and parsed.username is None
+                and parsed.password is None
+                and parsed.port in (None, 443)
+                and (
+                    host == "router.huggingface.co" or host.endswith(".endpoints.huggingface.cloud")
+                )
+            )
+        except ValueError:
+            return False
+
+
+class OsaurusProvider(OpenAICompatibleProvider):
+    """Local Osaurus OpenAI-compatible adapter; shares strict action validation."""
+
+    provider_name = "osaurus"
+    _allowed_hosts: ClassVar[set[str]] = {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+        "host.docker.internal",
+    }
+
+    def __init__(self, settings: Settings, transport=None):
+        base = settings.agent_llm_base_url.rstrip("/")
+        parsed = urlsplit(base)
+        try:
+            port = parsed.port
+            valid_port = port is None or 1 <= port <= 65535
+        except ValueError:
+            valid_port = False
+        if (
+            parsed.scheme != "http"
+            or parsed.hostname not in self._allowed_hosts
+            or parsed.username is not None
+            or parsed.password is not None
+            or parsed.query
+            or parsed.fragment
+            or parsed.path not in ("", "/", "/v1")
+            or not valid_port
+        ):
+            raise InferenceError(
+                "Osaurus must use its local HTTP API on localhost or host.docker.internal"
+            )
+        local_settings = settings.model_copy(
+            update={
+                "agent_llm_mode": "local",
+                "agent_model": settings.agent_model,
+                "agent_llm_base_url": base,
+            }
+        )
+        api_key = settings.osaurus_api_key.get_secret_value()
+        super().__init__(
+            local_settings,
+            transport=transport,
+            headers={"Authorization": "Bearer " + api_key} if api_key else {},
+        )
+
+    def _sampling_parameters(self) -> dict:
+        # Raptor 0.6 declares this sampling profile in its Osaurus bundle.
+        return {"temperature": 1.0, "top_p": 0.95}
+
+
+class GeminiProvider(OpenAICompatibleProvider):
+    """Gemini through Google's OpenAI-compatible endpoint (text, tools, JSON).
+
+    Computer Use is only available on the native Gemini API and has its own adapter.
+    """
+
+    provider_name = "gemini"
+    endpoint = "https://generativelanguage.googleapis.com/v1beta/openai"
+
+    def __init__(self, settings: Settings, transport=None):
+        parsed = urlsplit(settings.agent_llm_base_url.rstrip("/"))
+        if (
+            parsed.scheme != "https"
+            or parsed.hostname != "generativelanguage.googleapis.com"
+            or parsed.port not in (None, 443)
+            or parsed.path.rstrip("/") != "/v1beta/openai"
+        ):
+            raise InferenceError(f"Gemini must use {self.endpoint}")
+        key = settings.gemini_api_key.get_secret_value()
+        if not key:
+            raise InferenceError("Configure GEMINI_API_KEY for Gemini inference")
+        super().__init__(settings, transport=transport, headers={"Authorization": "Bearer " + key})
+
+
+def get_agent_provider(settings: Settings, transport=None):
+    """Select the explicitly configured provider. Gemini is the product default."""
+    if settings.agent_llm_provider == "gemini":
+        return GeminiProvider(settings, transport=transport)
+    if settings.agent_llm_provider == "osaurus":
+        return OsaurusProvider(settings, transport=transport)
+    if settings.agent_llm_provider == "huggingface":
+        return HuggingFaceProvider(settings, transport=transport)
+    raise InferenceError("Unsupported agent LLM provider")

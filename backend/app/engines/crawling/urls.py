@@ -10,6 +10,14 @@ class URLValidator:
     def __init__(self, start: str, allow_subdomains: bool = False):
         self.start = self.normalize(start)
         self.host = urlsplit(self.start).hostname
+        # Treat the bare hostname and its conventional www alias as one site.
+        # This handles common canonical redirects without enabling arbitrary
+        # subdomains (which remain opt-in below).
+        self.host_aliases = {self.host}
+        if self.host.startswith("www."):
+            self.host_aliases.add(self.host[4:])
+        else:
+            self.host_aliases.add("www." + self.host)
         self.allow_subdomains = allow_subdomains
 
     @staticmethod
@@ -45,9 +53,12 @@ class URLValidator:
     def accept(self, value: str, base: str | None = None) -> str:
         url = self.normalize(urljoin(base or self.start, value))
         parts = urlsplit(url)
-        if parts.hostname != self.host and not (
-            self.allow_subdomains and parts.hostname.endswith("." + self.host)
-        ):
+        hostname = parts.hostname
+        in_scope = hostname in self.host_aliases or (
+            self.allow_subdomains
+            and any(hostname.endswith("." + host) for host in self.host_aliases)
+        )
+        if not in_scope:
             raise ValueError(
                 f"Hostname '{parts.hostname}' is outside configured crawl host '{self.host}'. "
                 "Use the destination hostname as the project website URL if that is the intended site."

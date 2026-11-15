@@ -4,7 +4,7 @@ from threading import BoundedSemaphore
 from typing import Annotated, Literal
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse
 from sqlalchemy import select
@@ -12,12 +12,12 @@ from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
 from app.db.session import get_session
-from app.models.domain import AgentStep, WorkflowTest
+from app.models.domain import AgentStep, Finding, WorkflowTest
 from app.schemas.api import ScanRead
 from app.schemas.reports import ComparisonRead, ReportRead, ShareRead
 from app.services.agent_evidence import resolve_evidence_ref
 from app.services.audits import RecordNotFound
-from app.services.report_pdf import pdf_export
+from app.services.report_pdf import free_pdf_export, pdf_export
 from app.services.reports import ReportService, csv_export
 
 PDF_SLOTS = BoundedSemaphore(2)
@@ -127,7 +127,7 @@ def export_response(report, format):
     import json
 
     headers = {
-        "Content-Disposition": f'attachment; filename="agentreadiness-report.{format}"',
+        "Content-Disposition": f'attachment; filename="agentlane-report.{format}"',
         "Cache-Control": "no-store",
         "X-Content-Type-Options": "nosniff",
     }
@@ -166,3 +166,62 @@ def shared_export(token: str, service: Service, format: Literal["json", "csv", "
     return export_response(
         service.report(service.shared_scan(token), shared=True, share_token=token), format
     )
+
+
+@router.get("/free-reports/{token}/export.pdf", tags=["Free report"])
+def free_report_export(token: str, service: Service, response: Response, request: Request):
+    """Export the public free-report projection only, guarded by its expiring link."""
+    if get_settings().customer_mode_enabled:
+        from app.services.website_access import COOKIE, report_access
+
+        report_access(service.session, token, request.cookies.get(COOKIE), paid=True)
+    scan_id = service.shared_scan(token)
+    scan = service.audits.scan(scan_id)
+    if (scan.audit_summary or {}).get("scan_mode") != "FREE_REPORT":
+        raise RecordNotFound("Report link not found or expired")
+    project = service.audits.project(scan.project_id)
+    findings = list(
+        service.session.scalars(select(Finding).where(Finding.scan_id == scan_id).limit(10000))
+    )
+    from app.services.free_reports import free_report as build_free_report
+
+    report = build_free_report(scan, project, findings)
+    if get_settings().customer_mode_enabled:
+        from app.services.website_access import (
+            COOKIE,
+            development_report_unlocked,
+            is_dev_session,
+            report_access,
+        )
+
+        verification, share, _ = report_access(
+            service.session, token, request.cookies.get(COOKIE), paid=True
+        )
+        report = report.model_copy(
+            update={
+                "development_access": is_dev_session(verification),
+                "development_payment_skipped": development_report_unlocked(verification, share),
+            }
+        )
+    if not PDF_SLOTS.acquire(blocking=False):
+        raise HTTPException(503, "PDF exporter is busy. Please retry shortly.")
+    try:
+        pdf = asyncio.run(free_pdf_export(report))
+    except Exception as exc:
+        import logging
+
+        logging.getLogger(__name__).exception(
+            "Free report PDF rendering failed (%s)", type(exc).__name__
+        )
+        raise HTTPException(503, "PDF rendering is unavailable. Please retry shortly.") from exc
+    finally:
+        PDF_SLOTS.release()
+    headers = {
+        "Content-Disposition": 'attachment; filename="agentlane-free-report.pdf"',
+        "Cache-Control": "no-store",
+        "X-Content-Type-Options": "nosniff",
+        "X-Robots-Tag": "noindex, nofollow",
+        "Referrer-Policy": "no-referrer",
+    }
+    response.headers.update(headers)
+    return Response(content=pdf, media_type="application/pdf", headers=headers)

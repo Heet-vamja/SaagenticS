@@ -2,6 +2,7 @@
 
 import asyncio
 from collections import deque
+from copy import deepcopy
 from urllib.parse import urlsplit, urlunsplit
 from xml.etree.ElementTree import ParseError
 
@@ -9,6 +10,7 @@ import httpx
 from defusedxml.common import DefusedXmlException
 
 from app.core.config import Settings
+from app.engines.agent.privacy import public_url
 from app.engines.crawling.parsers import PageParser, RobotsHandler, SitemapParser
 from app.engines.crawling.transport import Fetcher
 from app.engines.crawling.urls import URLValidator
@@ -24,6 +26,15 @@ class WebsiteCrawler:
         self.warnings = []
         self.sitemap_diagnostics = []
         self.llms = {}
+        self.resource_candidates = {}
+        self.diagnostics = {
+            "resources": [],
+            "resources_limited": False,
+            "html_inspected": False,
+            "missing_path": {"result": "UNKNOWN", "detail": "Not attempted"},
+            "ai_catalog": {"result": "UNKNOWN", "detail": "Not attempted"},
+            "mcp_server_card": {"result": "UNKNOWN", "detail": "Not attempted"},
+        }
         self.discovered = set()
         self.crawled = 0
         self.failed = 0
@@ -43,9 +54,11 @@ class WebsiteCrawler:
                 response = await self.fetcher.get(
                     origin + "/robots.txt", self.settings.crawl_sitemap_bytes, robots=False
                 )
-                # Rules must belong to this exact origin; deny cross-origin robots redirects.
+                # A same-scheme redirect between the bare hostname and its
+                # canonical www alias is within the configured site scope.
                 final = urlsplit(response.url)
-                if (final.scheme, final.netloc) != (parts.scheme, parts.netloc):
+                self.scope.accept(response.url)
+                if (final.scheme, final.port) != (parts.scheme, parts.port):
                     raise ValueError("robots.txt redirected to another origin")
                 handler.parse(response.status, response.body)
                 self.fetcher.delay = max(self.fetcher.delay, handler.delay)
@@ -185,6 +198,26 @@ class WebsiteCrawler:
                     )
                 },
             }
+        if "response" in locals() and response.status == 200:
+            from app.engines.static_audit.resources import header_resource_links
+
+            html_links = record["page_metadata"].get("audit", {}).get("discovery_resources")
+            if isinstance(html_links, dict):
+                self.diagnostics["html_inspected"] = True
+            for source in (
+                html_links or {},
+                header_resource_links((response.headers or {}).get("link", ""), response.url),
+            ):
+                self.diagnostics["resources_limited"] |= bool(source.get("limited"))
+                for item in source.get("candidates", []):
+                    item = {**item, "linked_from": public_url(response.url)}
+                    if (
+                        len(self.resource_candidates) >= 30
+                        and item["url"] not in self.resource_candidates
+                    ):
+                        self.diagnostics["resources_limited"] = True
+                        break
+                    self.resource_candidates.setdefault(item["url"], item)
         if record["url"] != url:
             record["page_metadata"]["requested_url"] = url
         return record, links
@@ -269,6 +302,9 @@ class WebsiteCrawler:
                 progress(self)
         if self.failed == self.crawled:
             raise ValueError("No pages could be crawled successfully")
+        from app.engines.crawling.diagnostics import collect_diagnostics
+
+        await collect_diagnostics(self, progress)
 
     def metadata(self):
         return {
@@ -281,4 +317,5 @@ class WebsiteCrawler:
             "warnings": self.warnings,
             "sitemaps": self.sitemap_diagnostics,
             "llms": self.llms,
+            "diagnostics": deepcopy(self.diagnostics),
         }

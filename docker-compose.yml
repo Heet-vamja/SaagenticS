@@ -19,6 +19,23 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-agentreadiness}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-agentreadiness}
       CORS_ORIGINS: ${CORS_ORIGINS:-["http://localhost:3000"]}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+      DEV_EMAIL_SHORTCUT_ENABLED: ${DEV_EMAIL_SHORTCUT_ENABLED:-false}
+      DEV_ACCESS_EMAIL: ${DEV_ACCESS_EMAIL:-}
+      CUSTOMER_MODE_ENABLED: ${CUSTOMER_MODE_ENABLED:-true}
+      VERIFICATION_SECRET: ${VERIFICATION_SECRET:-}
+      VERIFICATION_COOKIE_SECURE: ${VERIFICATION_COOKIE_SECURE:-true}
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:-false}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_LIVE_MODE: ${STRIPE_LIVE_MODE:-false}
+      PAID_REPORT_DAYS: ${PAID_REPORT_DAYS:-365}
       CRAWL_MAX_PAGES: ${CRAWL_MAX_PAGES:-20}
       CRAWL_MAX_DEPTH: ${CRAWL_MAX_DEPTH:-3}
       CRAWL_REQUEST_TIMEOUT: ${CRAWL_REQUEST_TIMEOUT:-10}
@@ -37,15 +54,20 @@ services:
       AUDIT_RENDER_PAGES: ${AUDIT_RENDER_PAGES:-3}
       AUDIT_RENDER_TIMEOUT: ${AUDIT_RENDER_TIMEOUT:-8}
       AUDIT_BROWSER_ENABLED: ${AUDIT_BROWSER_ENABLED:-true}
+      AUDIT_RESOURCE_LIMIT: ${AUDIT_RESOURCE_LIMIT:-5}
+      AUDIT_DIAGNOSTICS_TIMEOUT: ${AUDIT_DIAGNOSTICS_TIMEOUT:-15}
+      AUDIT_MISSING_PATH_ENABLED: ${AUDIT_MISSING_PATH_ENABLED:-true}
       REPORT_SHARE_DAYS: ${REPORT_SHARE_DAYS:-7}
       CRAWL_USER_AGENT: ${CRAWL_USER_AGENT:-AgentReadinessBot/0.1}
       CRAWL_ALLOW_SUBDOMAINS: ${CRAWL_ALLOW_SUBDOMAINS:-false}
       HF_TOKEN: ${HF_TOKEN:-}
       HF_TOKENS: ${HF_TOKENS:-}
-      AGENT_MODEL: ${AGENT_MODEL:-Qwen/Qwen3-4B-Instruct-2507}
-      AGENT_LLM_MODE: ${AGENT_LLM_MODE:-hosted}
-      AGENT_LLM_BASE_URL: ${AGENT_LLM_BASE_URL:-https://router.huggingface.co/v1}
-      AGENT_LLM_TIMEOUT: ${AGENT_LLM_TIMEOUT:-25}
+      OSAURUS_API_KEY: ${OSAURUS_API_KEY:-}
+      AGENT_LLM_PROVIDER: ${AGENT_LLM_PROVIDER:-osaurus}
+      AGENT_MODEL: ${AGENT_MODEL:-raptor-0.6-4b-jang_6m}
+      AGENT_LLM_MODE: ${AGENT_LLM_MODE:-local}
+      AGENT_LLM_BASE_URL: ${AGENT_LLM_BASE_URL:-http://host.docker.internal:1337/v1}
+      AGENT_LLM_TIMEOUT: ${AGENT_LLM_TIMEOUT:-60}
       AGENT_LLM_RETRIES: ${AGENT_LLM_RETRIES:-2}
       AGENT_MAX_OUTPUT_TOKENS: ${AGENT_MAX_OUTPUT_TOKENS:-700}
       AGENT_INVALID_LIMIT: ${AGENT_INVALID_LIMIT:-3}
@@ -58,7 +80,7 @@ services:
       AGENT_MAX_STEPS: ${AGENT_MAX_STEPS:-15}
       AGENT_DURATION: ${AGENT_DURATION:-90}
       AGENT_BROWSER_EXECUTABLE: ${AGENT_BROWSER_EXECUTABLE:-}
-      AGENT_PIPELINE_ENABLED: ${AGENT_PIPELINE_ENABLED:-true}
+      AGENT_PIPELINE_ENABLED: ${AGENT_PIPELINE_ENABLED:-false}
       AGENT_RUNS_PER_TASK: ${AGENT_RUNS_PER_TASK:-2}
       AGENT_FREE_LIMITS_ENABLED: ${AGENT_FREE_LIMITS_ENABLED:-true}
       AGENT_FREE_TASK_LIMIT: ${AGENT_FREE_TASK_LIMIT:-2}
@@ -104,11 +126,56 @@ services:
         condition: service_healthy
     volumes:
       - ./frontend/src:/app/src
+      - ./frontend/public:/app/public
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 5s
       timeout: 10s
       start_period: 20s
+      retries: 20
+  demo-store:
+    # Fictional store with deliberate agent problems; the edge router's demo origin.
+    build: ./demo-store
+    ports:
+      - "127.0.0.1:${DEMO_STORE_PORT:-4000}:4000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:4000/robots.txt', timeout=3)"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+  edge:
+    # Edge router: reuses the backend image (no second build), separate entry point.
+    # See docs/agentlane-mvp.md.
+    image: saagentics-backend
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-agentreadiness}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-agentreadiness}
+      APP_ENVIRONMENT: ${APP_ENVIRONMENT:-production}
+      VERIFICATION_SECRET: ${VERIFICATION_SECRET:-}
+      # Local development only: lets sites point at the demo store on the Docker network.
+      EDGE_ALLOW_PRIVATE_ORIGINS: ${EDGE_ALLOW_PRIVATE_ORIGINS:-true}
+      EDGE_UPSTREAM_TIMEOUT: ${EDGE_UPSTREAM_TIMEOUT:-30}
+      AGENT_TRUSTED_PROXY_CIDRS: ${AGENT_TRUSTED_PROXY_CIDRS:-[]}
+      # Variant builds (python -m app.cli.variants build) run here and call Gemini.
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      AGENT_LLM_PROVIDER: ${EDGE_LLM_PROVIDER:-gemini}
+      AGENT_MODEL: ${EDGE_MODEL:-gemini-3.8-flash}
+      AGENT_LLM_BASE_URL: ${EDGE_LLM_BASE_URL:-https://generativelanguage.googleapis.com/v1beta/openai}
+      VARIANT_MAX_PAGES: ${VARIANT_MAX_PAGES:-50}
+    ports:
+      - "127.0.0.1:${EDGE_PORT:-8080}:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+      demo-store:
+        condition: service_healthy
+    volumes:
+      - ./backend/app:/app/app
+    command: [".venv/bin/uvicorn", "app.edge.main:app", "--host", "0.0.0.0", "--port", "8080", "--reload"]
+    healthcheck:
+      test: ["CMD", ".venv/bin/python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8080/_agentlane/health', timeout=3)"]
+      interval: 5s
+      timeout: 5s
       retries: 20
 volumes:
   postgres_data:

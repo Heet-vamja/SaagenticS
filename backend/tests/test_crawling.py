@@ -186,22 +186,37 @@ def test_robots_wildcards_specific_agents_and_longest_match():
     assert robots.delay == 0.5
 
 
-def test_robots_www_redirect_reports_scope_without_claiming_file_absent():
+def test_www_is_an_explicit_canonical_alias_and_robots_redirect_is_followed():
     calls = []
 
     def site(request):
         calls.append(str(request.url))
-        return response(301, location="https://www.example.com/robots.txt")
+        if request.url.host == "example.com" and request.url.path == "/robots.txt":
+            return response(301, location="https://www.example.com/robots.txt")
+        if request.url.host == "www.example.com" and request.url.path == "/robots.txt":
+            return response(404)
+        if request.url.path == "/sitemap.xml":
+            return response(404)
+        if request.url.path == "/llms.txt":
+            return response(404)
+        return response(200, b"<title>Example</title>", **{"content-type": "text/html"})
 
     f = fetcher(site)
     crawler = WebsiteCrawler("https://example.com", f.settings, f)
-    with pytest.raises(ValueError, match="www.example.com.*example.com"):
-        run(crawler.crawl(lambda record: None, lambda state: None))
-    assert calls == ["https://example.com/robots.txt"]
+    records = []
+    run(crawler.crawl(records.append, lambda state: None))
+    assert records[0]["title"] == "Example"
+    assert "https://www.example.com/robots.txt" in calls
     robots = crawler.metadata()["robots"]["https://example.com"]
-    assert robots["exists"] is None
-    assert robots["permitted"] is False
-    assert "project website URL" in robots["reason"]
+    assert robots["exists"] is False
+    assert robots["permitted"] is True
+
+
+def test_www_alias_does_not_allow_arbitrary_subdomains():
+    scope = URLValidator("https://example.com")
+    assert scope.accept("https://www.example.com/about") == "https://www.example.com/about"
+    with pytest.raises(ValueError, match="outside configured crawl host"):
+        scope.accept("https://blog.example.com/about")
 
 
 def test_absent_robots_allows_page_and_sitemap_discovery():

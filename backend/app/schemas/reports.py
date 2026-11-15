@@ -2,7 +2,10 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.core.urls import validate_website_url
+from app.schemas.standards import StandardsCoverage
 
 
 class CheckRead(BaseModel):
@@ -91,3 +94,100 @@ class ShareRead(BaseModel):
     path: str
     expires_at: datetime
     visibility: Literal["ANYONE_WITH_LINK"]
+
+
+class FreeScanCreate(BaseModel):
+    website_url: str = Field(min_length=1, max_length=2048)
+
+    @field_validator("website_url")
+    @classmethod
+    def valid_website_url(cls, value: str) -> str:
+        normalized = validate_website_url(value)
+        if len(normalized) > 2048:
+            raise ValueError("Website URL must be at most 2048 characters")
+        return normalized
+
+
+class FreeScanAccepted(BaseModel):
+    report_path: str
+    status: str
+    expires_at: datetime
+
+
+class FreeCategoryScore(BaseModel):
+    name: str
+    score: float | None
+    weight: int
+    tested: bool
+    evaluated: int
+    total: int
+
+
+class FreeCoverage(BaseModel):
+    evaluated: int
+    total: int
+    passed: int
+    problems: int
+    untested: int
+    checks_total: int
+    checks_passed: int
+    checks_failed: int
+    checks_inconclusive: int
+    checks_informational: int
+    checks_not_applicable: int
+
+
+class FreeCheck(BaseModel):
+    category: str
+    status: Literal["PASS", "FAIL", "UNKNOWN", "INFO", "NOT_APPLICABLE"]
+    title: str
+    description: str
+    url: str | None
+    evidence_summary: str | None
+    recommendation: str | None
+
+
+class FreeInsight(BaseModel):
+    category: str
+    severity: str
+    title: str
+    description: str
+    evidence_url: str | None
+    evidence_summary: str | None
+    recommendation: str | None
+
+
+class FreeAccessPolicy(BaseModel):
+    user_agent: str
+    kind: Literal["SCANNER", "AI_BOT"]
+    policy: Literal["ALLOWED", "DISALLOWED", "UNKNOWN"]
+    sampled_url: str
+    source_url: str
+    http_status: int | None
+
+
+class FreeReportRead(BaseModel):
+    standards_coverage: StandardsCoverage | None = None
+    full_report_unlocked: bool = False
+    development_access: bool = False
+    development_skip_available: bool = False
+    development_payment_skipped: bool = False
+    rescan_until: datetime | None = None
+    status: str
+    website: str
+    phase: str
+    progress_message: str
+    score_version: str
+    score: float | None
+    score_status: Literal["PRELIMINARY", "UNAVAILABLE"]
+    access_policies: list[FreeAccessPolicy] = Field(default_factory=list)
+    score_explanation: str
+    category_scores: list[FreeCategoryScore]
+    coverage: FreeCoverage
+    checks: list[FreeCheck]
+    checks_truncated: bool
+    insights: list[FreeInsight]
+    pages_crawled: int
+    pages_discovered: int
+    pages_failed: int
+    failure_message: str | None

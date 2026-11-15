@@ -58,7 +58,7 @@ GUIDANCE = {
         Severity.INFO,
         "The agent could not interpret an action response",
         "The run stopped after the agent returned an action that failed structured validation; this may reflect model behavior rather than a website defect.",
-        "Retry with a supported Hugging Face model that follows the configured tool schema. No website change is implied by this result.",
+        "Retry with the configured model after checking its availability and structured tool-call support. No website change is implied by this result.",
     ),
     "other": (
         Category.RELIABILITY,

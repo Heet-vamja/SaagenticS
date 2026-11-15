@@ -117,5 +117,11 @@ def test_retry_budget_and_configurable_model():
         await provider.close()
 
     asyncio.run(scenario())
-    provider = HuggingFaceProvider(Settings(agent_model="org/custom-open-model", hf_token="test"))
+    provider = HuggingFaceProvider(
+        Settings(
+            agent_model="org/custom-open-model",
+            agent_llm_provider="huggingface",
+            hf_token="test",
+        )
+    )
     asyncio.run(provider.close())

@@ -1,0 +1,6 @@
+{
+  "pin_pattern": "^\\d{6}$",
+  "estimates": [{"prefixes": ["11", "40", "56"], "estimate": "2–3 working days"}],
+  "default_estimate": "3–5 working days",
+  "free_delivery_over": 1500
+}

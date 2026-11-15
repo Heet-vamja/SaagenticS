@@ -53,3 +53,5 @@ def disable_automatic_model_calls_in_tests(monkeypatch):
 
     settings = get_settings()
     monkeypatch.setattr(settings, "agent_pipeline_enabled", False)
+    # Legacy internal API tests opt out; customer-gate tests enable it explicitly.
+    monkeypatch.setattr(settings, "customer_mode_enabled", False)

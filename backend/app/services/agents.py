@@ -18,7 +18,7 @@ from app.engines.agent.actions import TASKS
 from app.engines.agent.browser import AgentScope, BrowserSession
 from app.engines.agent.contracts import RunResult
 from app.engines.agent.privacy import public_url, redact, sanitize
-from app.engines.agent.provider import HuggingFaceProvider, InferenceError
+from app.engines.agent.provider import InferenceError, get_agent_provider
 from app.engines.agent.runner import AgentRunner
 from app.models.domain import (
     AgentStep,
@@ -171,7 +171,7 @@ def execute_agent_test(
     test_id: UUID,
     session_factory=SessionLocal,
     browser_factory=BrowserSession,
-    provider_factory=HuggingFaceProvider,
+    provider_factory=get_agent_provider,
 ):
     """Compatibility endpoint: new executions are owned by a bounded parent task."""
     with session_factory() as session:
@@ -187,7 +187,7 @@ def execute_agent_task(
     task_id: UUID,
     session_factory=SessionLocal,
     browser_factory=BrowserSession,
-    provider_factory=HuggingFaceProvider,
+    provider_factory=get_agent_provider,
 ):
     asyncio.run(run_agent_task(task_id, session_factory, browser_factory, provider_factory))
 
@@ -196,7 +196,7 @@ async def run_agent_task(
     task_id,
     session_factory=SessionLocal,
     browser_factory=BrowserSession,
-    provider_factory=HuggingFaceProvider,
+    provider_factory=get_agent_provider,
 ):
     settings = get_settings()
     claimed = False
@@ -448,7 +448,7 @@ async def run_scan_agent_stage(
     settings,
     session_factory=SessionLocal,
     browser_factory=BrowserSession,
-    provider_factory=HuggingFaceProvider,
+    provider_factory=get_agent_provider,
 ):
     with session_factory() as session:
         scan = session.get(Scan, scan_id)

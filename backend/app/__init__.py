@@ -1,1 +1,1 @@
-"""AgentReadiness modular monolith."""
+"""AgentLane modular monolith."""

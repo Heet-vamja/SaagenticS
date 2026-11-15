@@ -4,7 +4,7 @@ import re
 from datetime import UTC, datetime, timedelta
 from urllib.parse import urlsplit
 
-from app.engines.static_audit.checks import Check
+from app.engines.static_audit.checks import Check, normalize_access_check
 
 AI_AGENTS = (
     "GPTBot",
@@ -19,7 +19,17 @@ AI_AGENTS = (
 
 
 def llms_measurements(body: bytes):
-    text = body.decode("utf-8-sig", errors="strict")
+    try:
+        text = body.decode("utf-8-sig", errors="strict")
+    except UnicodeDecodeError:
+        return {
+            "valid": False,
+            "errors": ["File is not valid UTF-8"],
+            "links": 0,
+            "title_present": False,
+            "format": "llms.txt structural subset (H1 and H2 file lists)",
+            "linked_urls_fetched": False,
+        }
     errors = []
     if "<html" in text.lower() or "\x00" in text:
         errors.append("Expected Markdown, received HTML or invalid text")
@@ -70,19 +80,29 @@ def site_checks(start: str, metadata: dict):
             )
         )
     for origin, state in robots.items():
-        known = state.get("exists") is not None
+        status = state.get("status")
+        reason = state.get("reason")
+        absent = status in (404, 410) or reason == "robots.txt absent"
         checks.append(
             Check(
-                "robots.access",
-                "Access",
-                "PASS" if state.get("permitted") else ("FAIL" if known else "UNKNOWN"),
-                "Crawler access is restricted",
-                "The declared crawler could not obtain permission for this origin.",
-                "Review the matching robots.txt rules and retrieval errors. Only permit the intended read-only crawler paths; do not override intentional restrictions.",
-                "HIGH",
-                state.get("url", start),
-                state,
-                3,
+                **normalize_access_check(
+                    {
+                        "rule": "robots.access",
+                        "bucket": "Access",
+                        "status": "INFO" if absent else "UNKNOWN",
+                        "title": "No robots policy was published"
+                        if absent
+                        else "Robots policy was not available for inspection",
+                        "description": "The file was absent, so no declared policy was available. This does not prove access by another agent."
+                        if absent
+                        else "Our crawler could not inspect the policy reliably.",
+                        "recommendation": "",
+                        "severity": "LOW",
+                        "url": state.get("url", start),
+                        "evidence": state,
+                        "weight": 0,
+                    }
+                )
             )
         )
         for agent, policy in state.get("ai_agents", {}).items():
@@ -100,14 +120,34 @@ def site_checks(start: str, metadata: dict):
             )
     maps = metadata.get("sitemaps", [])
     valid = [m for m in maps if m.get("parsed")]
-    unknown = not maps or all(m.get("error") for m in maps)
+    # A fetched but malformed document is a concrete sitemap problem; a
+    # network failure before receiving a response remains unknown.
+    unknown = not maps or all(
+        (m.get("error") and m.get("status") is None)
+        or (m.get("status") in (401, 403, 429))
+        or (isinstance(m.get("status"), int) and m["status"] >= 500)
+        for m in maps
+    )
+    missing = bool(maps) and all(m.get("status") in (404, 410) for m in maps)
     checks.append(
         Check(
             "sitemap.health",
             "Access",
-            "PASS" if valid else ("UNKNOWN" if unknown else "FAIL"),
-            "No usable sitemap was discovered",
-            "The inspected sitemap locations did not yield a valid sitemap or sitemap index.",
+            "PASS" if valid else ("UNKNOWN" if unknown else "INFO" if missing else "FAIL"),
+            "Sitemap is available"
+            if valid
+            else "No sitemap was found"
+            if missing
+            else "Sitemap health could not be determined"
+            if unknown
+            else "Sitemap response could not be parsed",
+            "A valid sitemap was parsed from the inspected locations."
+            if valid
+            else "No sitemap was found at the inspected locations. A sitemap can aid discovery but is optional; linked pages may still be found."
+            if missing
+            else "The inspected sitemap returned a transient or inaccessible response, so its health is inconclusive."
+            if unknown
+            else "A sitemap response was received but its XML could not be parsed as a supported sitemap or index.",
             "Publish a same-site XML sitemap returning HTTP 200 and declare its absolute URL with Sitemap: in robots.txt.",
             "MEDIUM",
             start,
@@ -129,14 +169,25 @@ def site_checks(start: str, metadata: dict):
                     stale += 1
             except ValueError:
                 invalid_dates += 1
+    freshness_status = (
+        "NOT_APPLICABLE"
+        if not valid
+        else "FAIL"
+        if invalid_dates
+        else "INFO"
+        if dated
+        else "UNKNOWN"
+    )
     checks.append(
         Check(
             "sitemap.freshness",
             "Access",
-            "FAIL" if invalid_dates else ("INFO" if dated else "UNKNOWN"),
+            freshness_status,
             "Sitemap modification dates need review"
             if invalid_dates
-            else "Sitemap freshness sampled",
+            else "Sitemap freshness sampled"
+            if dated
+            else "Sitemap freshness could not be assessed",
             "Old dates can be legitimate; modification dates are hints and do not prove content freshness. Missing dates are not an invalid sitemap.",
             "Correct malformed or future lastmod values; update lastmod only when page content changes.",
             "LOW",
@@ -148,13 +199,22 @@ def site_checks(start: str, metadata: dict):
     llms = metadata.get("llms", {})
     status = llms.get("status")
     exists = status == 200
+    presence_status = "INFO" if exists or status in (404, 410) else "UNKNOWN"
     checks.append(
         Check(
             "llms.presence",
             "Access",
-            "PASS" if exists else ("FAIL" if status in (404, 410) else "UNKNOWN"),
-            "llms.txt is missing or unavailable",
-            "This optional proposal helps agents discover curated documentation; absence does not mean your website is unusable.",
+            presence_status,
+            "llms.txt is available"
+            if exists
+            else "llms.txt is not published"
+            if status in (404, 410)
+            else "llms.txt could not be inspected",
+            "An llms.txt file was found. This proposal is not a standard or proof that agents use it."
+            if exists
+            else "This optional proposal was not found. Its absence does not establish that agents cannot discover or use the website."
+            if status in (404, 410)
+            else "The request did not establish whether llms.txt exists; this is inconclusive and was not treated as a site failure.",
             "Publish /llms.txt with a # Site name heading and curated Markdown links under ## section headings. Keep content concise and accurate.",
             "LOW",
             llms.get("url", start),
@@ -167,9 +227,13 @@ def site_checks(start: str, metadata: dict):
             Check(
                 "llms.format",
                 "Readability",
-                "PASS" if llms.get("valid") else "FAIL",
-                "llms.txt structure needs attention",
-                "The file did not pass the supported structural checks. Linked destinations are not fetched.",
+                "INFO",
+                "llms.txt passed supported formatting checks"
+                if llms.get("valid")
+                else "llms.txt format needs review",
+                "The optional file "
+                + ("passed" if llms.get("valid") else "did not pass")
+                + " the supported structural checks. Linked destinations are not fetched; this format proposal is not proof of agent compatibility.",
                 "Start with one # Project name heading. Under ## sections, use - [Descriptive name](https://example.com/docs) entries.",
                 "LOW",
                 llms.get("url", start),

@@ -14,10 +14,12 @@ class RobotsHandler:
         self.agent = agent
         self.parser = Protego.parse("")
         self.exists: bool | None = None
+        self.status: int | None = None
         self.reason = "Not inspected"
         self.allowed = False
 
     def parse(self, status: int, body: bytes):
+        self.status = status
         self.allowed = False
         self.exists = status not in (404, 410)
         if status in (404, 410):
@@ -52,7 +54,9 @@ class RobotsHandler:
 
     def metadata(self, url: str):
         return {
+            "user_agent": self.agent,
             "exists": self.exists,
+            "status": self.status,
             "permitted": self.permits(url),
             "reason": self.reason,
             "url": url,
@@ -60,7 +64,8 @@ class RobotsHandler:
                 agent: {
                     "allowed": self.allowed and self.parser.can_fetch(url, agent),
                     "sampled_paths": [url],
-                    "known": self.exists is not None and self.allowed,
+                    # A missing robots file is not an explicit policy grant.
+                    "known": self.status == 200 and self.reason == "robots.txt parsed",
                 }
                 for agent in AI_AGENTS
             },

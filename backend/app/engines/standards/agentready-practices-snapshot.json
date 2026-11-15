@@ -1,0 +1,130 @@
+{
+  "$comment": "Requirement facts (ID, phase, level, retirement) derived from the upstream practices.json. Requirement text is not copied. Refresh with python -m app.cli.agentready_sync --write-snapshot <practices.json>.",
+  "source": "https://github.com/agentready-org/standard/blob/e5f37cf7bf46def0c6ca7cb5aa439af96886fa88/spec/practices.json",
+  "version": "2.0.1",
+  "requirements": [
+    {
+      "id": "AR-FIND-01",
+      "stage": "FIND",
+      "level": "MUST"
+    },
+    {
+      "id": "AR-FIND-02",
+      "stage": "FIND",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-FIND-03",
+      "stage": "FIND",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-FIND-04",
+      "stage": "FIND",
+      "level": "MAY"
+    },
+    {
+      "id": "AR-READ-01",
+      "stage": "READ",
+      "level": "MUST"
+    },
+    {
+      "id": "AR-READ-02",
+      "stage": "READ",
+      "level": "MUST"
+    },
+    {
+      "id": "AR-READ-03",
+      "stage": "READ",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-READ-04",
+      "stage": "READ",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-READ-05",
+      "stage": "READ",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-READ-06",
+      "stage": "READ",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-READ-07",
+      "stage": "READ",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-READ-08",
+      "stage": "READ",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-READ-09",
+      "stage": "READ",
+      "level": "MAY"
+    },
+    {
+      "id": "AR-READ-11",
+      "stage": "READ",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-ACT-01",
+      "stage": "ACT",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-ACT-02",
+      "stage": "ACT",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-ACT-03",
+      "stage": "ACT",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-ACT-04",
+      "stage": "ACT",
+      "level": "MAY"
+    },
+    {
+      "id": "AR-ACT-05",
+      "stage": "ACT",
+      "level": "MAY"
+    },
+    {
+      "id": "AR-ACT-06",
+      "stage": "ACT",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-ACT-07",
+      "stage": "ACT",
+      "level": "SHOULD"
+    },
+    {
+      "id": "AR-ACT-08",
+      "stage": "ACT",
+      "level": "MAY"
+    },
+    {
+      "id": "AR-ACT-09",
+      "stage": "ACT",
+      "level": "MAY"
+    },
+    {
+      "id": "AR-ACT-10",
+      "stage": "ACT",
+      "level": "MUST"
+    }
+  ],
+  "retired": [
+    "AR-READ-10"
+  ]
+}

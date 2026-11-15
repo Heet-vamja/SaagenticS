@@ -1,0 +1,261 @@
+{
+  "mapping_version": "1.2.0",
+  "spec_version": "2.0.1",
+  "reviewed_on": "2026-11-13",
+  "source_url": "https://github.com/agentready-org/standard/blob/main/spec/spec.md",
+  "requirements": [
+    {
+      "id": "AR-FIND-01",
+      "stage": "FIND",
+      "level": "MUST",
+      "title": "Public-content access",
+      "limitations": "Sampled robots policies and our own network responses do not verify reachability from other providers or their infrastructure.",
+      "rules": [
+        "robots.access",
+        "robots.ai_policy",
+        "access.challenge",
+        "http.restriction"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-FIND-02",
+      "stage": "FIND",
+      "level": "SHOULD",
+      "title": "Canonical first-party documentation",
+      "limitations": "Canonical metadata does not establish that documentation answers customer questions or stays current.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-FIND-03",
+      "stage": "FIND",
+      "level": "SHOULD",
+      "title": "Sitemap discovery",
+      "limitations": "Parsing a sitemap does not verify complete page coverage or its declaration in robots.txt.",
+      "rules": [
+        "sitemap.health"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-FIND-04",
+      "stage": "FIND",
+      "level": "MAY",
+      "title": "Linked AI resource catalog",
+      "limitations": "One /.well-known/ai-catalog.json request plus sampled rel=\"ai-catalog\" links. JSON syntax and listed URLs are recorded; the catalog schema, completeness and listed resources are not verified, and homepage-specific linking is not separated from other sampled pages.",
+      "rules": [
+        "discovery.ai_catalog"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-01",
+      "stage": "READ",
+      "level": "MUST",
+      "title": "Useful initial HTML",
+      "limitations": "The bounded raw/rendered text comparison is a heuristic; it does not verify that a specific answer is present.",
+      "rules": [
+        "js_dependency"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-02",
+      "stage": "READ",
+      "level": "MUST",
+      "title": "Honest HTTP responses",
+      "limitations": "One random missing path and observed HTTP responses are sampled. Redirect intent and throttling reliability are not established.",
+      "rules": [
+        "http.status",
+        "http.soft_error",
+        "http.rate_limit",
+        "http.missing_path"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-03",
+      "stage": "READ",
+      "level": "SHOULD",
+      "title": "Homepage HTML and navigation",
+      "limitations": "Homepage text growth is sampled. Links to documentation, product and pricing destinations are not independently verified.",
+      "rules": [
+        "js_dependency"
+      ],
+      "scope": "homepage"
+    },
+    {
+      "id": "AR-READ-04",
+      "stage": "READ",
+      "level": "SHOULD",
+      "title": "Task-answering documentation",
+      "limitations": "Metadata and semantic HTML checks do not assess documentation accuracy or task coverage.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-05",
+      "stage": "READ",
+      "level": "SHOULD",
+      "title": "Usable code examples",
+      "limitations": "Only bounded HTML pre/code annotations are inspected. Source Markdown fences, inline examples, language correctness and executability are not verified.",
+      "rules": [
+        "content.code_examples"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-06",
+      "stage": "READ",
+      "level": "SHOULD",
+      "title": "Links to discovery resources",
+      "limitations": "Only sampled HTML/HTTP Link references and a bounded same-site validation subset are inspected. Unlinked paths and skipped targets cannot establish full coverage.",
+      "rules": [
+        "discovery.linked_resources"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-07",
+      "stage": "READ",
+      "level": "SHOULD",
+      "title": "Described llms.txt index",
+      "limitations": "Presence and structural checks do not verify descriptive coverage, linked destinations or agent adoption.",
+      "rules": [
+        "llms.presence",
+        "llms.format"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-08",
+      "stage": "READ",
+      "level": "SHOULD",
+      "title": "Grounded JSON-LD and visible facts",
+      "limitations": "Supported syntax and field checks do not verify business facts, page coverage or agreement with visible text.",
+      "rules": [
+        "schema.coverage",
+        "schema.syntax",
+        "schema.fields"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-09",
+      "stage": "READ",
+      "level": "MAY",
+      "title": "Discoverable Markdown alternatives",
+      "limitations": "Sampled HTML and HTTP Link advertisements are counted and at most one mirror is fetched. Agreement with the HTML page and Accept-header content negotiation are not assessed.",
+      "rules": [
+        "discovery.markdown_alternate"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-READ-11",
+      "stage": "READ",
+      "level": "SHOULD",
+      "title": "Readable first-party pricing",
+      "limitations": "Pricing pages are identified by URL or main heading in the bounded sample. Currency amounts or an explicit free plan in initial HTML are observed; plan, free-tier and limit completeness and accuracy are not verified.",
+      "rules": [
+        "content.pricing_text"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-01",
+      "stage": "ACT",
+      "level": "SHOULD",
+      "title": "Agent-usable authentication",
+      "limitations": "Authentication metadata and delegated authorization on the target product are not tested.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-02",
+      "stage": "ACT",
+      "level": "SHOULD",
+      "title": "Public API contract",
+      "limitations": "Only OpenAPI documents linked from sampled pages, HTTP Link headers or the AI Catalog are fetched, with a basic JSON structure check. Whether a public API exists, operations, authentication and YAML contracts are not assessed.",
+      "rules": [
+        "api.openapi_contract"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-03",
+      "stage": "ACT",
+      "level": "SHOULD",
+      "title": "Usable MCP interface",
+      "limitations": "MCP discovery, transport and tool behavior are not assessed.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-04",
+      "stage": "ACT",
+      "level": "MAY",
+      "title": "MCP discovery card",
+      "limitations": "Only a server card listed in the AI Catalog is fetched and checked as a JSON object. Reserved endpoint paths are not guessed; the draft card format, server capabilities and transport are not tested.",
+      "rules": [
+        "discovery.mcp_server_card"
+      ],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-05",
+      "stage": "ACT",
+      "level": "MAY",
+      "title": "Agent-hosted interface",
+      "limitations": "MCP Apps views are not assessed.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-06",
+      "stage": "ACT",
+      "level": "SHOULD",
+      "title": "SDK and command-line access",
+      "limitations": "Published SDKs, installation and CLI workflows are not tested.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-07",
+      "stage": "ACT",
+      "level": "SHOULD",
+      "title": "In-page agent tools",
+      "limitations": "HTML labels are not evidence of WebMCP registration or safe tool behavior.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-08",
+      "stage": "ACT",
+      "level": "MAY",
+      "title": "Agent-usable payments",
+      "limitations": "The target product’s payment protocols and checkout are not assessed. Our own Stripe integration is not target-site evidence.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-09",
+      "stage": "ACT",
+      "level": "MAY",
+      "title": "Structured question endpoint",
+      "limitations": "NLWeb discovery and answer behavior are not assessed.",
+      "rules": [],
+      "scope": "site"
+    },
+    {
+      "id": "AR-ACT-10",
+      "stage": "ACT",
+      "level": "MUST",
+      "title": "Operable action interface",
+      "limitations": "MCP/CLI availability and task completion are not assessed. Applicability depends on the target product and remains undetermined.",
+      "rules": [],
+      "scope": "site"
+    }
+  ]
+}

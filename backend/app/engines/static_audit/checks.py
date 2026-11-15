@@ -39,7 +39,60 @@ class Check:
         return result
 
 
+def normalize_access_check(check: dict) -> dict:
+    """Scanner-specific denials do not establish a general website failure.
+
+    Also used when projecting persisted older reports; never converts unknown
+    evidence into a pass or changes the crawler's permission enforcement.
+    """
+    result = dict(check)
+    rule = str(check.get("rule", "")).removeprefix("render.")
+    evidence = check.get("evidence") or {}
+    status = evidence.get("status")
+    if rule == "robots.access":
+        parsed = status == 200 and evidence.get("reason") == "robots.txt parsed"
+        absent = status in (404, 410) or evidence.get("reason") == "robots.txt absent"
+        if parsed and isinstance(evidence.get("permitted"), bool):
+            permitted = evidence.get("permitted") is True
+            result.update(
+                status="INFO",
+                title="Robots policy permits our crawler"
+                if permitted
+                else "Robots policy restricts our crawler",
+                description="This is the declared robots.txt permission for the AgentLane crawler on the sampled path, not proof of access or restriction for ChatGPT or other providers.",
+            )
+        elif absent:
+            result.update(status="INFO", title="No robots policy was published")
+        else:
+            result.update(
+                status="UNKNOWN",
+                title="Our scanner could not inspect robots.txt",
+                description="Our robots.txt request was not usable"
+                + (f" (HTTP {status})" if status else "")
+                + ". Crawling stopped conservatively. Other providers may have different permissions or network access; their access was not verified.",
+            )
+        result.update(
+            weight=0,
+            recommendation="Review the recorded response and intended policy with the site owner. If appropriate, allowlist our declared crawler or its deployment IP. Preserve security controls; do not impersonate another bot or bypass restrictions.",
+        )
+    elif rule in {"http.status", "http.restriction"} and (
+        status in (401, 403, 429) or rule == "http.restriction"
+    ):
+        result.update(
+            status="UNKNOWN" if rule == "http.status" else "INFO",
+            title=f"Our scanner received HTTP {status}"
+            if status
+            else "Our scanner encountered an access restriction",
+            description="This response restricted our request. It does not establish whether ChatGPT or another provider can access the page. Unavailable content is not assessed as a website failure.",
+            weight=0,
+        )
+    elif rule == "http.rate_limit" and check.get("status") == "FAIL":
+        result.update(status="INFO", weight=0)
+    return result
+
+
 def summarize(checks: list[Check]):
+    checks = [Check(**normalize_access_check(asdict(check))) for check in checks]
     # Average occurrences per rule first, so one repeated issue cannot dominate
     # merely because more pages were crawled. Unknown checks never count as passes.
     groups = defaultdict(list)
@@ -76,7 +129,7 @@ def summarize(checks: list[Check]):
         for status in ("PASS", "FAIL", "UNKNOWN", "INFO", "NOT_APPLICABLE")
     }
     return {
-        "version": "static-v1",
+        "version": "static-v3",
         "score_kind": "STATIC_READINESS",
         "score": score,
         "category_scores": scores,

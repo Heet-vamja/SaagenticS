@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.engines.agent.browser import BrowserSession
-from app.engines.agent.provider import HuggingFaceProvider
+from app.engines.agent.provider import get_agent_provider
 from app.engines.crawling.crawler import WebsiteCrawler
 from app.models.domain import AgentTaskTest, Page, Scan, ScanStatus
 from app.repositories.records import Records
@@ -61,7 +61,7 @@ def execute_scan(
     session_factory=SessionLocal,
     crawler_factory=WebsiteCrawler,
     agent_browser_factory=BrowserSession,
-    agent_provider_factory=HuggingFaceProvider,
+    agent_provider_factory=get_agent_provider,
 ):
     asyncio.run(
         _execute_scan(
@@ -79,7 +79,7 @@ async def _execute_scan(
     session_factory,
     crawler_factory,
     agent_browser_factory=BrowserSession,
-    agent_provider_factory=HuggingFaceProvider,
+    agent_provider_factory=get_agent_provider,
 ):
     settings = get_settings()
     crawler = None
@@ -93,6 +93,10 @@ async def _execute_scan(
             claimed = True
             scan = records.scan(scan_id)
             url = records.project(scan.project_id).website_url
+            free_report_scan = (scan.audit_summary or {}).get("scan_mode") == "FREE_REPORT"
+            crawl_max_pages = (
+                min(settings.crawl_max_pages, 10) if free_report_scan else settings.crawl_max_pages
+            )
             scan.audit_summary = {
                 **scan.audit_summary,
                 "phase": "CRAWLING",
@@ -106,9 +110,10 @@ async def _execute_scan(
                 url,
                 settings.model_copy(
                     update={
+                        "crawl_max_pages": crawl_max_pages,
                         "crawl_duration": min(
                             settings.crawl_duration, settings.scan_duration * 0.65
-                        )
+                        ),
                     }
                 ),
             )
@@ -167,18 +172,19 @@ async def _execute_scan(
                 session_factory,
                 transport if isinstance(transport, httpx.MockTransport) else None,
             )
-        # Agent tests are a separate stage with their own frozen budget. Any
-        # provider/browser failure is represented as unavailable agent evidence;
-        # it must not turn a completed static scan into a failed scan.
-        from app.services.agents import run_scan_agent_stage
+        if not free_report_scan and not settings.customer_mode_enabled:
+            # Agent tests are a separate stage with their own frozen budget. Any
+            # provider/browser failure is represented as unavailable agent evidence;
+            # it must not turn a completed static scan into a failed scan.
+            from app.services.agents import run_scan_agent_stage
 
-        await run_scan_agent_stage(
-            scan_id,
-            settings,
-            session_factory,
-            agent_browser_factory,
-            agent_provider_factory,
-        )
+            await run_scan_agent_stage(
+                scan_id,
+                settings,
+                session_factory,
+                agent_browser_factory,
+                agent_provider_factory,
+            )
         finish_scan(
             scan_id,
             ScanStatus.FAILED if crawl_error else ScanStatus.COMPLETED,
@@ -262,6 +268,8 @@ async def recover_expired_scans():
                     .limit(get_settings().agent_max_active)
                 )
             )
+            if get_settings().customer_mode_enabled:
+                agent_ids = []  # Do not resume legacy agent jobs in the customer release.
             pending = records.pending_scans(get_settings().scan_max_active)
             session.commit()
             return pending, agent_ids, set(expired_task_scans)

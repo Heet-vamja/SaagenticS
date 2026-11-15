@@ -1,0 +1,5 @@
+{
+  "version": "ai-policy-v1",
+  "search": ["OAI-SearchBot", "Claude-SearchBot", "PerplexityBot"],
+  "training": ["GPTBot", "ClaudeBot"]
+}

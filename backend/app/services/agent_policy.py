@@ -55,13 +55,11 @@ def snapshot(settings: Settings):
 
 def public_config(settings: Settings):
     policy = snapshot(settings)
-    configured = bool(
-        settings.agent_model
-        and (
-            settings.agent_llm_mode == "local"
-            or settings.hf_token.get_secret_value()
-            or settings.hf_tokens.get_secret_value()
-        )
+    configured = bool(settings.agent_model) and (
+        settings.agent_llm_provider == "osaurus"
+        or settings.agent_llm_mode == "local"
+        or settings.hf_token.get_secret_value()
+        or settings.hf_tokens.get_secret_value()
     )
     return {
         **{

@@ -510,7 +510,7 @@ class ReportService:
             "visibility": "ANYONE_WITH_LINK",
         }
 
-    def shared_scan(self, token):
+    def shared_link(self, token):
         if not 30 <= len(token) <= 100:
             raise RecordNotFound("Report link not found or expired")
         share = self.session.scalar(
@@ -522,7 +522,10 @@ class ReportService:
         )
         if not share:
             raise RecordNotFound("Report link not found or expired")
-        return share.scan_id
+        return share
+
+    def shared_scan(self, token):
+        return self.shared_link(token).scan_id
 
     def revoke_shares(self, scan_id):
         self.audits.scan(scan_id)

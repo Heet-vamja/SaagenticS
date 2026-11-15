@@ -287,6 +287,7 @@ class AgentStep(Base):
 class ReportShare(Base):
     __tablename__ = "report_shares"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    development_unlocked: Mapped[bool] = mapped_column(default=False, server_default="false")
     scan_id: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("scans.id", ondelete="CASCADE"), index=True
     )
@@ -294,6 +295,35 @@ class ReportShare(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    baseline_scan_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("scans.id", name="fk_report_share_baseline", ondelete="SET NULL")
+    )
+
+    verification_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("website_verifications.id", name="fk_report_share_verification"), index=True
+    )
+    domain_order_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("domain_orders.id", name="fk_report_share_order", use_alter=True), index=True
+    )
+
+
+class ReportFixEvent(Base):
+    __tablename__ = "report_fix_events"
+    __table_args__ = (
+        UniqueConstraint("share_id", "fix_key", "event_type", name="uq_report_fix_event"),
+        CheckConstraint(
+            "event_type IN ('PROMPT_COPIED','ASSET_DOWNLOADED','FIX_APPLIED',"
+            "'USEFUL','NOT_USEFUL','PRICE_INTERESTED','PRICE_NOT_INTERESTED','PACK_DOWNLOADED')",
+            name="report_fix_event_type",
+        ),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    share_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("report_shares.id", ondelete="CASCADE"), index=True
+    )
+    fix_key: Mapped[str] = mapped_column(String(64), default="", server_default="")
+    event_type: Mapped[str] = mapped_column(String(30))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class AgentTaskTest(Base):
@@ -358,3 +388,131 @@ class AdmissionBucket(Base):
     bucket_key: Mapped[str] = mapped_column(String(128), primary_key=True)
     count: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class WebsiteVerification(Base):
+    __tablename__ = "website_verifications"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    verification_method: Mapped[str] = mapped_column(
+        String(20), default="EMAIL_OTP", server_default="EMAIL_OTP"
+    )
+    domain: Mapped[str] = mapped_column(String(255), index=True)
+    website_url: Mapped[str] = mapped_column(String(2048))
+    email: Mapped[str] = mapped_column(String(320))
+    identity_hash: Mapped[str] = mapped_column(String(64), index=True)
+    discovered: Mapped[bool] = mapped_column(default=False, server_default="false")
+    otp_digest: Mapped[str | None] = mapped_column(String(64))
+    otp_expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    attempts: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    session_digest: Mapped[str | None] = mapped_column(String(64), unique=True)
+    session_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class DomainOrder(Base):
+    __tablename__ = "domain_orders"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    livemode: Mapped[bool] = mapped_column(default=False, server_default="false")
+    verification_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("website_verifications.id"), index=True
+    )
+    share_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("report_shares.id"), index=True)
+    domain: Mapped[str] = mapped_column(String(255), index=True)
+    email: Mapped[str] = mapped_column(String(320))
+    checkout_session_id: Mapped[str | None] = mapped_column(String(255), unique=True)
+    payment_intent_id: Mapped[str | None] = mapped_column(String(255), unique=True)
+    amount: Mapped[int] = mapped_column(Integer, default=1900, server_default="1900")
+    currency: Mapped[str] = mapped_column(String(3), default="usd", server_default="usd")
+    status: Mapped[str] = mapped_column(String(20), default="PENDING", server_default="PENDING")
+    paid_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    rescan_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class PaymentEvent(Base):
+    __tablename__ = "payment_events"
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
+    payment_intent_id: Mapped[str | None] = mapped_column(String(255), index=True)
+    revoked: Mapped[bool] = mapped_column(default=False, server_default="false")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class EdgeSite(Base):
+    """A customer host served through the edge router, proxied to one fixed origin."""
+
+    __tablename__ = "edge_sites"
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    host: Mapped[str] = mapped_column(String(255), unique=True)
+    origin_url: Mapped[str] = mapped_column(String(2048))
+    name: Mapped[str] = mapped_column(String(200))
+    routing_enabled: Mapped[bool] = mapped_column(default=True, server_default="true")
+    # Owner-approved delivery data for the check_delivery action (validated DeliveryRules).
+    delivery_rules: Mapped[dict | None] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
+class AgentRequest(Base):
+    """One agent or crawler request seen by the edge router. Human traffic is not logged."""
+
+    __tablename__ = "agent_requests"
+    __table_args__ = (
+        CheckConstraint("agent_kind IN ('agent','crawler')", name="agent_request_kind_valid"),
+        CheckConstraint(
+            "served_by IN ('origin','variant','router')", name="agent_request_served_valid"
+        ),
+        Index("ix_agent_requests_site_received", "site_id", "received_at"),
+        Index("ix_agent_requests_site_agent", "site_id", "agent"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    site_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("edge_sites.id", ondelete="CASCADE"))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    agent: Mapped[str] = mapped_column(String(80))
+    agent_kind: Mapped[str] = mapped_column(String(10))
+    method: Mapped[str] = mapped_column(String(10))
+    path: Mapped[str] = mapped_column(String(2048))
+    action: Mapped[str | None] = mapped_column(String(80))
+    status: Mapped[int] = mapped_column(Integer)
+    duration_ms: Mapped[int] = mapped_column(Integer)
+    served_by: Mapped[str] = mapped_column(String(10))
+    response_bytes: Mapped[int] = mapped_column(Integer, default=0, server_default="0")
+    client_hash: Mapped[str] = mapped_column(String(64))
+    user_agent: Mapped[str] = mapped_column(String(300))
+
+
+class SiteVariant(Base):
+    """One generated agent variant of a site. Only PUBLISHED variants are served."""
+
+    __tablename__ = "site_variants"
+    __table_args__ = (
+        UniqueConstraint("site_id", "version", name="uq_site_variant_version"),
+        CheckConstraint(
+            "status IN ('DRAFT','PUBLISHED','REJECTED','SUPERSEDED')",
+            name="site_variant_status_valid",
+        ),
+        Index("ix_site_variants_site_status", "site_id", "status"),
+    )
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    site_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("edge_sites.id", ondelete="CASCADE"))
+    version: Mapped[int] = mapped_column(Integer)
+    status: Mapped[str] = mapped_column(String(12))
+    catalog: Mapped[dict] = mapped_column(JSON)
+    parity: Mapped[dict] = mapped_column(JSON)
+    evidence_summary: Mapped[dict] = mapped_column(JSON)
+    llms_txt: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(String(200))
+    usage: Mapped[dict] = mapped_column(JSON)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class VariantPage(Base):
+    __tablename__ = "variant_pages"
+    __table_args__ = (UniqueConstraint("variant_id", "path", name="uq_variant_page_path"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    variant_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("site_variants.id", ondelete="CASCADE")
+    )
+    path: Mapped[str] = mapped_column(String(300))
+    markdown: Mapped[str] = mapped_column(Text)
+    html: Mapped[str] = mapped_column(Text)

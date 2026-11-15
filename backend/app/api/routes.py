@@ -1,7 +1,7 @@
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request
+from fastapi import APIRouter, BackgroundTasks, Depends, Query, Request, Response
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
@@ -15,9 +15,11 @@ from app.schemas.api import (
     ScanRead,
     WorkflowRead,
 )
+from app.schemas.reports import FreeReportRead, FreeScanAccepted, FreeScanCreate
 from app.services.agent_policy import client_identity
 from app.services.audits import AuditService, RecordNotFound
 from app.services.crawls import execute_scan
+from app.services.reports import ReportService
 
 router = APIRouter(prefix="/api/v1")
 Limit = Annotated[int, Query(ge=1, le=100)]
@@ -53,6 +55,94 @@ def create_scan(
     scan = service.create_scan(data.project_id, client_identity(request, get_settings()))
     background_tasks.add_task(execute_scan, scan.id)
     return scan
+
+
+@router.post("/free-scans", response_model=FreeScanAccepted, status_code=201, tags=["Free report"])
+def create_free_scan(
+    data: FreeScanCreate,
+    service: Service,
+    background_tasks: BackgroundTasks,
+    request: Request,
+):
+    if get_settings().customer_mode_enabled:
+        from app.services.website_access import COOKIE, customer_scan
+
+        scan, token, expires, schedule = customer_scan(
+            service.session,
+            data.website_url,
+            client_identity(request, get_settings()),
+            request.cookies.get(COOKIE),
+        )
+    else:
+        scan, token, expires = service.create_free_scan(
+            data.website_url, client_identity(request, get_settings())
+        )
+        schedule = True
+    if schedule:
+        background_tasks.add_task(execute_scan, scan.id)
+    return {
+        "report_path": f"/free-reports/{token}",
+        "status": scan.status.value,
+        "expires_at": expires,
+    }
+
+
+@router.get("/free-reports/{token}", response_model=FreeReportRead, tags=["Free report"])
+def free_report(token: str, service: Service, response: Response, request: Request):
+    response.headers.update(
+        {
+            "Cache-Control": "no-store",
+            "X-Robots-Tag": "noindex, nofollow",
+            "Referrer-Policy": "no-referrer",
+        }
+    )
+    scan_id = ReportService(service.session).shared_scan(token)
+    scan = service.scan(scan_id)
+    if (scan.audit_summary or {}).get("scan_mode") != "FREE_REPORT":
+        raise RecordNotFound("Report link not found or expired")
+    project = service.project(scan.project_id)
+    findings = service.records.findings(scan_id, 10000, 0)
+    from app.services.free_reports import FREE_INSIGHT_LIMIT
+    from app.services.free_reports import free_report as build_free_report
+
+    result = build_free_report(scan, project, findings)
+    if not get_settings().customer_mode_enabled:
+        return result.model_copy(update={"full_report_unlocked": True})
+    from app.services.website_access import (
+        COOKIE,
+        dev_shortcut_enabled,
+        development_report_unlocked,
+        is_dev_session,
+        report_access,
+    )
+
+    verification, share, order = report_access(service.session, token, request.cookies.get(COOKIE))
+    result = result.model_copy(
+        update={
+            "development_access": is_dev_session(verification),
+            "development_skip_available": dev_shortcut_enabled(),
+            "development_payment_skipped": development_report_unlocked(verification, share),
+        }
+    )
+    if development_report_unlocked(verification, share):
+        return result.model_copy(update={"full_report_unlocked": True})
+    if order:
+        return result.model_copy(
+            update={"full_report_unlocked": True, "rescan_until": order.rescan_until}
+        )
+    return result.model_copy(
+        update={
+            "checks": [],
+            "checks_truncated": False,
+            "access_policies": [],
+            "standards_coverage": None,
+            "insights": [
+                item.model_copy(update={"evidence_url": None, "evidence_summary": None})
+                for item in result.insights[:FREE_INSIGHT_LIMIT]
+            ],
+            "full_report_unlocked": False,
+        }
+    )
 
 
 @router.post(

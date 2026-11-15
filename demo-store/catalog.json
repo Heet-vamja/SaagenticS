@@ -1,0 +1,19 @@
+{
+  "store": "Northstar Shoes",
+  "currency": "INR",
+  "products": [
+    {"slug": "trail-runner", "name": "Trail Runner", "category": "Running", "price": 2799, "sizes": {"7": 4, "8": 6, "9": 3, "10": 0, "11": 2}, "description": "Grippy, lightweight trail shoe with a rock plate."},
+    {"slug": "city-walker", "name": "City Walker", "category": "Everyday", "price": 1999, "sizes": {"7": 8, "8": 5, "9": 0, "10": 4, "11": 1}, "description": "Cushioned everyday sneaker with a knit upper."},
+    {"slug": "court-classic", "name": "Court Classic", "category": "Lifestyle", "price": 3499, "sizes": {"7": 2, "8": 3, "9": 5, "10": 5, "11": 0}, "description": "Leather court shoe with a vulcanised sole."},
+    {"slug": "aero-racer", "name": "Aero Racer", "category": "Running", "price": 6299, "sizes": {"7": 1, "8": 2, "9": 2, "10": 3, "11": 1}, "description": "Carbon-plated race-day shoe."},
+    {"slug": "monsoon-guard", "name": "Monsoon Guard", "category": "Outdoor", "price": 3199, "sizes": {"7": 0, "8": 4, "9": 6, "10": 2, "11": 2}, "description": "Water-resistant shoe for rainy commutes."},
+    {"slug": "studio-flex", "name": "Studio Flex", "category": "Training", "price": 2499, "sizes": {"7": 5, "8": 5, "9": 0, "10": 0, "11": 3}, "description": "Flexible trainer for gym and studio sessions."},
+    {"slug": "summit-hiker", "name": "Summit Hiker", "category": "Outdoor", "price": 4599, "sizes": {"7": 2, "8": 2, "9": 4, "10": 4, "11": 2}, "description": "Mid-cut hiking boot with ankle support."},
+    {"slug": "easy-slide", "name": "Easy Slide", "category": "Everyday", "price": 899, "sizes": {"7": 9, "8": 9, "9": 9, "10": 9, "11": 9}, "description": "Cushioned slide for after a run."}
+  ],
+  "policies": {
+    "shipping": "Free delivery on orders over ₹1,500. Standard delivery takes 3–5 working days; check your PIN code for an estimate.",
+    "returns": "Unworn shoes can be returned within 30 days for a full refund. Use the original box.",
+    "sizing": "Sizes are UK. If you are between sizes, choose the larger size."
+  }
+}

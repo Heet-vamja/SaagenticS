@@ -22,13 +22,20 @@ from app.repositories.records import Records
 from app.services.crawls import execute_scan
 from app.services.report_pdf import render_html
 from app.services.reports import ReportService
+from app.services.static_audits import page_checks
 
 GOOD = b"""<html lang="en"><head><title>Northstar</title><script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","name":"Northstar"}</script></head><body><h1>Northstar</h1><a href="/pricing">Pricing</a><button aria-label="Open menu"></button><label for="email">Email</label><input id="email" type="email"></body></html>"""
 
 
 def test_html_names_labels_schema_and_bounded_private_evidence():
     good = inspect_html(GOOD, "https://fixture.example/")
-    assert not [c for c in html_checks("https://fixture.example/", good) if c.status == "FAIL"]
+    good_checks = html_checks("https://fixture.example/", good)
+    assert not [c for c in good_checks if c.status == "FAIL"]
+    titles = {c.rule: c.title for c in good_checks}
+    assert titles["page.title"] == "Page title is present"
+    assert titles["page.h1"] == "Main heading is present"
+    assert titles["semantic.buttons"] == "Buttons have accessible names"
+    assert titles["schema.syntax"] == "JSON-LD passed the supported syntax checks"
     bad = inspect_html(
         b"""<button></button><input type="password" value="do-not-store"><a href="/x"></a><div onclick="alert(1)">Open</div><script type="application/ld+json">{"@context":"https://schema.org","@type":"Product","badProperty":1}</script>""",
         "https://fixture.example/",
@@ -40,8 +47,13 @@ def test_html_names_labels_schema_and_bounded_private_evidence():
         "semantic.links",
         "semantic.clickable_divs",
         "schema.syntax",
-        "schema.fields",
     } <= rules
+    assert (
+        next(
+            c for c in html_checks("https://fixture.example/", bad) if c.rule == "schema.fields"
+        ).status
+        == "INFO"
+    )
     assert "do-not-store" not in json.dumps(bad)
     assert bad["structured_data"]["errors"][0]["property"] == "badProperty"
     unknown = inspect_html(
@@ -71,6 +83,7 @@ def test_llms_format_optional_sections_relative_links_and_no_fetches():
     assert not llms_measurements(b"# First\n# Second")["valid"]
     assert not llms_measurements(b"# Project\n## Docs\n- Missing link")["valid"]
     assert not llms_measurements(b"# Project\n## Docs\n- [Link](file:///etc/passwd)")["valid"]
+    assert not llms_measurements(b"\xff# invalid encoding")["valid"]
 
 
 def test_robots_ai_policy_and_sitemap_unknown_freshness_not_unearned_pass():
@@ -93,7 +106,7 @@ def test_robots_ai_policy_and_sitemap_unknown_freshness_not_unearned_pass():
     )
     assert all(c.status == "INFO" for c in checks if c.rule == "robots.ai_policy")
     assert next(c for c in checks if c.rule == "sitemap.freshness").status == "UNKNOWN"
-    assert next(c for c in checks if c.rule == "llms.presence").status == "FAIL"
+    assert next(c for c in checks if c.rule == "llms.presence").status == "INFO"
 
 
 def test_score_weights_unknown_and_repeated_pages_are_transparent():
@@ -109,6 +122,87 @@ def test_score_weights_unknown_and_repeated_pages_are_transparent():
     assert score["counts"]["UNKNOWN"] == 1
     assert summarize(checks + [checks[0]])["score"] == 50
     assert summarize([checks[-1]])["score"] is None
+
+
+def test_fetch_failure_is_inconclusive_and_optional_assets_are_not_score_failures():
+    page = SimpleNamespace(
+        url="https://fixture.example/unreachable",
+        status_code=None,
+        crawl_error="ConnectError",
+        page_metadata={},
+    )
+    request_check = next(c for c in page_checks(page) if c.rule == "http.status")
+    assert request_check.status == "UNKNOWN"
+    assert request_check.evidence == {}
+
+    optional = site_checks(
+        "https://fixture.example/",
+        {
+            "robots": {},
+            "sitemaps": [{"url": "https://fixture.example/sitemap.xml", "status": 404}],
+            "llms": {"url": "https://fixture.example/llms.txt", "status": 404},
+        },
+    )
+    statuses = {c.rule: c.status for c in optional}
+    assert statuses["sitemap.health"] == "INFO"
+    assert statuses["llms.presence"] == "INFO"
+    assert not [
+        c for c in optional if c.rule in ("sitemap.health", "llms.presence") and c.status == "FAIL"
+    ]
+
+
+def test_http_redirect_error_and_challenge_checks_use_observed_evidence():
+    error_page = SimpleNamespace(
+        url="https://fixture.example/missing",
+        status_code=404,
+        crawl_error="HTTP 404",
+        page_metadata={},
+    )
+    error_check = next(c for c in page_checks(error_page) if c.rule == "http.status")
+    assert error_check.status == "FAIL"
+    assert error_check.evidence == {"status": 404}
+    assert "intentionally" in error_check.recommendation
+
+    redirected_page = SimpleNamespace(
+        url="https://fixture.example/",
+        status_code=200,
+        crawl_error=None,
+        page_metadata={"http": {"redirects": ["/one", "/two", "/three"]}},
+    )
+    redirect_check = next(c for c in page_checks(redirected_page) if c.rule == "http.redirects")
+    assert redirect_check.status == "FAIL"
+
+    challenge = inspect_html(
+        b"<html><title>One more step</title><body>Checking your browser"
+        b"<div class='cf-turnstile'></div></body></html>",
+        "https://fixture.example/",
+    )
+    challenge_check = next(
+        c
+        for c in html_checks("https://fixture.example/", challenge)
+        if c.rule == "access.challenge"
+    )
+    assert challenge_check.status == "FAIL"
+    assert challenge_check.evidence["signals"]
+
+
+def test_robots_transient_failure_is_unknown_but_explicit_rule_is_observed():
+    handler = RobotsHandler("AgentReadinessBot/0.1")
+    handler.parse(503, b"maintenance")
+    transient = handler.metadata("https://fixture.example/")
+    checks = site_checks(
+        "https://fixture.example/", {"robots": {"https://fixture.example": transient}}
+    )
+    assert next(c for c in checks if c.rule == "robots.access").status == "UNKNOWN"
+    assert not transient["ai_agents"]["GPTBot"]["known"]
+
+    handler.parse(200, b"User-agent: AgentReadinessBot/0.1\nDisallow: /")
+    denied = handler.metadata("https://fixture.example/")
+    checks = site_checks(
+        "https://fixture.example/", {"robots": {"https://fixture.example": denied}}
+    )
+    assert next(c for c in checks if c.rule == "robots.access").status == "INFO"
+    assert denied["ai_agents"]["GPTBot"]["known"]
 
 
 def test_real_browser_js_comparison_through_mock_gateway_without_llm(tmp_path):
