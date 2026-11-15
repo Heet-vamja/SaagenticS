@@ -77,14 +77,14 @@
   height: 56px;
   border-radius: 16px;
   background: var(--ink);
-  color: var(--brand-uv-light);
+  color: var(--brand-accent-on-dark);
   font-family: var(--font-heading), sans-serif;
   font-size: 26px;
   font-weight: 800;
 }
 [data-theme="dark"] .avatar {
   background: var(--lime);
-  color: #ffffff;
+  color: var(--brand-ink);
 }
 .identity h1 {
   font-size: clamp(26px, 3vw, 34px);
@@ -449,7 +449,7 @@
   font-variant-numeric: tabular-nums;
 }
 .lane .score strong {
-  color: var(--brand-uv-light);
+  color: var(--brand-accent-on-dark);
 }
 .score span {
   font-size: 14px;
@@ -512,7 +512,7 @@
 }
 .lane .outcome[data-v="PASSED"] {
   background: var(--lime);
-  color: #ffffff;
+  color: var(--brand-ink);
 }
 .lane .outcome[data-v="FAILED"] {
   background: #ff6b6b33;
@@ -525,7 +525,7 @@
   border-radius: 999px;
   padding: 7px 14px;
   background: var(--lime);
-  color: #ffffff;
+  color: var(--brand-ink);
   box-shadow: var(--shadow-card);
   font-size: 13px;
   font-weight: 700;
@@ -761,7 +761,7 @@
   height: 40px;
   border-radius: 12px;
   background: var(--lime);
-  color: #ffffff;
+  color: var(--brand-ink);
 }
 .laneActions {
   display: flex;

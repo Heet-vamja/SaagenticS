@@ -1,8 +1,8 @@
 /*
  * Landing page, designed from the brand brief: a light, quiet page with one accent
  * moment per screen. Medium-weight headlines, generous space, hairline structure,
- * left-aligned editorial sections with one artifact each. Ultraviolet marks
- * the rotating agent name, the paid plan and the $19 price. Tokens: design-tokens.css.
+ * left-aligned editorial sections with one artifact each. Volt lime marks
+ * the rotating agent name, the logo's lane and the paid plan. Tokens: design-tokens.css.
  */
 .page {
   overflow-x: clip;
@@ -158,23 +158,25 @@
 }
 /* Rotating agent name: every name shares one grid cell, so the highlight keeps the
    widest name's width and nothing around it shifts. Only transforms animate. */
-/* Bottom padding keeps the underline inside the clipped rotation box. */
+/* The box reaches a little past the words on each side so the brush can overhang
+   the letters while they still line up with the rest of the headline. */
 .agentNames {
   display: inline-grid;
   overflow: hidden;
-  padding-block: 0.08em 0.28em;
-  margin-block: -0.08em -0.28em;
+  padding-block: 0.08em 0.14em;
+  margin-block: -0.08em -0.14em;
+  margin-inline: -0.26em;
 }
 .agentPill.agentPill::before {
   content: none;
 }
-/* The agent name is violet with a violet brush swash, in the headline's own font.
-   Violet text is 5.6:1 on paper (light violet on dark). Logo tiles stay white. */
+/* The agent name sits on a volt lime brush stroke, in the headline's own font.
+   Logo tiles stay white. */
 .agentPill.agentPill {
   padding: 0;
   border-radius: 0;
   background: none;
-  color: var(--signal);
+  color: var(--brand-ink);
 }
 .agentMark {
   display: grid;
@@ -199,8 +201,10 @@
   display: inline-flex;
   align-items: center;
   justify-content: flex-start;
-  justify-self: start; /* hug the name, so the swash is only as wide as it */
+  justify-self: start; /* hug the name, so the brush is only as wide as it */
   position: relative;
+  isolation: isolate;
+  padding-inline: 0.26em;
   gap: 0.2em;
   white-space: nowrap;
   opacity: 0;
@@ -211,17 +215,17 @@
 }
 /* A hand-drawn brush swash under each name, in the text color: thicker at the
    start, tapering off to the right. Stretches with the name's width. */
+/* A painted brush stroke of volt lime behind each name, with ink words on it
+   (14.9:1) in both themes. Uneven edges, stretched to the name's width. */
 .agentNames > span::after {
   content: "";
   position: absolute;
-  left: -0.02em;
-  bottom: -0.2em;
-  width: 104%;
-  height: 0.26em;
-  background: currentColor;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 20' preserveAspectRatio='none'%3E%3Cpath d='M3 15.5C42 6.5 104 3.2 197 7.2c1.6.1 2.4 1.2 1.8 2.4-.4.8-1.2 1.2-2.1 1.2C112 9.4 58 11.6 6.4 18.6 3 19.1.9 17.9 1.2 16.6c.2-.5.9-.9 1.8-1.1z'/%3E%3C/svg%3E")
+  z-index: -1;
+  inset: 0.06em 0 -0.06em;
+  background: var(--brand-lime);
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 60' preserveAspectRatio='none'%3E%3Cpath d='M9 13C62 5 158 3 291 8c5 .2 8 5 5 11-2 4 1 7 1 12 0 6-3 9 0 13 2 4-1 8-6 8-84 4-178 6-280 4-6 0-8-5-5-10 2-3-1-7-1-12 0-6 3-9 0-14-2-4 0-6 4-7z'/%3E%3C/svg%3E")
     0 0 / 100% 100% no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 20' preserveAspectRatio='none'%3E%3Cpath d='M3 15.5C42 6.5 104 3.2 197 7.2c1.6.1 2.4 1.2 1.8 2.4-.4.8-1.2 1.2-2.1 1.2C112 9.4 58 11.6 6.4 18.6 3 19.1.9 17.9 1.2 16.6c.2-.5.9-.9 1.8-1.1z'/%3E%3C/svg%3E")
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 300 60' preserveAspectRatio='none'%3E%3Cpath d='M9 13C62 5 158 3 291 8c5 .2 8 5 5 11-2 4 1 7 1 12 0 6-3 9 0 13 2 4-1 8-6 8-84 4-178 6-280 4-6 0-8-5-5-10 2-3-1-7-1-12 0-6 3-9 0-14-2-4 0-6 4-7z'/%3E%3C/svg%3E")
     0 0 / 100% 100% no-repeat;
 }
 .agentNames > span[data-state="active"] {
@@ -279,6 +283,7 @@
   margin-top: 24px;
 }
 .score strong {
+  font-family: var(--font-heading), sans-serif;
   font-size: 60px;
   font-weight: 560;
   line-height: 1;
@@ -675,7 +680,7 @@
   border-radius: 8px;
   padding: 4px 10px;
   background: var(--brand-lime);
-  color: #ffffff;
+  color: var(--brand-ink);
   font-size: 12.5px;
   font-weight: 600;
 }
@@ -686,6 +691,7 @@
   margin-top: 24px;
 }
 .amount strong {
+  font-family: var(--font-heading), sans-serif;
   font-size: 64px;
   font-weight: 560;
   line-height: 1;
@@ -825,10 +831,10 @@
 }
 .closingCard .scanForm :global(.entry-submit) {
   background: var(--brand-lime);
-  color: #ffffff;
+  color: var(--brand-ink);
 }
 .closingCard .scanForm :global(.entry-submit):hover {
-  background: #6b50f7;
+  background: #d8f76e;
 }
 .disclosure {
   max-width: 60ch;

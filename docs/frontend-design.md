@@ -1,21 +1,21 @@
 # Frontend design and verification
 
-AgentLane uses the **Ultraviolet** identity (canvas: the "AgentLane brand identity"
+AgentLane uses the **Volt lime** identity (canvas: the "AgentLane brand identity"
 design artifact; brief: "AgentLane brand and design brief"). The logo is one path that
 forks: the straight paper lane is the site as people and search engines see it, the
-violet lane (`#8b76ff`) branches off for AI agents (`LogoMark` in `product-ui.tsx`,
+lime lane (`#cbf34a`) branches off for AI agents (`LogoMark` in `product-ui.tsx`,
 `app/icon.svg`, `app/apple-icon.png`). Its colors come from `--logo-*` tokens: an ink
 tile in light mode, a raised `#23262c` tile in dark mode, the same lanes in both.
 
 The guiding rule is restraint, so the product reads premium rather than loud. Ink
 (`#0e1013`) and warm paper (`#f6f5ef`) carry every page, and buttons stay ink (chalk
-`#f3f2ec` in dark mode). Ultraviolet `#5b3df5` is the one accent, used about once per
-screen: the hero's rotating agent name (violet text with a violet underline, in the
-headline font), the paid plan and its price, the logo's lane. As a fill it carries
-white text (6.1:1); as text it is `#5b3df5` on light (5.6:1) and `#b4a6ff` on dark or
-ink. Green means verified results only; model judgments are neutral grey. Labels are
-small and sentence case (no mono capitals); headlines use weight 560 with a quieter
-grey second phrase; sections are separated by hairlines, not colored bands. No
+`#f3f2ec` in dark mode). Volt lime `#cbf34a` is the one accent and is always a fill
+with ink on it (14.9:1): a painted brush stroke behind the hero's rotating agent name
+(an SVG mask, sized to each name), the logo's lane, the paid plan's badge and button.
+Lime is never text on paper; accent text is dark olive `#4a6400` on light (6.2:1) and
+lime on dark. Green means verified results only; model judgments are neutral grey.
+Labels are small and sentence case (no mono capitals); headlines use weight 560 with a
+quieter grey second phrase; sections are separated by hairlines, not colored bands. No
 gradients, glows, sparkle icons, outlined numerals or fake browser chrome.
 
 The landing follows the brief's story: hero (headline, one sentence, scan box, one
@@ -23,8 +23,8 @@ caption line; an example report card beside it), the problem (three common failu
 a person-vs-agent example), how it works (three steps and what the scan checks),
 principles ("Verified, not claimed"), the agent lane (in development), pricing, FAQ and
 a closing scan card with the disclosure. Buttons and controls use `--radius-control`
-(12px), badges 8px, cards 20 to 24px. Instrument Sans sets headings and text; JetBrains
-Mono (ligatures off) sets code and data. Dark mode is available from the header and
+(12px), badges 8px, cards 20 to 24px. Funnel Display sets headings and large numerals,
+Geist sets text and Geist Mono (ligatures off) sets code and data. Dark mode is available from the header and
 persists in local storage; Tailwind's `dark:` variant follows that toggle.
 
 ## Tokens and components
@@ -39,7 +39,7 @@ primitives: `.surface`, `.surface-float`, `.nav-glass`, `.display-xl|lg|md`,
 `.block-feature|lime|ink`, status badges, tables, skeletons and code panels.
 `product-theme.css` holds shared report and legal presentation. Buttons are 12px
 rounded rectangles with `default`, `secondary`, `outline`, `ghost`, `ink` and `lime`
-variants and `sm`/`default`/`lg` sizes. Fonts (Instrument Sans, JetBrains Mono; SIL
+variants and `sm`/`default`/`lg` sizes. Fonts (Funnel Display, Geist, Geist Mono; SIL
 OFL) come from `next/font/google`: they are downloaded once at build time and served
 from the app, so pages never call a font service, but a build needs network access. Do not fabricate social proof
 (logo bars, testimonials, usage statistics) to fill marketing layouts. Reports end

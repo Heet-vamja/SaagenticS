@@ -1,16 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./product-theme.css";
-import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
+import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
 
-// Self-hosted at build time by next/font (SIL Open Font License). One family for
-// headings and text keeps the product calm; mono is for code and data.
-const text = Instrument_Sans({
+// Self-hosted at build time by next/font (SIL Open Font License): Funnel Display
+// for headings, Geist for text, Geist Mono for code and data.
+const display = Funnel_Display({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
+const text = Geist({
   subsets: ["latin"],
   variable: "--font-text",
   display: "swap",
 });
-const code = JetBrains_Mono({
+const code = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-code",
   display: "swap",
@@ -28,7 +33,7 @@ export default function RootLayout({
       lang="en"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${text.variable} ${code.variable}`}
+      className={`${display.variable} ${text.variable} ${code.variable}`}
     >
       <head>
         <script

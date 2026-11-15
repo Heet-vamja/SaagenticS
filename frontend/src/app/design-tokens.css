@@ -1,23 +1,23 @@
 /*
- * AgentLane "Ultraviolet" identity: one site, two lanes. Ink and warm paper carry
- * the page; ultraviolet is the one accent, used once per screen (the headline
- * highlight, the logo's lane, the price, the paid plan). It is a fill with white
- * text (6.1:1); accent text is the same violet on light and light violet on dark or
- * ink. Buttons stay ink (chalk in dark). Green means verified results only; model
- * judgments are neutral. Text pairs are checked for WCAG AA.
+ * AgentLane "Volt lime" identity: one site, two lanes. Ink and warm paper carry the
+ * page; volt lime is the one accent and is always a fill with ink on it (14.9:1):
+ * the brush highlight behind the hero's agent name, the logo's lane, the paid
+ * plan's badge and button. Lime is never text on paper; accent text is dark olive
+ * on light and lime on dark. Buttons stay ink (chalk in dark). Green means verified
+ * results only; model judgments are neutral. Text pairs are checked for WCAG AA.
  * Components use semantic tokens; raw values stay here.
  */
 :root {
   color-scheme: light;
   /* Brand constants (same in both themes). */
-  --brand-uv: #5b3df5;
+  --brand-accent: #cbf34a;
   /* Accent as text on ink or dark surfaces, and as the logo's lane. */
-  --brand-uv-light: #b4a6ff;
-  --brand-uv-lane: #8b76ff;
+  --brand-accent-on-dark: #cbf34a;
+  --brand-accent-lane: #cbf34a;
   /* Legacy names kept so existing components follow the new palette: "lime" is
-     the accent fill (white text on it), "violet" the accent text on light. */
-  --brand-lime: var(--brand-uv);
-  --brand-violet: var(--brand-uv);
+     the accent fill (ink text on it), "violet" the accent text on light (olive). */
+  --brand-lime: var(--brand-accent);
+  --brand-violet: #4a6400;
   --brand-ink: #0e1013;
   --brand-paper: #f6f5ef;
 
@@ -29,20 +29,20 @@
   --muted-foreground: #62646a;
   --border: #e2e0d6;
   --border-strong: var(--brand-ink);
-  --ring: var(--brand-uv);
+  --ring: #4a6400;
 
   /* Actions and accents. */
   --primary: var(--brand-ink);
   --primary-hover: #2a2c31;
   --primary-active: #000000;
   --primary-foreground: #ffffff;
-  --signal: var(--brand-uv);
+  --signal: #4a6400;
   --lime: var(--brand-lime);
-  --lime-foreground: #ffffff;
+  --lime-foreground: var(--brand-ink);
   --ink: var(--brand-ink);
   --ink-foreground: #f6f5ef;
-  --accent-soft: #ece8ff;
-  --action-soft: #ece8ff;
+  --accent-soft: #eef8cf;
+  --action-soft: #eef8cf;
   /* Highlight behind headline words; the words turn ink on it in both themes. */
   --marker: var(--brand-lime);
 
@@ -62,10 +62,10 @@
   --score-low: #c2183f;
   --score-low-start: #ff8fb0;
 
-  /* Logo: ink tile, paper lane, violet agent lane. */
+  /* Logo: ink tile, paper lane, lime agent lane. */
   --logo-tile: var(--brand-ink);
   --logo-lane: var(--brand-paper);
-  --logo-agent: var(--brand-uv-lane);
+  --logo-agent: var(--brand-accent-lane);
 
   /* Shape and depth. */
   --radius-card: 20px;
@@ -88,17 +88,17 @@
   --muted-foreground: #8e9096;
   --border: #2a2d33;
   --border-strong: #f3f2ec;
-  --ring: var(--brand-uv-light);
+  --ring: var(--brand-accent-on-dark);
 
   --primary: #f3f2ec;
   --primary-hover: #ffffff;
   --primary-active: #d9d8d2;
   --primary-foreground: var(--brand-ink);
-  --signal: var(--brand-uv-light);
+  --signal: var(--brand-accent-on-dark);
   --lime: var(--brand-lime);
   --ink-foreground: #f3f2ec;
-  --accent-soft: #251d5c;
-  --action-soft: #251d5c;
+  --accent-soft: #262d12;
+  --action-soft: #262d12;
   --marker: var(--brand-lime);
 
   --success: #86e0a6;
@@ -115,10 +115,10 @@
   --score-low: #ff7a98;
   --score-low-start: #ffb3c8;
 
-  /* Logo on dark: a raised tile, the same paper and violet lanes as in light. */
+  /* Logo on dark: a raised tile, the same paper and lime lanes as in light. */
   --logo-tile: #23262c;
   --logo-lane: #f3f2ec;
-  --logo-agent: var(--brand-uv-lane);
+  --logo-agent: var(--brand-accent-lane);
 
   --shadow-card: 0 1px 2px #00000040, 0 18px 40px -24px #000000a0;
   --shadow-float: 0 2px 6px #00000040, 0 30px 80px -30px #000000c0;

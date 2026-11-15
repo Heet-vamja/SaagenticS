@@ -4,10 +4,9 @@
 /* `dark:` follows the persisted header toggle, not only the OS preference. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Instrument Sans sets headings and text (one calm family); JetBrains Mono sets code. */
+/* Funnel Display sets headings (--font-heading); Geist sets text; Geist Mono sets code. */
 :root {
   --font-body: var(--font-text);
-  --font-heading: var(--font-text);
 }
 
 @theme inline {
@@ -250,7 +249,7 @@
   }
   .icon-tile[data-tone="ink"] {
     background: var(--brand-ink);
-    color: var(--brand-uv-light);
+    color: var(--brand-accent-on-dark);
   }
   [data-theme="dark"] .icon-tile[data-tone="ink"] {
     background: #26262a;
