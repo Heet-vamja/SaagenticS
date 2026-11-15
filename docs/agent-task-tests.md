@@ -40,12 +40,11 @@ can mark interrupted work failed after a process restart.
 
 ## Provider and action behavior
 
-`AGENT_MODEL` selects the model identifier; the default is
-`Qwen/Qwen3-4B-Instruct-2507`. Hosted mode uses the Hugging Face router or an
-operator-configured Hugging Face Inference Endpoint. `AGENT_LLM_MODE=local` uses a
-separate operator-managed, OpenAI-compatible endpoint and does not send HF
-credentials. The model and endpoint are configuration; request bodies cannot
-override either. No alternative provider is selected automatically.
+`AGENT_LLM_PROVIDER=osaurus` is the development default and selects the local
+Raptor model ID `raptor-0.6-4b-jang_6m`. Set `AGENT_LLM_PROVIDER=huggingface` to
+use the retained Hugging Face provider. `AGENT_MODEL`, `AGENT_LLM_BASE_URL`, and
+`AGENT_LLM_TIMEOUT` configure the selected endpoint; request bodies cannot
+override them. Provider changes are explicit, with no automatic fallback.
 
 The provider first requests native tool calls with `tool_choice=required` and
 temperature zero. It accepts only one schema-valid call from the bounded set:
@@ -166,33 +165,49 @@ Restart/recreate the backend after changing settings:
 docker compose up -d --force-recreate backend
 ```
 
-Hosted Hugging Face mode:
+Default local Osaurus mode (Raptor 0.6):
 
 ```dotenv
-HF_TOKEN=<inference-enabled-token>
+AGENT_LLM_PROVIDER=osaurus
+AGENT_MODEL=raptor-0.6-4b-jang_6m
+AGENT_LLM_BASE_URL=http://host.docker.internal:1337/v1
+AGENT_LLM_TIMEOUT=60
+OSAURUS_API_KEY=<access-key-if-required-for-network-exposure>
+```
+
+Start and check the Osaurus API on the Mac with `osaurus serve` and
+`curl --fail http://127.0.0.1:1337/v1/models`.
+
+Osaurus must be running on the Mac with Raptor 0.6 downloaded. Since its normal
+API binds only to loopback, enable network exposure when the backend is in Docker
+Desktop; configure an Osaurus access key and set `OSAURUS_API_KEY` when required.
+For a native backend process, use `http://127.0.0.1:1337/v1` and keep network
+exposure disabled. Check connectivity without inference using:
+
+```sh
+curl --fail http://localhost:8000/health/llm
+```
+
+The response reports API reachability and whether the exact model ID is listed by
+Osaurus. It makes no model-generation request.
+
+Hugging Face remains an explicit alternative:
+
+```dotenv
+AGENT_LLM_PROVIDER=huggingface
 AGENT_LLM_MODE=hosted
 AGENT_LLM_BASE_URL=https://router.huggingface.co/v1
 AGENT_MODEL=Qwen/Qwen3-4B-Instruct-2507
+HF_TOKEN=<inference-enabled-token>
 ```
 
-To switch to a separately operated compatible local endpoint:
-
-```dotenv
-AGENT_LLM_MODE=local
-AGENT_LLM_BASE_URL=http://host.docker.internal:9000/v1
-AGENT_MODEL=<compatible-open-weight-model-id>
-```
-
-When using local mode, do not put inference credentials in the request. For native
-development, use `http://localhost:9000/v1` instead of `host.docker.internal`. A
-compatible endpoint must support chat completions and either native tool calls or
-JSON-only generation. Verify model weights, licensing, context length and endpoint
-behavior independently.
+Provider selection is explicit; an Osaurus outage does not cause a hosted call.
 
 ## Setup and verification
 
-Copy `.env.example` to `.env`, set `HF_TOKEN` for hosted inference, then start the
-development stack:
+Copy `.env.example` to `.env`, install Osaurus and Raptor 0.6, configure host access
+as above, then start the development stack. If `.env` already exists, edit only
+the provider settings and keep its database/local secrets:
 
 ```sh
 cp .env.example .env  # only when .env does not already exist
@@ -212,21 +227,28 @@ uv run ruff format --check app tests alembic
 DATABASE_URL="$TEST_DATABASE_URL" uv run alembic check
 ```
 
-The opt-in real-model command is:
+The opt-in real Hugging Face command is:
 
 ```sh
 RUN_REAL_HF_TEST=1 uv run pytest tests/test_agent_real_model.py -v -s
 ```
 
-It sends requests to the configured endpoint while keeping browser traffic on the
-local test fixture. It requires usable credentials/endpoint access and is not part
-of deterministic CI. Report actual outcomes, steps, duration, usage and errors; do
-not infer success from the task card or mock tests.
+It sends requests to the configured HF endpoint while keeping browser traffic on
+the local fixture. It is not part of deterministic CI.
+
+The opt-in local Osaurus/Raptor smoke test is:
+
+```sh
+RUN_REAL_OSAURUS_TEST=1 uv run pytest tests/test_agent_real_osaurus.py -v -s
+```
+
+It uses only the local website fixture and does not fall back to HF. Its outcome
+remains an agent claim; it is not independently verified.
 
 ### Real-model verification status
 
-**Pending.** No live Hugging Face run is claimed by this documentation update. The
+**Pending.** No live model run is claimed by this documentation update. The
 completion record must be filled after an explicit bounded run with the configured
-model, including each attempted task, outcome, steps, elapsed time, token/cost data
-when returned, and any provider or network error. Never include credentials,
-private prompts or hidden reasoning in that record.
+provider/model, including outcome, steps, elapsed time, usage when returned, and
+provider/network errors. Never include credentials, private prompts or hidden
+reasoning in that record.

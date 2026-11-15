@@ -1,4 +1,4 @@
-# AgentReadiness engineering guidance
+# AgentLane engineering guidance
 
 Cloud tasks already run in an isolated environment. Use the existing checkout; create a worktree only if the user explicitly requests one. Read README and docs before extending the architecture. Preserve user changes and keep secrets/generated dependencies out of Git.
 
@@ -7,7 +7,8 @@ Cloud tasks already run in an isolated environment. Use the existing checkout; c
 - Modular monolith: Next.js App Router/TypeScript frontend, synchronous FastAPI/Pydantic/SQLAlchemy backend, PostgreSQL/Alembic. Avoid microservices, Redis, Celery, Kafka and Kubernetes without a concrete requirement.
 - Backend: `api` owns HTTP/dependencies; `schemas` owns DTOs; `services` owns rules/transactions; `repositories` owns queries; `models` owns persistence; `db` owns sessions; `core` owns settings/security.
 - Concrete engines are `engines/crawling`, `engines/static_audit` and `engines/agent`; shared agent result contracts live in `engines/agent/contracts.py`. Services compose execution, scoring and reports from persisted evidence.
-- Agent inference must use a configured open-weight Hugging Face model. Keep observations untrusted, actions schema-validated, and browser HTTP behind the validated fetch gateway with a rejecting proxy. Never introduce an unrestricted route continuation/fetch path.
+- Agent inference uses Gemini through the `LLMProvider` interface (OpenAI-compatible endpoint); Computer Use goes through its own adapter on the native Gemini API. Google services (Gemini, BigQuery, Firestore, Cloud Run, Firebase) stay behind swappable interfaces with local defaults. Keep observations untrusted, actions schema-validated, and browser HTTP behind the validated fetch gateway with a rejecting proxy. Never introduce an unrestricted route continuation/fetch path.
+- Edge router (`app/edge`, see docs/agentlane-mvp.md): proxy each site only to its configured, validated origin; route only user-initiated agent fetchers to variants, never search or training crawlers; fail open to the origin; variants and actions carry the same public facts and never expose gated content (login, checkout, private prices). Store paths without query strings and client IPs only as keyed hashes.
 - Workflow COMPLETED is a lifecycle state, not proof of success. Keep agent-declared outcome separate from rules/judged verification and from real-model execution evidence. Never map an agent claim directly to PASSED.
 - Frontend: App Router pages compose shared components; `components/ui` owns shadcn/Radix controls; `lib/api.ts` owns requests; `lib/types.ts` owns response types. Keep browser API requests same-origin.
 

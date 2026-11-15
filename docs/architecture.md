@@ -47,7 +47,8 @@ task from another scan. Scan/project deletion cascades through their dependent
 records. The explicit Alembic migrations are independent of live ORM metadata and
 must be tested against a disposable PostgreSQL database.
 
-Static report weights and checks use the versioned `static-v1` rubric. Agent
+Static report weights and checks use the versioned `static-v2` rubric for new
+scans; older scans keep their original rubric version. Agent
 outcome, verification and cost are stored separately from the agent-declared
 completion status. See [Agent Task Tests](agent-task-tests.md#outcome-and-assurance)
 for aggregation and score blending.
@@ -106,3 +107,12 @@ opaque HMAC references scoped to the share. See [agent task HTTP interfaces](age
 The system does not include a durable external queue, object storage, user identity
 or account/billing features. Production deployment needs its own access control,
 artifact retention, edge TLS and egress controls.
+
+
+Customer mode (`CUSTOMER_MODE_ENABLED=true`) narrows the public API to verified
+website scanning, preview/paid reports, OTP email and Stripe webhooks. Internal
+project/scan/share/agent APIs are blocked at the application boundary, while
+paid report routes also enforce mailbox/domain entitlements. The services
+`website_access.py` and `payments.py` own verification and one-time purchases;
+Alembic 0007 persists challenges/sessions, domain orders and webhook receipts.
+See [customer launch](customer-launch.md). Accounts/subscriptions are not added.

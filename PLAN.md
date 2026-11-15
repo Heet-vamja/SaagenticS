@@ -1,4 +1,278 @@
-# Agent Task Test implementation plan
+# AgentReadiness implementation plans
+
+## Fix Center implementation plan (2026-11-01)
+
+> This was an earlier task that the user explicitly stopped. Its checklist is
+> retained as history; the active work below is the Free AI Readiness Scan.
+
+### Existing architecture inspected
+
+- FastAPI API routers live in `backend/app/api`; report endpoints are in
+  `report_routes.py`, composed by `ReportService` in `services/reports.py`.
+- Static findings are persisted in `Finding` with category/severity/title,
+  structured evidence, and deterministic recommendation. Existing comparison
+  uses check identity and coverage; report links are hashed, expiring bearer
+  capabilities.
+- SQLAlchemy domain models are centralized in `backend/app/models/domain.py`;
+  Alembic revisions are numbered and explicit (`0001`–`0005`).
+- Frontend is Next.js App Router. The customer report is
+  `frontend/src/components/customer-report.tsx`; API calls and DTOs are in
+  `frontend/src/lib/api.ts` and `types.ts`.
+- Existing JSON/CSV/PDF export paths consume the report projection. Scan work
+  is in-process and should not gain a new queue/job system for deterministic
+  generation.
+
+### Design and data model
+
+- Add a pure deterministic `engines/fix_center` package: versioned JSON prompt
+  templates, a fixed finding-rule mapping, prompt rendering, site-derived asset
+  generators, and strict validators. It may consume only persisted scan,
+  finding, and crawl-page evidence; never infer business facts.
+- Persist generated prompts (`finding_id`, variant, template version, content),
+  generated assets (`scan_id`, type, version, content, validation result), and
+  append-only status events (`finding_id`, status, optional asset/prompt refs,
+  timestamp). Use finding identity by rule + page key across scans for
+  verification; only a finding absent from a completed comparable scan becomes
+  `VERIFIED_FIXED`. A missing/unknown check is not a pass.
+- Add a reversible Alembic revision after `0005`, uniqueness/index/check
+  constraints, and ORM relationships without changing existing report/scanner
+  semantics.
+- Add versioned `/api/v1/scans/{id}/fix-center` read/generate, prompt/asset
+  access, copy/download event tracking, status update, and ZIP fix-pack routes.
+  Shared report-token access must use the same live share validation and
+  redaction boundary; no internal IDs/paths or query-string secrets leak.
+- Add a Fix Center on the existing customer report with finding groups,
+  three prompt variants, generated asset preview/copy/download, status controls,
+  missing-input disclosure, and re-scan confirmation. Export report projection
+  fields to JSON/CSV/PDF and include an asset/prompt ZIP.
+- Document limitations: crawled data cannot supply all business identity fields;
+  omit unavailable schema properties and list them as missing inputs. Robots
+  policy generation must preserve an explicit user-selected preset and show a
+  diff; no generated policy is applied automatically.
+
+### Small task checklist and dependencies
+
+- [x] F0: Record this plan and interfaces before implementation. Parent.
+- [ ] F1: Deterministic prompt template files, shared prompt DTO/rendering,
+  finding-rule mapping and pure tests. Depends F0. Strong-model subagent owns
+  only `backend/app/engines/fix_center/prompts*` and their focused tests.
+- [ ] F2: Deterministic asset generators/validators (llms.txt, JSON-LD,
+  robots policy, sitemap suggestions), AI bot config, and unit tests. Depends
+  F0; may share only the new `engines/fix_center/assets*` package files with
+  F1 through a pre-agreed package layout; no overlapping files. Strong-model
+  subagent owns only asset modules/config and asset tests.
+- [ ] F3: ORM entities and explicit reversible migration for prompts, assets,
+  and status events. Depends F0. Small-model subagent owns `domain.py`, one new
+  migration, and isolated model/migration tests; no service/API/frontend files.
+- [ ] F4: Pure finding matching and re-scan verification policy plus tests.
+  Depends F1/F3 contract. Strong-model subagent owns `verification.py` and its
+  unit tests; it does not modify models or report service.
+- [ ] F5: Repository/service/API orchestration, permissions for shared reports,
+  pagination/size bounds, tracking and fix-pack endpoint. Depends F1–F4.
+  Parent owns backend API/service/schema/repository integration.
+- [ ] F6: Report export projection (JSON/CSV/PDF) and ZIP fix pack. Depends F5.
+  Parent owns existing report/export files to avoid overlap.
+- [ ] F7: Customer report Fix Center UI and frontend API/types. Depends on
+  published F5 route/DTO contract. Small-model subagent owns only new
+  `fix-center.tsx` and designated new UI tests; parent integrates into report.
+- [ ] F8: Integration tests for known-issue fixture → prompts/assets → fixed
+  copy → re-scan verification, API permission tests, docs and README link.
+  Depends F5–F7. Parent owns backend integration tests and README; small-model
+  subagent owns new `docs/fix-center.md` only.
+- [ ] F9: Full backend suite, Ruff, migration/schema checks, frontend lint/type
+  checks/build/UI state checks, ZIP and privacy review. Depends F8. Parent.
+
+### Risks / defaults
+
+- No authentication is present; workspace endpoints follow existing workspace
+  access conventions, and shared access is limited to an unexpired, unrevoked
+  report token. Keep new shared payloads to report-safe prompts/assets only.
+- Prompt-copy/download statuses are interaction signals, not evidence a user
+  applied a fix. Only completed re-scan rule/page matching can set verified.
+- A generated asset is persisted only after validation; failed generation is an
+  error with missing fields, never an unchecked download.
+- `robots.txt` defaults need explicit selection; initial generation uses
+  `maximize_ai_discoverability` only when the caller selects it, and always
+  shows the before/after diff. The product must not silently alter policy.
+- Before/after findings can differ in page identity due to URL normalization;
+  match with canonical URL/rule when available, then normalized evidence URL.
+- Avoid changes to scan scoring: verification is a separate report dimension.
+
+## Free AI Readiness Scan & Report milestone (2026-11-01)
+
+### Current-state audit
+
+- Already present: homepage URL field, internal project/scan creation APIs,
+  bounded crawler, deterministic site/page audits, database findings, static
+  score and coverage summary, top-five priorities, report API and JSON/CSV/PDF,
+  expiring report capabilities, and a customer-facing `/results/{scan_id}` view.
+- Incomplete for this milestone: submission currently lists/creates a project
+  in the browser and exposes the scan UUID in the results URL; no URL-only
+  endpoint returns an opaque report capability; per-scan free crawl cap is not
+  enforced; default scan execution can run the optional agent stage; score
+  dimensions/weights differ from this milestone; no focused integration test
+  proves a no-LLM anonymous scan from URL entry to free report.
+- Reuse existing crawl, audit evidence, scanner SSRF/rate controls, report token
+  storage, and report views. Do not delete or replace the project workspace or
+  agent APIs.
+
+### Contracts and design
+
+- Add `POST /api/v1/free-scans` accepting only `website_url`. It internally
+  validates the public URL, creates/reuses internal Project/Scan records,
+  consumes the existing spoof-resistant admission bucket, sets a scan mode with
+  page limit 10 and `agent_enabled=false`, creates a short-lived report share,
+  schedules existing in-process scan execution, and immediately returns an
+  opaque report token/path plus pending status. No project ID or scan ID is
+  returned.
+- Per-scan crawler settings are derived from persisted `scan_mode`; free scans
+  cap pages at 10 even when global limits are higher. They run crawler and
+  deterministic static audit only; the agent/browser LLM stage is not invoked.
+- Public report token uses the existing expiring/revocable share validator.
+  Add `GET /api/v1/free-reports/{token}` as a customer-safe projection: score,
+  coverage/provisional label, top 3 evidence-backed findings, human-readable
+  statuses, and report progress. Keep internal UUIDs, project lists and agent
+  execution traces out. Retain existing workspace and shared report APIs.
+- Score rubric v2 has Discoverability 30%, Content understanding 25%,
+  Structured data 20%, Agent usability 25%. Only evaluated checks contribute;
+  if an entire category is unavailable, omit it and normalize remaining
+  weights. Infrastructure/provider failures are excluded. Since the free path
+  does not run an agent, Agent usability is explicitly untested and excluded;
+  score is preliminary and explains coverage. Keep old stored rubric summaries
+  readable and deterministic.
+- Keep “Unlock fixes” as a clearly marked coming-soon CTA. No payment logic.
+
+### Small task checklist and dependencies
+
+- [x] M0: Record current-state audit, contracts and work breakdown. Parent.
+- [x] M1: Implement URL-only free scan request/response schemas, project/scan
+  creation, opaque report share, rate-limit identity and endpoint. Depends M0.
+  Parent owns backend API/service/schema changes.
+- [x] M2: Enforce per-scan max-10 pages and skip agent stage for free scan mode;
+  preserve regular scan execution. Depends M1 contract. Parent owns crawl
+  orchestration and focused regression tests.
+- [x] M3: Implement rubric-v2 deterministic score projection and top-3
+  customer-safe report schema/endpoint, preserving old workspace report
+  contracts. Depends M0; parallel with M1. Parent owns report/schema files.
+- [x] M4: Simplify homepage submit flow and create polished URL-token scanning /
+  report journey, score, top 3 insights, coverage states, and coming-soon CTA.
+  Depends M1/M3 API contract. One subagent owns landing + new free-report
+  components/pages only; parent integrates if needed.
+- [x] M5: Add local fixture integration coverage: valid/missing metadata, broken
+  URLs, robots restrictions, malformed/missing sitemap and JSON-LD, unreachable
+  target, partial scan, duplicates, no agent-provider invocation, page cap,
+  opaque token permissions and score stability. Depends M1–M3. Test subagent
+  owns a dedicated new test file only.
+- [x] M6: Run focused/full backend tests, Ruff, migration check (no migration
+  expected unless implementation proves otherwise), frontend lint/typecheck/
+  build and browser/UI verification where available. Update README with native/
+  Docker run instructions and limitations. Parent owns README due pre-existing
+  user edits.
+
+### Verification evidence
+
+- Full backend suite: **170 passed, 5 skipped**, with one existing Starlette /
+  httpx deprecation warning. Free-scan integration tests cover URL-only
+  submission, opaque/revocable links, duplicate active-scan reuse, 10-page cap,
+  no agent/LLM provider invocation, successful and partial fixture crawls,
+  inaccessible and robots-denied targets, sitemap/JSON-LD/metadata findings,
+  score normalization, and evidence-backed top insights.
+- Ruff check and formatting pass. Alembic `check` reports **No new upgrade
+  operations detected**; this feature required no schema changes.
+- Frontend lint, TypeScript, Prettier and production build pass. Browser smoke
+  test covered homepage submission → opaque report URL → status polling → score,
+  evidence and coming-soon CTA. Desktop and mobile homepage/report layouts had
+  no overflow or WCAG 2.1 AA axe violations. Screenshots are in
+  `/private/tmp/agentreadiness-free-flow/`.
+- No unrestricted public-site crawl was run. Backend fixture tests use mocked
+  HTTP transport; browser smoke test mocks only API responses.
+
+### Risks / defaults
+
+- URL domain/canonical matching must not weaken DNS, redirect, robots, rate or
+  SSRF protections. Reject private destinations through the existing validator.
+- Existing reports are stored with an earlier rubric; never relabel their
+  historical score as rubric v2. Mark the score contract/version explicitly.
+- If the crawl itself is denied or unavailable, show an honest failed or
+  incomplete report; do not manufacture a score or three placeholder findings.
+- Report capability remains expiring, revocable and noindex. It is not an
+  account system or a replacement for existing workspace endpoints.
+- Repeated submissions should reuse an active free scan for the exact same
+  normalized website where possible; use bounded results and existing queue
+  policies to avoid duplicate work.
+
+## Static assessment trustworthiness pass (2026-11-01)
+
+### Current-state review
+
+- Existing checks already cover robots and known AI bot policies, llms.txt,
+  sitemaps, HTTP responses and redirects, challenge signals, raw/rendered
+  JavaScript differences, titles/descriptions/canonicals/headings, control
+  names/labels, and JSON-LD syntax/type/property checks. The crawler is bounded,
+  respects robots, and uses its validated network gateway. Existing workspace
+  reports retain detailed checks and sanitized evidence; static work is
+  deterministic and does not call an LLM.
+- Incomplete: a page with no HTTP response is persisted as a FAIL; non-200
+  robots retrieval (including transient server errors) can be reported as a
+  confirmed crawl restriction; missing optional sitemap, llms.txt, or JSON-LD
+  are failures that can affect the score; some successful checks retain a
+  failure-oriented title; the URL-first free report shows aggregate coverage
+  and top insights but not per-check states/evidence; it omits pages failed and
+  an explicit statement that static results do not prove task success.
+
+### Plan
+
+- [x] T0: Inspect `AGENTS.md`, architecture/static/free-scan docs, crawler,
+  checks, scoring, report DTO/API/UI, and tests; record this plan. Parent.
+- [x] T1: Correct status classification for fetch failures and robots retrieval;
+  treat absence of optional sitemap, llms.txt, and schema coverage as
+  informational and keep it out of scored checks. Version changed free rubric
+  if score inclusion changes. Correct misleading outcome titles. Add focused
+  deterministic tests. Parent owns crawler diagnostics,
+  static audit and score projection files/tests.
+- [x] T2: Extend the free report’s safe response projection with bounded,
+  sanitized per-check status/evidence, category/status counts, and failed-page
+  coverage. Do not expose internal scan IDs or raw HTML. Parent owns free report
+  schema/service/API contract and matching TypeScript DTO.
+- [x] T3: Update report UI to show the assessment caveat, page coverage, and
+  grouped, expandable check outcomes (including inconclusive/informational and
+  not-applicable states), while preserving the top-three insights and existing
+  URL-only scan flow. Parent owns the free report component.
+- [x] T4: Exercise representative local fixtures for a healthy site, optional
+  assets missing, malformed policy/sitemap, redirects, HTTP errors, challenge,
+  incomplete metadata/semantics, JS-dependent content, and scanner failures.
+  Run focused/full backend tests, Ruff, frontend lint/type/build and browser UI
+  checks where available. Update docs with exact assessment limits. Parent.
+
+### Verification evidence
+
+- Backend full suite: **173 passed, 5 skipped**, with one existing Starlette /
+  httpx deprecation warning. Focused static/free assessment tests: **30 passed**.
+  Tests cover missing/invalid optional files, malformed sitemap and JSON-LD,
+  robots allow/deny/transient failures, no-response failures as UNKNOWN, HTTP
+  404 and redirects, challenge signals, JS-render differences, page metadata,
+  semantics, score eligibility and free-report privacy/status projection.
+- Ruff check and formatting pass. Alembic reports **No new upgrade operations
+  detected**; no schema migration was needed.
+- Frontend lint, TypeScript, Prettier and production build pass. Playwright
+  browser smoke test passes the URL-only scan flow, check detail disclosure,
+  desktop/mobile homepage and report layout, no horizontal overflow, and no
+  WCAG 2.1 AA axe violations. Screenshots are in
+  `/private/tmp/agentreadiness-free-flow/`.
+- All crawler-facing automated tests use local fixtures and mocked HTTP
+  responses; no public-site crawl or LLM call was performed.
+
+### Risks / defaults
+
+- Do not change the crawler’s fail-closed robots behavior. A retrieval failure
+  may still stop crawling, but it must be reported as unavailable/inconclusive
+  unless an explicit response proves an access restriction.
+- Missing `llms.txt` or JSON-LD is an informational opportunity only; presence
+  must not by itself raise a readiness score. This correction will be versioned
+  so score history does not compare unlike rubrics.
+- Preserve the existing static and agent score separation, report capability
+  privacy, crawler limits, current backend contracts except the additive free
+  report details, and all existing agent configuration.
 
 Source objective: user attachment `pasted-text-1.txt` (2026-11-01). Complete the
 feature across persistence, provider, browser loop, scan jobs, scoring, reports,
@@ -240,3 +514,21 @@ the next verification step after that configuration. The user requested stopping
 live agent work at RUNNING and skipping pending tasks; the last smoke task instead
 terminated quickly as UNAVAILABLE on HTTP 402, and no additional live agent runs
 were started.
+
+
+## 2026-11-02 — SaaS-focused evidence → fix → verify MVP
+
+Implemented the five agreed product adjustments; the scoped checklist, risks and
+verification evidence are in [docs/mvp-plan.md](docs/mvp-plan.md).
+
+- [x] SaaS-first homepage and pricing/docs/signup task framing.
+- [x] Evidence and deterministic fix guidance, three prompt variants and validated asset drafts.
+- [x] Static readiness separated from real agent tasks explicitly marked Not run in the free report.
+- [x] Fix Center, tracked user actions, ZIP pack and capability-scoped linked rescan verification.
+- [x] Optional usefulness/price-interest feedback and anonymous aggregate pilot metrics; no checkout.
+- [x] Migration 0006, backend/fixture/API regression tests, frontend checks and rendered desktop/mobile accessibility flow.
+
+No LLM calls were made. Actual pilot recruitment and willingness-to-pay validation
+are pending; the UI only records hypothetical interest. Live agent inference
+remains deferred and unverified. Current implementation details and asset
+limitations are in [docs/fix-center.md](docs/fix-center.md).

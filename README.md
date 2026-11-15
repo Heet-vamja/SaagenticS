@@ -1,6 +1,21 @@
-# AgentReadiness
+# AgentLane
 
-Modular monolith for understanding how AI agents experience websites. Projects and bounded website crawling feed deterministic static audits, reports and readiness scores. When enabled, a separate agent stage follows static report preparation and evaluates bounded website tasks with a configured Hugging Face-compatible open-weight model endpoint. Static checks remain deterministic and retain their own frozen score. Accounts and billing are out of scope. Real-model task success is pending explicit live verification; mock-model integration tests do not establish it.
+**Customer launch:** email verification (any mailbox) → free static score and three
+insights → optional **$19 one-time full report** with 30 days of same-domain
+re-scans. Real AI browser-agent tests are **Coming Christmas 2026**. Start with
+[customer launch setup](docs/customer-launch.md) for Gmail SMTP, Stripe test mode,
+webhooks and access controls. SMTP/Stripe need configuration before live use.
+
+
+The customer MVP helps **SaaS businesses** find barriers around public pricing,
+documentation and signup/demo discovery, give developers evidence-backed fixes,
+and verify improvements. The free report includes a deterministic Fix Center,
+validated crawl-derived asset drafts, fix-pack download and linked rescan.
+Static readiness and real agent task results are presented separately; anonymous
+scans do not call a model. See [the current MVP goal](docs/mvp-plan.md) and
+[Fix Center, verification and pilot metrics](docs/fix-center.md).
+
+Modular monolith for understanding how AI agents experience websites. Projects and bounded website crawling feed deterministic static audits, reports and readiness scores. In private internal development mode only, a separately enabled agent stage follows static report preparation and evaluates bounded website tasks using local Raptor 0.6 through Osaurus by default, or an explicitly selected Hugging Face open-weight endpoint. Static checks remain deterministic and retain their own frozen score. User accounts and subscriptions remain out of scope; customer access uses mailbox verification and a one-time domain report purchase. Real-model task success is pending explicit live verification; mock-model integration tests do not establish it.
 
 ## Docker development
 
@@ -23,8 +38,7 @@ docker compose up -d --wait
 
 The database volume survives stop/down. `docker compose down -v` destroys local data; use only for an intentional reset.
 
-For static-only scans, set `AGENT_PIPELINE_ENABLED=false` in `.env`. The default
-is enabled. Agent policy, cost and network settings are listed in
+For static-only scans, set `AGENT_PIPELINE_ENABLED=false` in `.env`. The customer release keeps agent execution disabled. Agent policy, cost and network settings are listed in
 [Agent Task Tests](docs/agent-task-tests.md); blank token-price settings mean cost
 is unknown, not zero. Do not expose the local Compose ports directly to the public
 internet.
@@ -36,7 +50,89 @@ docker compose -f docker-compose.yml -f docker-compose.cloud.yml build
 docker compose up -d --wait
 ```
 
-The override mounts `/etc/ssl/certs/ca-certificates.crt` during dependency installation. Set `CLOUD_CA_BUNDLE` if needed. Keep Docker's injected proxy and TLS verification enabled. Crawling needs no external API secret; hosted browser-agent inference requires HF_TOKEN.
+The override mounts `/etc/ssl/certs/ca-certificates.crt` during dependency installation. Set `CLOUD_CA_BUNDLE` if needed. Keep Docker's injected proxy and TLS verification enabled. Crawling and local Osaurus inference need no paid API credentials. See [Local Osaurus setup](#local-osaurus-raptor-setup) for Docker Desktop networking. Hugging Face fallback requires HF_TOKEN.
+
+### Local Osaurus Raptor setup
+
+The default development provider is Osaurus on your Mac; the FastAPI container
+connects to the host at `host.docker.internal:1337`. Install Osaurus **0.25.0 or
+newer**, download [Raptor 0.6](https://osaurus.ai/models/raptor-06) (about 3.7 GB;
+Apache-2.0 model weights) in its model picker, and enable Osaurus's local API.
+Start/check the loopback API on the Mac with:
+
+```sh
+osaurus serve
+curl --fail http://127.0.0.1:1337/v1/models
+```
+
+The Mac-only default listener binds to loopback, so Docker cannot reach it until
+you enable **network exposure** in Osaurus (or run `osaurus serve --expose`). Use
+Osaurus's access key when network exposure requires one; do not
+expose the API to an untrusted network.
+
+Set these values in the root `.env` (the example already contains the defaults).
+If `.env` already exists, edit these provider lines manually and keep your database
+password and other local settings intact; copying the example does not overwrite it.
+
+```dotenv
+AGENT_LLM_PROVIDER=osaurus
+AGENT_MODEL=raptor-0.6-4b-jang_6m
+AGENT_LLM_BASE_URL=http://host.docker.internal:1337/v1
+AGENT_LLM_TIMEOUT=60
+OSAURUS_API_KEY=<your-Osaurus-access-key-if-required>
+```
+
+Confirm the model appears in Osaurus's OpenAI-compatible model list, then check
+reachability from the running backend container without performing inference:
+
+```sh
+curl --fail http://localhost:8000/health/llm
+```
+
+The response confirms whether the API is reachable and the configured model is
+available. If FastAPI runs natively on the Mac rather than in Docker, set
+`AGENT_LLM_BASE_URL=http://127.0.0.1:1337/v1`; leave Osaurus network exposure off.
+
+To use Hugging Face instead, set `AGENT_LLM_PROVIDER=huggingface`,
+`AGENT_LLM_MODE=hosted`, `AGENT_MODEL=Qwen/Qwen3-4B-Instruct-2507`,
+`AGENT_LLM_BASE_URL=https://router.huggingface.co/v1`, and `HF_TOKEN`. Provider
+selection is explicit; a local outage never silently falls back to hosted inference.
+
+## Edge router and demo store (MVP phase 1)
+
+The MVP direction (agent variants, edge routing, verified task success) is specified in
+[docs/agentlane-mvp.md](docs/agentlane-mvp.md). Phase 1 adds a fictional demo store with
+deliberate agent problems and an edge router that proxies it and logs agent traffic.
+Compose starts both: the store on port **4000** and the router on **8080**
+(`DEMO_STORE_PORT`, `EDGE_PORT`). Register the demo host once:
+
+```sh
+docker compose exec edge .venv/bin/python -m app.cli.edge_sites add \
+  --host store.localhost --origin http://demo-store:4000 --name "Northstar Shoes"
+curl -s http://store.localhost:8080/ -A "Mozilla/5.0 Chrome/130"        # human: passed through, not logged
+curl -s http://store.localhost:8080/ -A "Mozilla/5.0; ChatGPT-User/1.0" # agent: passed through and logged
+```
+
+Phase 2 builds the agent variant (needs `GEMINI_API_KEY` in `.env`, then recreate the
+edge container with `docker compose up -d edge`):
+
+```sh
+docker compose exec -T edge .venv/bin/python -m app.cli.edge_sites set-delivery \
+  --host store.localhost --rules - < demo-store/delivery-rules.json
+docker compose exec edge .venv/bin/python -m app.cli.variants build --host store.localhost
+docker compose exec edge .venv/bin/python -m app.cli.variants list --host store.localhost
+curl -s http://store.localhost:8080/product/trail-runner -A "ChatGPT-User/1.0"   # agent HTML
+curl -s http://store.localhost:8080/llms.txt
+curl -s "http://store.localhost:8080/agent-api/search?q=running&size=9&max_price=3000"
+```
+
+A build is published only when its parity check passes; otherwise it is kept as
+`REJECTED` with the reasons. Only user-initiated agent fetchers are routable; search and training crawlers are always
+passed through (no cloaking) and logged as crawlers. Agent requests land in the
+`agent_requests` table with the agent, path (no query string), status, timing and a hashed
+client. `EDGE_ALLOW_PRIVATE_ORIGINS=true` exists only so local sites can point at the demo
+store on the Docker network; keep it false anywhere else. Demo store tests run with the
+backend environment: `backend/.venv/bin/pytest demo-store/tests`.
 
 ## Native development
 
@@ -159,9 +255,16 @@ labels rule-verified, judge-assisted and unverified results separately.
 See [agent task tests](docs/agent-task-tests.md) for default limits, API contracts,
 admission/IP handling, report/evidence boundaries and exact configuration. See
 [browser-agent implementation details](docs/browser-agent.md) for tool and browser
-safety. Choose a compatible model with `AGENT_MODEL`; hosted inference uses a
-Hugging Face token and router, while local mode uses an operator-managed compatible
-server. No alternate inference vendor is selected automatically.
+safety. `AGENT_LLM_PROVIDER=osaurus` selects local Raptor 0.6 by default;
+`AGENT_LLM_PROVIDER=huggingface` keeps the Hugging Face open-weight route available
+as an explicit alternative. No provider failover occurs automatically.
+
+The homepage's URL-first free scan uses a separate opaque report link, crawls at
+most 10 pages, and runs deterministic checks only. It never calls the configured
+LLM or waits for the optional agent stage used by workspace scans. The free score
+is preliminary: unavailable categories (including agent usability) are excluded
+and remaining weights are normalized. “Unlock Fixes” is a coming-soon state;
+payments are not implemented. See the [free scan guide](docs/free-scan.md).
 
 ## Redesigned frontend
 
@@ -183,3 +286,23 @@ preparation. Disabling `AGENT_PIPELINE_ENABLED` leaves the static audit availabl
 Defaults are 20 pages, a 120-second static execution budget, and a three-page
 browser sample.
 See [setup, rubric, APIs, tests and limitations](docs/static-audits.md).
+
+## Anonymous URL-first scan
+
+Open `http://localhost:3000`, enter a public website URL, and follow the opaque
+report link. No sign-up, project selection, or scan ID is required. The same flow
+is available through `POST /api/v1/free-scans`; poll the returned path at
+`GET /api/v1/free-reports/{token}`. Free report links expire according to
+`REPORT_SHARE_DAYS`. See the [free scan guide](docs/free-scan.md) for API details,
+score coverage, limits, and verification commands.
+
+## Privacy and terms pages
+
+The frontend provides `/privacy` and `/terms`, linked from public footers and
+workspace navigation. Operator name, contact email and jurisdiction are
+intentional placeholders in `frontend/src/lib/legal.ts`; both pages are marked
+as drafts pending completion and review. See [legal page setup](docs/legal-pages.md).
+
+AgentReady reference mapping: see [coverage, explicit gaps and interpretation](docs/agentready-coverage.md). It is an independent, versioned reference—not certification or a change to our scoring rubric.
+
+Bounded resource-link, missing-path and code-example diagnostics are available without inference. See [limits, configuration and interpretation](docs/static-audits.md#bounded-discovery-and-route-diagnostics). They add fix guidance without changing current score weights.

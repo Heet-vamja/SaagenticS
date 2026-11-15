@@ -8,48 +8,60 @@ from the deterministic static audit.
 
 ## Model and inference
 
-The model identifier is configured through `AGENT_MODEL`; its default is
-`Qwen/Qwen3-4B-Instruct-2507`. Hosted mode (`AGENT_LLM_MODE=hosted`) uses the
-Hugging Face router or a Hugging Face Inference Endpoint. Local mode
-(`AGENT_LLM_MODE=local`) uses an operator-managed OpenAI-compatible chat-completion
-server. The backend does not load model weights. The inference provider remains
-Hugging Face compatible; there is no automatic fallback to another vendor.
+Provider is selected with `AGENT_LLM_PROVIDER`. Local development defaults to
+`osaurus` with model ID `raptor-0.6-4b-jang_6m`; Osaurus runs Raptor on the Mac and
+serves an OpenAI-compatible API. The FastAPI backend does not load model weights.
+`AGENT_MODEL`, `AGENT_LLM_BASE_URL` and `AGENT_LLM_TIMEOUT` configure the selected
+provider. Provider switching is explicit; an Osaurus failure never triggers
+hosted inference.
 
-Hosted setup uses the root `.env`:
+For Docker Desktop on macOS, the root `.env` uses:
 
 ```dotenv
-HF_TOKEN=<inference-enabled-token>
-AGENT_MODEL=Qwen/Qwen3-4B-Instruct-2507
+AGENT_LLM_PROVIDER=osaurus
+AGENT_MODEL=raptor-0.6-4b-jang_6m
+AGENT_LLM_BASE_URL=http://host.docker.internal:1337/v1
+AGENT_LLM_TIMEOUT=60
+OSAURUS_API_KEY=<access-key-if-required-for-network-exposure>
+```
+
+Start and check the API on the Mac with `osaurus serve` and
+`curl --fail http://127.0.0.1:1337/v1/models`.
+
+Osaurus's API normally binds to Mac loopback, which containers cannot reach. Enable
+network exposure in Osaurus for Docker Desktop (or use `osaurus serve --expose`),
+and configure an access key if Osaurus requires one for exposed requests. For
+native FastAPI development, set the URL to `http://127.0.0.1:1337/v1` and keep
+network exposure disabled. Check the live provider/model from the backend with
+`curl --fail http://localhost:8000/health/llm`; it only calls `/v1/models`, not
+inference. The API key is sent only as an Authorization header and is not logged.
+Osaurus normalizes Raptor's native `<tool_call>…</tool_call>` output into the
+OpenAI-compatible `choices[].message.tool_calls[]` response, whose function
+arguments are JSON text. AgentLane accepts exactly one such call and validates
+the canonical action with Pydantic before Playwright sees it. See the [Osaurus API
+guide](https://github.com/osaurus-ai/osaurus/blob/main/docs/OpenAI_API_GUIDE.md#functiontool-calling)
+and [Raptor 0.6 model card](https://huggingface.co/OsaurusAI/Raptor-0.6-4B-JANG_6M).
+
+Hugging Face remains an explicit alternative:
+
+```dotenv
+AGENT_LLM_PROVIDER=huggingface
 AGENT_LLM_MODE=hosted
+AGENT_MODEL=Qwen/Qwen3-4B-Instruct-2507
 AGENT_LLM_BASE_URL=https://router.huggingface.co/v1
 AGENT_LLM_TIMEOUT=25
-AGENT_LLM_RETRIES=2
+HF_TOKEN=<inference-enabled-token>
 ```
 
-Credentials are never printed in logs or included in browser observations. In
-hosted mode, endpoint URL checks constrain traffic to approved Hugging Face HTTPS
-hosts; redirects are rejected. The model identifier stays configurable. Confirm
-the selected model supports the chat interface, required context and either native
-tools or the JSON fallback, and review its weights/license before use.
-
-A separate compatible local server can be selected without sending an HF token:
-
-```dotenv
-AGENT_LLM_MODE=local
-AGENT_LLM_BASE_URL=http://host.docker.internal:9000/v1
-AGENT_MODEL=<compatible-open-weight-model-id>
-```
-
-Use `localhost` instead of `host.docker.internal` when running FastAPI directly on
-the host. The endpoint is operator configuration and cannot be supplied by the
-website, model output or run API. Keep local inference endpoints on a trusted
-network; the browser agent's website-fetch protections do not secure arbitrary
-operator endpoint configuration.
+The HF provider keeps its HTTPS host restrictions and credential handling. The
+endpoint and model remain operator configuration and cannot be supplied by website
+content, model output or run APIs.
 
 ## Structured decisions
 
-The provider requests native tools with `tool_choice=required` and temperature
-zero. Each response must contain exactly one validated call:
+The provider requests native tools with `tool_choice=required`. Hugging Face uses
+temperature zero; Osaurus uses Raptor 0.6's declared `temperature=1.0` and
+`top_p=0.95` profile. Each response must contain exactly one validated call:
 
 ```text
 click(element_id, reason)

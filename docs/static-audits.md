@@ -53,14 +53,21 @@ and fallback contract.
 
 ## Scoring and priorities
 
-Rubric `static-v1`: Access **30%**, Readability **25%**, Actionability **30%**,
+Rubric `static-v3`: Access **30%**, Readability **25%**, Actionability **30%**,
 Reliability **15%**. Occurrences of a rule are averaged before rules are weighted,
 so repeating the same issue on more pages does not automatically dominate the
 score. Rule weights are exposed in check records. Unavailable categories are
 excluded and remaining category weights are normalized.
 
+`static-v2` treats missing robots.txt as informational because it contains no
+explicit bot policy, and transient robots retrieval failures as unknown. Missing
+sitemap, `llms.txt`, or JSON-LD are not scored as compatibility failures. A
+malformed sitemap or JSON-LD can still be a confirmed issue. Missing recommended
+JSON-LD fields are informational, not schema validity failures. Earlier scans
+retain their `static-v1` score and are not compared across rubric versions.
+
 PASS and FAIL affect score. UNKNOWN never becomes a pass; it is excluded with
-visible coverage counts. NOT_APPLICABLE and informational bot policies are not
+visible coverage counts. NOT_APPLICABLE and informational observations are not
 scored. Missing categories or unknown checks mark a score as provisional. A
 100 with partial coverage means the evaluated sample passed; it does not mean
 untested checks passed. All weights are a transparent product rubric, not an
@@ -177,3 +184,81 @@ static scan completed with 20 pages and no crawl failures. Its score was explici
 provisional because rendered comparisons were sampled. That result did not invoke
 an agent or verify a real model. Run the current verification commands above for
 the state of the integrated worktree.
+
+
+### Access classification in static-v3
+
+Our crawler's robots policy is an informational observation, not a score for
+all agents. Robots retrieval errors and HTTP 401/403/429 describe our request
+and exclude unavailable evidence from scoring. Named AI-bot permissions remain
+separate informational policy checks. Existing HTTP 404/410 failures and
+confirmed markup findings retain their original meaning. The persisted finding
+engine namespace remains `static-v2` for replacement compatibility; the summary
+rubric version is `static-v3`. Free reports use `free-static-v4` and expose
+partial diagnostics even when crawl execution cannot complete.
+
+
+## Bounded discovery and route diagnostics
+
+New deterministic measurements are stored in existing page audit JSON and scan
+crawl metadata; no migration, new service or LLM is required. Old scans without
+these measurements remain untested until re-scanned.
+
+- `discovery.linked_resources`: sample at most 500 HTML `a`/`link` elements per
+  page plus 8 KB of HTTP Link headers; retain at most 30 unique candidate URLs.
+  The collector validates at most `AUDIT_RESOURCE_LIMIT` (default 5) targets.
+  Relative URLs, a document base, multiple rel/type values and repeated URLs are
+  handled. Query-bearing/credential/unsafe references are not fetched or retained
+  as candidates; the sample is marked limited instead of declaring absence.
+- All validation uses the crawler's existing Fetcher, declared user agent, global
+  request pacing, robots checks, redirect cap and DNS-pinned public transport.
+  External hosts and private addresses cannot bypass it. Resource bodies are
+  bounded to 128 KB (or the smaller HTML cap), parsed locally and discarded.
+  The supported subset is llms.txt index structure, basic JSON OpenAPI markers,
+  generic well-known JSON syntax, and nonempty Markdown/text resources. YAML
+  is inconclusive, not invalid. No tools, APIs or instructions inside files are
+  executed or recursively followed. A basic OpenAPI marker is not API conformance.
+- A linked 404/410 or supported-format error creates a finding. Authentication,
+  challenges, rate limits, server errors, size/DNS/scope/time failures and
+  unsupported formats remain unknown. No discovery links is informational only.
+- `http.missing_path`: at most one random `/.agentreadiness-missing-<nonce>` GET
+  on the starting origin, with the same network and robots controls. A 404 passes
+  this one observation. A 2xx HTML response without redirects raises a possible
+  soft-404 finding. Redirect intent, non-HTML successes, restrictions, 410 and
+  other responses are inconclusive. No retry storm or deliberate rate-limit
+  test occurs. The check key uses the stable starting URL, not the random nonce,
+  so a later explicit 404 can verify the previous finding.
+- `content.code_examples`: inspect at most 100 nonempty HTML block-code examples.
+  A `language-*`/`lang-*` class or `data-language`/`data-lang` value on pre/code is
+  accepted as a declared language, without claiming correctness. Missing labels
+  produce a finding; exceeding the sample without finding a problem is unknown.
+  Inline code and plain preformatted output are excluded. With no applicable
+  blocks, this check is not applicable. Code content is not added to these
+  measurements; findings identify bounded block numbers only.
+
+The three new rules use weight 0, preserving the current scoring formula while
+providing useful findings, Fix Kit prompts and re-scan confirmation. Existing
+HTTP and content checks keep their previous weights. Fix templates are versioned
+as `fix-prompts-v1.1`; prior templates remain on disk.
+
+Configuration (forwarded by Docker Compose):
+
+```dotenv
+AUDIT_RESOURCE_LIMIT=5
+AUDIT_DIAGNOSTICS_TIMEOUT=15
+AUDIT_MISSING_PATH_ENABLED=true
+```
+
+The diagnostic stage shares the crawl's overall duration limit and has its own
+15-second total budget, including its normal pacing. The six default primary
+GETs (five resources plus one probe) may require additional already-bounded
+redirect/robots requests. These are diagnostics, not discovered Page records;
+page totals and the free crawl page cap do not change. Set resource limit 0 and
+missing-path enabled false to disable extra diagnostic requests. Restart the
+backend after changing environment values.
+
+Verification uses mocked HTTP/local fixtures: DNS rejection before connection,
+unsafe redirects, scope, robots, query/credential filtering, request/time limits,
+malformed formats, stable scores, database persistence and an apply/re-scan flow
+that explicitly confirms all three diagnostic findings fixed. No external crawl
+or model call is part of that test.
