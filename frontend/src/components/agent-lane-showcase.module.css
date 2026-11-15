@@ -71,7 +71,7 @@
   border-radius: 8px;
   padding: 4px 10px;
   background: var(--brand-lime);
-  color: var(--brand-ink);
+  color: #ffffff;
   font-size: 13.5px;
   font-weight: 600;
 }

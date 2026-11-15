@@ -15,7 +15,7 @@ const buttonVariants = cva(
           "border border-border bg-card text-foreground hover:border-border-strong/40 hover:bg-muted",
         ghost: "text-muted-foreground hover:bg-muted hover:text-foreground",
         ink: "bg-ink text-ink-foreground hover:bg-ink/85 dark:bg-foreground dark:text-background dark:hover:bg-foreground/85",
-        lime: "bg-lime text-lime-foreground hover:brightness-95 hover:shadow-[0_10px_24px_-10px_#a7e8c4cc] active:brightness-90",
+        lime: "bg-lime text-lime-foreground hover:brightness-95 hover:shadow-[0_10px_24px_-10px_#5b3df566] active:brightness-90",
       },
       size: {
         default: "min-h-11 h-auto px-5 py-2.5 text-[15px]",

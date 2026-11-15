@@ -250,7 +250,7 @@
   }
   .icon-tile[data-tone="ink"] {
     background: var(--brand-ink);
-    color: var(--lime);
+    color: var(--brand-uv-light);
   }
   [data-theme="dark"] .icon-tile[data-tone="ink"] {
     background: #26262a;

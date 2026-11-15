@@ -1,8 +1,8 @@
 /*
  * Landing page, designed from the brand brief: a light, quiet page with one accent
  * moment per screen. Medium-weight headlines, generous space, hairline structure,
- * left-aligned editorial sections with one artifact each. Mint appears only on the
- * rotating agent name, dark-mode actions and the $19 price. Tokens: design-tokens.css.
+ * left-aligned editorial sections with one artifact each. Ultraviolet marks
+ * the rotating agent name, the paid plan and the $19 price. Tokens: design-tokens.css.
  */
 .page {
   overflow-x: clip;
@@ -158,22 +158,23 @@
 }
 /* Rotating agent name: every name shares one grid cell, so the highlight keeps the
    widest name's width and nothing around it shifts. Only transforms animate. */
+/* Bottom padding keeps the underline inside the clipped rotation box. */
 .agentNames {
   display: inline-grid;
   overflow: hidden;
-  padding-block: 0.08em 0.14em;
-  margin-block: -0.08em -0.14em;
+  padding-block: 0.08em 0.28em;
+  margin-block: -0.08em -0.28em;
 }
 .agentPill.agentPill::before {
   content: none;
 }
-/* Deep green words on a full mint highlight, the same in both themes (5.9:1).
-   Logo tiles stay white. */
+/* The agent name is violet with a violet underline, in the headline's own font.
+   Violet text is 5.6:1 on paper (light violet on dark). Logo tiles stay white. */
 .agentPill.agentPill {
-  padding: 0.02em 0.18em 0.06em;
-  border-radius: 0.14em;
-  background: var(--brand-lime);
-  color: var(--brand-green-deep);
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--signal);
 }
 .agentMark {
   display: grid;
@@ -197,7 +198,11 @@
   grid-area: 1 / 1;
   display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  text-decoration: underline;
+  text-decoration-color: currentColor;
+  text-decoration-thickness: 0.07em;
+  text-underline-offset: 0.12em;
   gap: 0.2em;
   white-space: nowrap;
   opacity: 0;
@@ -632,7 +637,7 @@
   border-radius: 8px;
   padding: 4px 10px;
   background: var(--brand-lime);
-  color: var(--brand-ink);
+  color: #ffffff;
   font-size: 12.5px;
   font-weight: 600;
 }
@@ -649,7 +654,7 @@
   letter-spacing: -0.045em;
 }
 .planPaid .amount strong {
-  color: var(--brand-lime);
+  color: var(--brand-uv-light);
 }
 .amount span {
   font-size: 15px;
@@ -686,7 +691,7 @@
   color: var(--success);
 }
 .planPaid li svg {
-  color: var(--brand-lime);
+  color: var(--brand-uv-light);
 }
 .plan > a {
   margin-top: auto;
@@ -782,10 +787,10 @@
 }
 .closingCard .scanForm :global(.entry-submit) {
   background: var(--brand-lime);
-  color: var(--brand-ink);
+  color: #ffffff;
 }
 .closingCard .scanForm :global(.entry-submit):hover {
-  background: #bdeed3;
+  background: #6b50f7;
 }
 .disclosure {
   max-width: 60ch;

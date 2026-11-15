@@ -87,11 +87,12 @@ export function ReportUnlock({
           </p>
           <div className="mt-5 flex flex-wrap gap-2 text-[13px] font-semibold text-white">
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5">
-              <Check size={14} className="text-lime" /> One-time payment
+              <Check size={14} className="text-[var(--brand-uv-light)]" />{" "}
+              One-time payment
             </span>
             <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5">
-              <Check size={14} className="text-lime" /> Same-domain re-scans for
-              30 days
+              <Check size={14} className="text-[var(--brand-uv-light)]" />{" "}
+              Same-domain re-scans for 30 days
             </span>
           </div>
         </div>

@@ -109,11 +109,11 @@ select:not([multiple]):not([size]) {
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: var(--brand-violet);
+  background: var(--brand-ink);
   color: #ffffff;
 }
 .report-unlock::before {
-  content: "";
+  content: none;
   position: absolute;
   inset: -40% -10% auto auto;
   z-index: -1;
@@ -125,6 +125,10 @@ select:not([multiple]):not([size]) {
     color-mix(in srgb, var(--brand-lime) 30%, transparent),
     transparent 70%
   );
+}
+[data-theme="dark"] .report-unlock {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px var(--border);
 }
 .report-unlock-note {
   background: #00000026;

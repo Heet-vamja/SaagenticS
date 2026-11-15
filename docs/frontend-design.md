@@ -1,21 +1,22 @@
 # Frontend design and verification
 
-AgentLane uses the **Lane green** identity (canvas: the "AgentLane brand identity"
+AgentLane uses the **Ultraviolet** identity (canvas: the "AgentLane brand identity"
 design artifact; brief: "AgentLane brand and design brief"). The logo is one path that
 forks: the straight paper lane is the site as people and search engines see it, the
-mint lane branches off for AI agents (`LogoMark` in `product-ui.tsx`, `app/icon.svg`,
-`app/apple-icon.png`). Its colors come from `--logo-*` tokens: an ink tile in light
-mode, a raised `#23262c` tile in dark mode, the same lanes in both.
+violet lane (`#8b76ff`) branches off for AI agents (`LogoMark` in `product-ui.tsx`,
+`app/icon.svg`, `app/apple-icon.png`). Its colors come from `--logo-*` tokens: an ink
+tile in light mode, a raised `#23262c` tile in dark mode, the same lanes in both.
 
 The guiding rule is restraint, so the product reads premium rather than loud. Ink
-(`#0e1013`) and warm paper (`#f6f5ef`) carry every page. Green is the only accent and
-means go and verified: text `#146c43` (dark `#7fdcae`), tint `#e4f4eb` (dark
-`#133425`), and mint `#a7e8c4` as the highlight fill and the dark-mode button. The
-rotating hero name is deep green `#0e5a37` on mint in both themes. Model judgments are
-neutral grey, so green never stands for an unverified claim. Labels are small and
-sentence case (no mono capitals); headlines use weight 560 with a quieter grey second
-phrase; sections are separated by hairlines, not colored bands. No gradients, glows,
-sparkle icons, outlined numerals or fake browser chrome.
+(`#0e1013`) and warm paper (`#f6f5ef`) carry every page, and buttons stay ink (chalk
+`#f3f2ec` in dark mode). Ultraviolet `#5b3df5` is the one accent, used about once per
+screen: the hero's rotating agent name (violet text with a violet underline, in the
+headline font), the paid plan and its price, the logo's lane. As a fill it carries
+white text (6.1:1); as text it is `#5b3df5` on light (5.6:1) and `#b4a6ff` on dark or
+ink. Green means verified results only; model judgments are neutral grey. Labels are
+small and sentence case (no mono capitals); headlines use weight 560 with a quieter
+grey second phrase; sections are separated by hairlines, not colored bands. No
+gradients, glows, sparkle icons, outlined numerals or fake browser chrome.
 
 The landing follows the brief's story: hero (headline, one sentence, scan box, one
 caption line; an example report card beside it), the problem (three common failures and

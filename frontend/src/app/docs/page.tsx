@@ -164,15 +164,15 @@ export default function DocumentationPage() {
                 className="mt-6 overflow-x-auto rounded-2xl bg-ink p-5 font-mono text-[13px] leading-7 text-ink-foreground outline-offset-4 dark:border dark:border-border"
               >
                 <code>
-                  <span className="text-lime">POST</span>
+                  <span className="text-[var(--brand-uv-light)]">POST</span>
                   {" /api/v1/free-scans\n"}
-                  <span className="text-lime">GET </span>
+                  <span className="text-[var(--brand-uv-light)]">GET </span>
                   {" /api/v1/free-reports/{token}\n"}
-                  <span className="text-lime">GET </span>
+                  <span className="text-[var(--brand-uv-light)]">GET </span>
                   {" /api/v1/free-reports/{token}/fix-center\n"}
-                  <span className="text-lime">GET </span>
+                  <span className="text-[var(--brand-uv-light)]">GET </span>
                   {" /api/v1/free-reports/{token}/fix-pack.zip\n"}
-                  <span className="text-lime">POST</span>
+                  <span className="text-[var(--brand-uv-light)]">POST</span>
                   {" /api/v1/free-reports/{token}/rescan"}
                 </code>
               </pre>
