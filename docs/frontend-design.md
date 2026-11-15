@@ -1,41 +1,47 @@
 # Frontend design and verification
 
-AgentLane uses the **Signal** design language: Apple-calm structure (large
-centered headlines, generous whitespace, alternating full-bleed tiles, translucent
-sticky navigation), Notion-warm details (inline highlight pills, product UI in
-floating window frames, colorful icon tiles) and a bold brand. Neutral ink
-(`#111111`) is the action color on warm paper (`#fafaf7`), and acid lime (`#c8f03c`)
-is the main highlight; in dark mode, actions turn lime with ink text. Violet
-(`#5b2eff`) is the secondary accent: the rotating hero pill text (on lime), the paid surfaces ($19
-pricing card and report unlock panel), links and accent icons (`signal`), focus
-rings, the chip dot, soft info washes and the default feature icon tile. Buttons
-stay ink (lime in dark mode) and the logo stays lime.
+AgentLane uses the **Split lane** identity (canvas: the "AgentLane brand identity"
+design artifact; brief: "AgentLane brand and design brief"). The logo is one path that
+forks: the straight paper lane is the site as people and search engines see it, the
+lime lane branches off for AI agents (`LogoMark` in `product-ui.tsx`, `app/icon.svg`,
+`app/apple-icon.png`). Its colors come from `--logo-*` tokens: an ink tile in light
+mode, a raised `#23262c` tile in dark mode, the same lanes in both.
 
-Consistency rules: one highlight signature (lime marker with violet words, used by
-the hero pill and `.mark-lime`); one primary button style per surface (ink on light,
-lime on violet or dark); icon tiles come in a violet / lime / ink trio; demo and real
-score rings use the `--score-*` status colors; every page shares one navigation
-(The report, What we check, How it works, Pricing, Docs). Funnel Display headings use
-gentle negative tracking (-0.02 to -0.035em), never the tighter values tuned for other
-faces. Funnel Display (800) sets headings, Geist Sans sets
-body text and Geist Mono sets metadata. The logo is a lime tile with an ink lane
-vanishing into an "A" (`LogoMark` in `product-ui.tsx`, `app/icon.svg`). Dark mode is available from the
-header and persists in local storage; Tailwind's `dark:` variant follows that toggle.
+The guiding rule is restraint: the product must look calm and considered, never
+funky. Ink (`#0e1013`) is the action color on warm paper (`#f6f5ef`); in dark mode
+actions turn lane lime (`#cbf34a`) with ink text. Lime is a highlight only: a fill
+behind ink (buttons in dark, the slim `.mark-lime` band, the $19 price), never body
+text on paper and never a decorative glow. Agent violet (`#5b3df5`, text `#4a2edb`,
+dark `#b4a6ff`) marks agent things: the rotating agent name, agent-lane rows,
+"Model-judged" labels, links and focus. Eyebrows and labels stay neutral grey.
+Headlines are two-tone (foreground plus a quieter grey second line) rather than
+colored. No gradients, glows or outlined numerals.
+
+Consistency rules: one highlight signature (the slim lime marker band; in dark mode
+the band is off and the words carry the emphasis); one primary button style per
+surface (ink on light, lime on dark); buttons and segmented controls use
+`--radius-control` (12px), badges 8px, cards 20px; demo and real score rings use
+the `--score-*` status colors; every page shares one navigation (The report, What we
+check, How it works, Pricing, Docs). Instrument Sans sets both headings (700, tracking
+-0.022 to -0.032em) and text; JetBrains Mono sets code, data and metadata. Dark mode
+is available from the header and persists in local storage; Tailwind's `dark:`
+variant follows that toggle.
 
 ## Tokens and components
 
 `frontend/src/app/design-tokens.css` owns every raw color, radius and shadow for
 light and dark themes; components use semantic tokens only (`primary`, `signal`,
 `lime`, `ink`, `muted`, `success`/`warning`/`danger` and their `-soft` washes).
-Text/background pairs were checked for WCAG AA contrast. `globals.css` maps the
+Text/background pairs were checked for WCAG AA contrast (muted text is 5.0:1 even on the sunken background). `globals.css` maps the
 tokens into Tailwind, enlarges the shared radius scale, and provides the shared
 primitives: `.surface`, `.surface-float`, `.nav-glass`, `.display-xl|lg|md`,
 `.lede`, `.chip`, `.headline-pill`, `.icon-tile[data-tone]`, `.mark-lime`,
 `.block-feature|lime|ink`, status badges, tables, skeletons and code panels.
-`product-theme.css` holds shared report and legal presentation. Buttons are pills
-with `default`, `secondary`, `outline`, `ghost`, `ink` and `lime` variants and
-`sm`/`default`/`lg` sizes. Fonts are self-hosted from `src/app/fonts/` with their
-OFL licenses; builds do not request a font service. Do not fabricate social proof
+`product-theme.css` holds shared report and legal presentation. Buttons are 12px
+rounded rectangles with `default`, `secondary`, `outline`, `ghost`, `ink` and `lime`
+variants and `sm`/`default`/`lg` sizes. Fonts (Instrument Sans, JetBrains Mono; SIL
+OFL) come from `next/font/google`: they are downloaded once at build time and served
+from the app, so pages never call a font service, but a build needs network access. Do not fabricate social proof
 (logo bars, testimonials, usage statistics) to fill marketing layouts. Reports end
 with "Check our work" (`cross-check.tsx`): reproducible public requests and links to
 independent, unaffiliated tools (AgentReady, Is Agentic), never their scores.

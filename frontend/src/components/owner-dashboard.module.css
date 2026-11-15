@@ -41,7 +41,7 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  border-radius: 999px;
+  border-radius: 8px;
   padding: 4px 10px;
   background: var(--accent-soft);
   color: var(--signal);
@@ -84,7 +84,7 @@
 }
 [data-theme="dark"] .avatar {
   background: var(--lime);
-  color: #111111;
+  color: #0e1013;
 }
 .identity h1 {
   font-size: clamp(26px, 3vw, 34px);
@@ -101,7 +101,7 @@
   color: var(--muted-foreground);
 }
 .host {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
 }
 .status {
   display: inline-flex;
@@ -134,13 +134,13 @@
   display: inline-flex;
   gap: 2px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-control);
   background: var(--card);
   padding: 3px;
 }
 .segmented button {
   min-height: 32px;
-  border-radius: 999px;
+  border-radius: 9px;
   padding: 0 12px;
   font-size: 13px;
   font-weight: 600;
@@ -410,7 +410,7 @@
 }
 .sideHost {
   margin-top: 2px;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 13.5px;
 }
 .pills {
@@ -481,7 +481,7 @@
 }
 .steps code {
   padding-top: 1px;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 11.5px;
   color: var(--muted-foreground);
   white-space: nowrap;
@@ -512,7 +512,7 @@
 }
 .lane .outcome[data-v="PASSED"] {
   background: var(--lime);
-  color: #111111;
+  color: #0e1013;
 }
 .lane .outcome[data-v="FAILED"] {
   background: #ff6b6b33;
@@ -525,7 +525,7 @@
   border-radius: 999px;
   padding: 7px 14px;
   background: var(--lime);
-  color: #111111;
+  color: #0e1013;
   box-shadow: var(--shadow-card);
   font-size: 13px;
   font-weight: 700;
@@ -610,7 +610,7 @@
   padding: 3px 8px;
   background: var(--danger-soft);
   color: var(--danger);
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 12px;
 }
 .failure p {
@@ -761,7 +761,7 @@
   height: 40px;
   border-radius: 12px;
   background: var(--lime);
-  color: #111111;
+  color: #0e1013;
 }
 .laneActions {
   display: flex;

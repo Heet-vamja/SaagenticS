@@ -1,15 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./product-theme.css";
-import localFont from "next/font/local";
-const funnel = localFont({
-  src: "./fonts/FunnelDisplay-Variable.ttf",
-  variable: "--font-heading",
+import { Instrument_Sans, JetBrains_Mono } from "next/font/google";
+
+// Self-hosted at build time by next/font (SIL Open Font License). One family for
+// headings and text keeps the product calm; mono is for code and data.
+const text = Instrument_Sans({
+  subsets: ["latin"],
+  variable: "--font-text",
   display: "swap",
-  weight: "300 800",
 });
-import { GeistMono } from "geist/font/mono";
-import { GeistSans } from "geist/font/sans";
+const code = JetBrains_Mono({
+  subsets: ["latin"],
+  variable: "--font-code",
+  display: "swap",
+});
 export const metadata: Metadata = {
   title: "AgentLane — Can AI agents use your website?",
   description:
@@ -23,7 +28,7 @@ export default function RootLayout({
       lang="en"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${funnel.variable} ${GeistSans.variable} ${GeistMono.variable}`}
+      className={`${text.variable} ${code.variable}`}
     >
       <head>
         <script

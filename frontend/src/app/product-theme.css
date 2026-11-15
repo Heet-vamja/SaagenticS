@@ -99,7 +99,7 @@ select:not([multiple]):not([size]) {
 }
 .report-score-value > span:last-child {
   font:
-    500 11px var(--font-geist-mono),
+    500 11px var(--font-code),
     monospace;
   letter-spacing: 0.14em;
   color: var(--muted-foreground);

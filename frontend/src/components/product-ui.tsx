@@ -24,27 +24,30 @@ export function LogoMark({
 }) {
   return (
     <svg
-      viewBox="0 0 32 32"
+      viewBox="0 0 64 64"
       width={size}
       height={size}
       aria-hidden="true"
       focusable="false"
       className={cn("brand-symbol shrink-0", className)}
     >
-      <rect width="32" height="32" rx="9" fill="#c8f03c" />
+      {/* Split lane: one path forks. The straight lane is the site as people see
+          it; the branching lane is the agent lane. Colors follow the theme. */}
+      <rect width="64" height="64" rx="18" fill="var(--logo-tile)" />
       <path
-        d="M7.6 25.4 16 7l8.4 18.4"
+        d="M25 50c0-13 14-14 14-26V14"
         fill="none"
-        stroke="#111111"
-        strokeWidth="3"
+        stroke="var(--logo-agent)"
+        strokeWidth={size < 24 ? 10 : 8}
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
-      <g stroke="#111111" strokeLinecap="round">
-        <path d="M16 25.2v-4" strokeWidth="3" />
-        <path d="M16 17.8v-2.4" strokeWidth="2.4" />
-        <path d="M16 13v-.4" strokeWidth="1.8" />
-      </g>
+      <path
+        d="M25 50V14"
+        fill="none"
+        stroke="var(--logo-lane)"
+        strokeWidth={size < 24 ? 10 : 8}
+        strokeLinecap="round"
+      />
     </svg>
   );
 }

@@ -1,105 +1,119 @@
 /*
- * AgentLane "Signal" design language: Apple-calm structure, Notion-warm details,
- * and a bold brand. Neutral ink is the action color, acid lime is the one highlight,
- * warm paper is the canvas. Violet is a sparing accent (links, focus, small marks),
- * never a button or logo color. Components use semantic tokens; raw values stay here.
+ * AgentLane "Split lane" identity: one site, two lanes. Ink and warm paper carry the
+ * page, lane lime is the one highlight (always behind ink, never text on paper), and
+ * agent violet marks agent things (agent lanes, model judgments, links, focus).
+ * Text colors are checked for WCAG AA on paper, surface and sunken backgrounds.
+ * Components use semantic tokens; raw values stay here.
  */
 :root {
   color-scheme: light;
   /* Brand constants (same in both themes). */
-  --brand-lime: #c8f03c;
-  --brand-violet: #5b2eff;
-  --brand-ink: #111111;
-  --brand-paper: #fafaf7;
+  --brand-lime: #cbf34a;
+  --brand-violet: #5b3df5;
+  --brand-ink: #0e1013;
+  --brand-paper: #f6f5ef;
 
   /* Semantic surfaces and text. */
   --background: var(--brand-paper);
   --foreground: var(--brand-ink);
   --card: #ffffff;
-  --muted: #f1f1ec;
-  --muted-foreground: #5c5c57;
-  --border: #e4e3dc;
+  --muted: #eeede5;
+  --muted-foreground: #62646a;
+  --border: #e2e0d6;
   --border-strong: var(--brand-ink);
   --ring: var(--brand-violet);
 
   /* Actions and accents. */
   --primary: var(--brand-ink);
-  --primary-hover: #2e2e2c;
+  --primary-hover: #2a2c31;
   --primary-active: #000000;
   --primary-foreground: #ffffff;
-  --signal: #4b25d9;
+  --signal: #4a2edb;
   --lime: var(--brand-lime);
   --lime-foreground: var(--brand-ink);
   --ink: var(--brand-ink);
-  --ink-foreground: #fafaf7;
-  --accent-soft: #ece7ff;
-  --action-soft: #eef6d0;
+  --ink-foreground: #f6f5ef;
+  --accent-soft: #ece8ff;
+  --action-soft: #eef8cf;
+  /* Highlight band under headline words; text keeps its own color over it. */
+  --marker: var(--brand-lime);
 
-  /* Status. Text colors meet WCAG AA on card and background. */
-  --success: #137a45;
-  --success-soft: #e3f7d4;
-  --warning: #9c5300;
-  --warning-soft: #fff0d9;
-  --danger: #c81e4b;
-  --danger-soft: #ffe6ec;
+  /* Status. Text colors meet WCAG AA on card, background and their soft tint. */
+  --success: #11744a;
+  --success-soft: #e0f5e6;
+  --warning: #9a5200;
+  --warning-soft: #fff0d6;
+  --danger: #c2183f;
+  --danger-soft: #ffe5ea;
 
   /* Score ring gradients. */
-  --score-good: #137a45;
-  --score-good-start: #c8f03c;
-  --score-fair: #c26a00;
+  --score-good: #11744a;
+  --score-good-start: #cbf34a;
+  --score-fair: #b86200;
   --score-fair-start: #ffc35c;
-  --score-low: #c81e4b;
+  --score-low: #c2183f;
   --score-low-start: #ff8fb0;
+
+  /* Logo: ink tile, paper lane, lime agent lane. */
+  --logo-tile: var(--brand-ink);
+  --logo-lane: var(--brand-paper);
+  --logo-agent: var(--brand-lime);
 
   /* Shape and depth. */
   --radius-card: 20px;
-  --radius-control: 999px;
-  --shadow-card: 0 1px 2px #1111110d, 0 10px 30px -18px #11111133;
-  --shadow-float: 0 2px 6px #1111110d, 0 30px 80px -30px #1111114d;
+  --radius-control: 12px;
+  --shadow-card: 0 1px 2px #0e10130d, 0 10px 30px -18px #0e101333;
+  --shadow-float: 0 2px 6px #0e10130d, 0 30px 80px -30px #0e10134d;
   /* Hover elevation for interactive cards, and the primary button glow. */
-  --shadow-elevated: 0 2px 4px #1111110f, 0 22px 44px -22px #11111159;
-  --shadow-glow: 0 10px 24px -10px #11111180;
+  --shadow-elevated: 0 2px 4px #0e10130f, 0 22px 44px -22px #0e101359;
+  --shadow-glow: 0 10px 24px -12px #0e101380;
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --nav-glass: color-mix(in srgb, var(--background) 78%, transparent);
+  --nav-glass: color-mix(in srgb, var(--background) 80%, transparent);
 }
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --background: #0e0e0f;
-  --foreground: #f4f4f1;
-  --card: #18181a;
-  --muted: #222224;
-  --muted-foreground: #b3b3ad;
-  --border: #303033;
-  --border-strong: #f4f4f1;
-  --ring: #a08cff;
+  --background: #0c0d10;
+  --foreground: #f3f2ec;
+  --card: #15171b;
+  --muted: #1d2025;
+  --muted-foreground: #8e9096;
+  --border: #2a2d33;
+  --border-strong: #f3f2ec;
+  --ring: #b4a6ff;
 
-  --primary: #d4fa4b;
-  --primary-hover: #e1fc78;
-  --primary-active: #c4ec2f;
-  --primary-foreground: #111111;
-  --signal: #bdb0ff;
-  --lime: #d4fa4b;
-  --ink-foreground: #f4f4f1;
-  --accent-soft: #2a2163;
-  --action-soft: #262d17;
+  --primary: var(--brand-lime);
+  --primary-hover: #d8f76e;
+  --primary-active: #bce530;
+  --primary-foreground: var(--brand-ink);
+  --signal: #b4a6ff;
+  --lime: var(--brand-lime);
+  --ink-foreground: #f3f2ec;
+  --accent-soft: #251d5c;
+  --action-soft: #232b12;
+  --marker: transparent; /* Dark: no band; the words carry the emphasis. */
 
-  --success: #a6e86a;
-  --success-soft: #1d3317;
-  --warning: #ffb547;
-  --warning-soft: #3a2a10;
-  --danger: #ff7096;
-  --danger-soft: #3d1426;
+  --success: #86e0a6;
+  --success-soft: #16301f;
+  --warning: #ffb648;
+  --warning-soft: #36270f;
+  --danger: #ff7a98;
+  --danger-soft: #3a1420;
 
   --score-good: #b8f05a;
   --score-good-start: #6fcf6a;
-  --score-fair: #ffb547;
+  --score-fair: #ffb648;
   --score-fair-start: #ffd896;
-  --score-low: #ff7096;
+  --score-low: #ff7a98;
   --score-low-start: #ffb3c8;
+
+  /* Logo on dark: a raised tile, the same paper and lime lanes as in light. */
+  --logo-tile: #23262c;
+  --logo-lane: #f3f2ec;
+  --logo-agent: var(--brand-lime);
 
   --shadow-card: 0 1px 2px #00000040, 0 18px 40px -24px #000000a0;
   --shadow-float: 0 2px 6px #00000040, 0 30px 80px -30px #000000c0;
   --shadow-elevated: 0 2px 4px #00000050, 0 24px 48px -22px #000000d0;
-  --shadow-glow: 0 10px 28px -10px #d4fa4b80;
+  --shadow-glow: 0 10px 28px -12px #cbf34a70;
 }

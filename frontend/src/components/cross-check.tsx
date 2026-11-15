@@ -71,7 +71,7 @@ function CopyCommand({ value }: { value: string }) {
 
 function Command({ value }: { value: string }) {
   return (
-    <div className="mt-3 flex items-start gap-2 rounded-xl border border-white/10 bg-[#111111] py-2 pr-2 pl-3.5">
+    <div className="mt-3 flex items-start gap-2 rounded-xl border border-white/10 bg-[#0e1013] py-2 pr-2 pl-3.5">
       <code className="min-w-0 flex-1 py-1.5 font-mono text-[12.5px] leading-6 break-all whitespace-pre-wrap text-[#f4f4f1]">
         {value}
       </code>

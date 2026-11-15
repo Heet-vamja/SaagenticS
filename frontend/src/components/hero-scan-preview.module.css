@@ -50,7 +50,7 @@
   border-radius: 999px;
   background: var(--card);
   font:
-    12px var(--font-geist-mono),
+    12px var(--font-code),
     monospace;
   white-space: nowrap;
   overflow: hidden;
@@ -154,7 +154,7 @@
 }
 .scoreLabel {
   margin-bottom: 8px;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -162,12 +162,12 @@
 }
 .scoreRow h2 {
   font-size: 26px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1.12;
   letter-spacing: -0.022em;
 }
 .scoreRow h2 span {
-  color: var(--primary);
+  color: var(--muted-foreground);
 }
 .findings {
   display: flex;
@@ -238,7 +238,7 @@
 .switcher button[aria-pressed="true"] {
   background: var(--card);
   color: var(--foreground);
-  box-shadow: 0 1px 3px #11111126;
+  box-shadow: 0 1px 3px #0e101326;
 }
 .browser {
   position: relative;

@@ -110,6 +110,7 @@
   text-align: center;
 }
 .heroGlow {
+  display: none;
   position: absolute;
   z-index: -1;
   inset: 52% 0 0;
@@ -158,9 +159,14 @@
 .agentPill.agentPill::before {
   content: none;
 }
-/* Lime pill, violet words; logo tiles stay white so brand marks read. */
+/* The rotating agent name: violet words on the slim lime marker band, like
+   every other highlight. Logo tiles stay white so brand marks read. */
 .agentPill.agentPill {
-  color: var(--brand-violet);
+  padding: 0 0.12em;
+  border-radius: 0.12em;
+  background: linear-gradient(var(--marker), var(--marker)) no-repeat 0 86% /
+    100% 36%;
+  color: var(--signal);
 }
 .agentMark {
   display: grid;
@@ -171,7 +177,7 @@
   border-radius: 0.2em;
   padding: 0.13em;
   background: #ffffff;
-  box-shadow: inset 0 0 0 1px #11111114;
+  box-shadow: inset 0 0 0 1px #0e101314;
 }
 .agentLogo {
   display: block;
@@ -293,7 +299,6 @@
 }
 .centerHeading > :global(.eyebrow) {
   margin-bottom: 18px;
-  color: var(--primary);
 }
 .centerHeading > :global(.lede) {
   max-width: 54ch;
@@ -306,10 +311,10 @@
   isolation: isolate;
   overflow: hidden;
   background: var(--brand-ink);
-  color: #fafaf7;
+  color: #f6f5ef;
 }
 .bandInk::before {
-  content: "";
+  content: none;
   position: absolute;
   z-index: -1;
   inset: -30% 10% auto;
@@ -327,15 +332,15 @@
 }
 .inkEyebrow {
   margin-bottom: 18px;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--brand-lime);
+  color: #b4b5b0;
 }
 .limeText {
-  color: var(--brand-lime);
+  color: #8e9096;
 }
 .inkLede {
   max-width: 44ch;
@@ -354,11 +359,11 @@
   text-align: center;
 }
 .checksLabel {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--brand-lime);
+  color: #b4b5b0;
 }
 .checks ul {
   display: flex;
@@ -408,11 +413,10 @@
 .stepNumber {
   font-family: var(--font-heading), sans-serif;
   font-size: 56px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
   letter-spacing: -0.03em;
-  color: transparent;
-  -webkit-text-stroke: 1.5px #c9c9c3;
+  color: #8e9096;
 }
 .steps h3 {
   margin-top: 14px;
@@ -450,25 +454,14 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: var(--brand-violet);
-  color: #ffffff;
+  background: var(--ink);
+  color: var(--ink-foreground);
   box-shadow: var(--shadow-float);
 }
-.paidPrice::after {
-  content: "";
-  position: absolute;
-  z-index: -1;
-  top: -140px;
-  right: -120px;
-  width: 360px;
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--brand-lime) 30%, transparent),
-    transparent 68%
-  );
-  pointer-events: none;
+:global([data-theme="dark"]) .paidPrice {
+  background: var(--card);
+  box-shadow: inset 0 0 0 1px
+    color-mix(in srgb, var(--brand-lime) 45%, transparent);
 }
 .priceTop {
   min-height: 28px;
@@ -479,15 +472,15 @@
   gap: 10px;
 }
 .priceLabel {
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--primary);
+  color: var(--muted-foreground);
 }
 .paidPrice .priceLabel {
-  color: var(--brand-lime);
+  color: #b4b5b0;
 }
 .valueBadge {
   border-radius: 999px;
@@ -513,17 +506,20 @@
 .price strong {
   font-family: var(--font-heading), sans-serif;
   font-size: 72px;
-  font-weight: 800;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.04em;
 }
 .price span {
   font-size: 14px;
   font-weight: 500;
   color: var(--muted-foreground);
 }
+.paidPrice .price strong {
+  color: var(--brand-lime);
+}
 .paidPrice .price span {
-  color: #e6e6e0;
+  color: #b4b5b0;
 }
 .freePrice ul,
 .paidPrice ul {
@@ -537,7 +533,7 @@
   line-height: 1.5;
 }
 .paidPrice ul {
-  border-color: #ffffff33;
+  border-color: #ffffff24;
 }
 .freePrice li,
 .paidPrice li {
@@ -547,7 +543,7 @@
 .freePrice li svg {
   flex-shrink: 0;
   margin-top: 3px;
-  color: var(--primary);
+  color: var(--success);
 }
 .paidPrice li svg {
   flex-shrink: 0;
@@ -580,7 +576,6 @@
 }
 .questionsGrid > div:first-child > :global(.eyebrow) {
   margin-bottom: 18px;
-  color: var(--primary);
 }
 .docsLink {
   display: inline-flex;
@@ -615,7 +610,7 @@
   display: none;
 }
 .faq summary:hover {
-  color: var(--primary);
+  color: var(--signal);
 }
 .faq summary > span {
   display: grid;
@@ -661,7 +656,7 @@
   text-align: center;
 }
 .closing::before {
-  content: "";
+  content: none;
   position: absolute;
   z-index: -1;
   inset: -55% -15% auto 45%;
@@ -675,7 +670,7 @@
 }
 .closingEyebrow {
   margin-bottom: 18px;
-  font-family: var(--font-geist-mono), monospace;
+  font-family: var(--font-code), monospace;
   font-size: 12px;
   font-weight: 500;
   letter-spacing: 0.1em;
@@ -684,7 +679,7 @@
 }
 .closing :global(.entry-field) {
   border-color: transparent;
-  box-shadow: 0 24px 60px -24px #11111180;
+  box-shadow: 0 24px 60px -24px #0e101380;
 }
 .closing :global(.entry-submit) {
   background: var(--brand-lime);
