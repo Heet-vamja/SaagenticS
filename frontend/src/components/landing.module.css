@@ -162,6 +162,10 @@
    the letters while they still line up with the rest of the headline. */
 .agentNames {
   display: inline-grid;
+  /* The one place Funnel Display appears in the product. */
+  font-family: var(--font-agent), var(--font-heading), sans-serif;
+  font-weight: 680;
+  letter-spacing: -0.03em;
   overflow: hidden;
   padding-block: 0.08em 0.14em;
   margin-block: -0.08em -0.14em;
@@ -170,8 +174,7 @@
 .agentPill.agentPill::before {
   content: none;
 }
-/* The agent name sits on a volt lime brush stroke, in the headline's own font.
-   Logo tiles stay white. */
+/* The agent name sits on a volt lime brush stroke. Logo tiles stay white. */
 .agentPill.agentPill {
   padding: 0;
   border-radius: 0;
@@ -213,8 +216,6 @@
     transform 0.55s cubic-bezier(0.2, 0.8, 0.2, 1),
     opacity 0.35s ease;
 }
-/* A hand-drawn brush swash under each name, in the text color: thicker at the
-   start, tapering off to the right. Stretches with the name's width. */
 /* A painted brush stroke of volt lime behind each name, with ink words on it
    (14.9:1) in both themes. Uneven edges, stretched to the name's width. */
 .agentNames > span::after {
@@ -232,12 +233,28 @@
   opacity: 1;
   transform: none;
 }
+/* Each new name gets its stroke painted left to right as it slides in. Without
+   the animation (reduced motion) the stroke is simply there. */
+.agentNames > span[data-state="active"]::after {
+  animation: brush-paint 0.7s cubic-bezier(0.65, 0, 0.25, 1) 0.12s both;
+}
+@keyframes brush-paint {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
 .agentNames > span[data-state="leaving"] {
   transform: translateY(-105%);
 }
 @media (prefers-reduced-motion: reduce) {
   .agentNames > span {
     transition: none;
+  }
+  .agentNames > span::after {
+    animation: none !important;
   }
 }
 .heroLede {
@@ -307,12 +324,21 @@
 }
 .meter i[data-on] {
   background: var(--foreground);
+  transform-origin: left center;
+  animation: meter-fill 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation-delay: calc(0.35s + var(--i, 0) * 0.09s);
+}
+@keyframes meter-fill {
+  from {
+    transform: scaleX(0);
+  }
 }
 .findings {
   margin-top: 24px;
   border-top: 1px solid var(--border);
 }
 .findings li {
+  animation: settle 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
   display: grid;
   grid-template-columns: 22px minmax(0, 1fr) auto;
   align-items: center;
@@ -320,6 +346,21 @@
   padding: 14px 0;
   border-bottom: 1px solid var(--border);
   font-size: 15px;
+}
+.findings li:nth-child(1) {
+  animation-delay: 0.75s;
+}
+.findings li:nth-child(2) {
+  animation-delay: 0.85s;
+}
+.findings li:nth-child(3) {
+  animation-delay: 0.95s;
+}
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 .mark {
   display: grid;
@@ -449,13 +490,15 @@
 }
 .versusBody {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 .versusPerson,
-.versusAgent {
+.versusAgent,
+.versusFixed {
   padding: 28px;
 }
-.versusAgent {
+.versusAgent,
+.versusFixed {
   border-left: 1px solid var(--border);
   background: var(--background);
 }
@@ -506,7 +549,8 @@
   color: var(--muted-foreground);
   text-decoration: line-through;
 }
-.versusAgent pre {
+.versusAgent pre,
+.versusFixed pre {
   margin-top: 18px;
   overflow-x: auto;
   border-radius: 14px;
@@ -518,7 +562,8 @@
     monospace;
   white-space: pre-wrap;
 }
-:global([data-theme="dark"]) .versusAgent pre {
+:global([data-theme="dark"]) .versusAgent pre,
+:global([data-theme="dark"]) .versusFixed pre {
   background: var(--muted);
   color: var(--foreground);
 }
@@ -527,6 +572,66 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--danger);
+}
+.versusFixed .versusLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.fixedTag {
+  border-radius: 7px;
+  padding: 2px 8px;
+  background: var(--brand-lime);
+  color: var(--brand-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+.versusFixed pre > span {
+  display: block;
+}
+.versusFixed .versusResult {
+  color: var(--success);
+}
+/* After the panel scrolls in, the fix plays out: the tag lands, the labelled
+   buttons appear line by line, then the agent's reading. Paused while the
+   figure waits to be revealed; with no animation everything is just shown. */
+.fixedTag,
+.versusFixed pre > span,
+.versusFixed .versusResult {
+  animation: settle 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.fixedTag {
+  animation-name: tag-land;
+  animation-delay: 0.45s;
+}
+.versusFixed pre > span:nth-child(2) {
+  animation-delay: 0.7s;
+}
+.versusFixed pre > span:nth-child(3) {
+  animation-delay: 0.82s;
+}
+.versusFixed pre > span:nth-child(4) {
+  animation-delay: 0.94s;
+}
+.versusFixed pre > span:nth-child(5) {
+  animation-delay: 1.06s;
+}
+.versusFixed .versusResult {
+  animation-delay: 1.35s;
+}
+@keyframes tag-land {
+  from {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  70% {
+    transform: scale(1.08);
+  }
+}
+:global(.reveal-pending) .fixedTag,
+:global(.reveal-pending) .versusFixed pre > span,
+:global(.reveal-pending) .versusFixed .versusResult {
+  animation-play-state: paused;
 }
 
 /* ── How it works ───────────────────────────────────────────────────── */
@@ -873,11 +978,28 @@
     grid-column: auto;
   }
 }
+/* Tablet: the person's view on top, the agent before and after side by side. */
+@media (max-width: 1080px) and (min-width: 761px) {
+  .versusBody {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .versusPerson {
+    grid-column: 1 / -1;
+  }
+  .versusAgent {
+    border-top: 1px solid var(--border);
+    border-left: 0;
+  }
+  .versusFixed {
+    border-top: 1px solid var(--border);
+  }
+}
 @media (max-width: 760px) {
   .versusBody {
     grid-template-columns: 1fr;
   }
-  .versusAgent {
+  .versusAgent,
+  .versusFixed {
     border-top: 1px solid var(--border);
     border-left: 0;
   }

@@ -1,23 +1,28 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./product-theme.css";
-import { Funnel_Display, Geist, Geist_Mono } from "next/font/google";
+import {
+  Funnel_Display,
+  Instrument_Sans,
+  JetBrains_Mono,
+} from "next/font/google";
 
-// Self-hosted at build time by next/font (SIL Open Font License): Funnel Display
-// for headings, Geist for text, Geist Mono for code and data.
-const display = Funnel_Display({
-  subsets: ["latin"],
-  variable: "--font-heading",
-  display: "swap",
-});
-const text = Geist({
+// Self-hosted at build time by next/font (SIL Open Font License). One family for
+// headings and text keeps the product calm; mono is for code and data. Funnel
+// Display is used once: the rotating agent name in the landing headline.
+const text = Instrument_Sans({
   subsets: ["latin"],
   variable: "--font-text",
   display: "swap",
 });
-const code = Geist_Mono({
+const code = JetBrains_Mono({
   subsets: ["latin"],
   variable: "--font-code",
+  display: "swap",
+});
+const agent = Funnel_Display({
+  subsets: ["latin"],
+  variable: "--font-agent",
   display: "swap",
 });
 export const metadata: Metadata = {
@@ -33,7 +38,7 @@ export default function RootLayout({
       lang="en"
       data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${display.variable} ${text.variable} ${code.variable}`}
+      className={`${text.variable} ${code.variable} ${agent.variable}`}
     >
       <head>
         <script

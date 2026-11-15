@@ -4,8 +4,10 @@
 /* `dark:` follows the persisted header toggle, not only the OS preference. */
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
-/* Funnel Display sets headings (--font-heading); Geist sets text; Geist Mono sets code. */
+/* Instrument Sans sets headings and text; JetBrains Mono sets code. Funnel Display
+   (--font-agent) is reserved for the rotating agent name on the landing page. */
 :root {
+  --font-heading: var(--font-text);
   --font-body: var(--font-text);
 }
 

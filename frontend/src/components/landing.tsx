@@ -382,7 +382,11 @@ function ExampleReport() {
       </p>
       <div className={styles.meter} aria-hidden="true">
         {Array.from({ length: 10 }, (_, i) => (
-          <i key={i} data-on={i < 4 ? "" : undefined} />
+          <i
+            key={i}
+            data-on={i < 4 ? "" : undefined}
+            style={{ "--i": i } as React.CSSProperties}
+          />
         ))}
       </div>
       <ul className={styles.findings}>
@@ -418,12 +422,22 @@ function ExampleReport() {
   );
 }
 
-/** The same pricing page, as a person sees it and as an agent receives it. */
+/** One size picker three ways: as a person sees it, as an agent receives it
+ * today, and as an agent receives it once the Fix Kit's change is in. */
+const FIXED_SIZES = [
+  '<div class="sizes">',
+  "  <button>UK 7</button>",
+  "  <button>UK 8</button>",
+  "  <button>UK 9</button>",
+  "  <button disabled>UK 10</button>",
+  "</div>",
+];
+
 function PersonVersusAgent() {
   return (
     <figure
       className={styles.versus}
-      aria-label="Example: a size picker as a person sees it and as an agent receives it"
+      aria-label="Example: a size picker as a person sees it, as an agent receives it, and after the Fix Kit"
     >
       <div className={styles.versusTop}>
         <span className={styles.reportSite}>
@@ -454,6 +468,20 @@ function PersonVersusAgent() {
           </pre>
           <p className={styles.versusResult}>
             No size names an agent can read.
+          </p>
+        </div>
+        <div className={styles.versusFixed}>
+          <p className={styles.versusLabel}>
+            After the Fix Kit <span className={styles.fixedTag}>Fixed</span>
+          </p>
+          {/* One span per line so the fixed markup can appear line by line. */}
+          <pre>
+            {FIXED_SIZES.map((line) => (
+              <span key={line}>{line}</span>
+            ))}
+          </pre>
+          <p className={styles.versusResult}>
+            Agent reads: UK 7, 8, 9 in stock.
           </p>
         </div>
       </div>

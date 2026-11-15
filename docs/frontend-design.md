@@ -20,11 +20,13 @@ gradients, glows, sparkle icons, outlined numerals or fake browser chrome.
 
 The landing follows the brief's story: hero (headline, one sentence, scan box, one
 caption line; an example report card beside it), the problem (three common failures and
-a person-vs-agent example), how it works (three steps and what the scan checks),
+a size-picker example in three panels: what a person sees, what an agent receives, and the
+same markup after the Fix Kit), how it works (three steps and what the scan checks),
 principles ("Verified, not claimed"), the agent lane (in development), pricing, FAQ and
 a closing scan card with the disclosure. Buttons and controls use `--radius-control`
-(12px), badges 8px, cards 20 to 24px. Funnel Display sets headings and large numerals,
-Geist sets text and Geist Mono (ligatures off) sets code and data. Dark mode is available from the header and
+(12px), badges 8px, cards 20 to 24px. Instrument Sans sets headings and text and
+JetBrains Mono (ligatures off) sets code and data. Funnel Display (`--font-agent`) is used
+in one place only: the rotating agent name on its volt lime brush stroke in the hero. Dark mode is available from the header and
 persists in local storage; Tailwind's `dark:` variant follows that toggle.
 
 ## Tokens and components
@@ -39,8 +41,8 @@ primitives: `.surface`, `.surface-float`, `.nav-glass`, `.display-xl|lg|md`,
 `.block-feature|lime|ink`, status badges, tables, skeletons and code panels.
 `product-theme.css` holds shared report and legal presentation. Buttons are 12px
 rounded rectangles with `default`, `secondary`, `outline`, `ghost`, `ink` and `lime`
-variants and `sm`/`default`/`lg` sizes. Fonts (Funnel Display, Geist, Geist Mono; SIL
-OFL) come from `next/font/google`: they are downloaded once at build time and served
+variants and `sm`/`default`/`lg` sizes. Fonts (Instrument Sans, JetBrains Mono and, for the
+hero agent name only, Funnel Display; SIL OFL) come from `next/font/google`: they are downloaded once at build time and served
 from the app, so pages never call a font service, but a build needs network access. Do not fabricate social proof
 (logo bars, testimonials, usage statistics) to fill marketing layouts. Reports end
 with "Check our work" (`cross-check.tsx`): reproducible public requests and links to
@@ -299,7 +301,14 @@ glow on hover and press in on click (200ms); every clickable element shows a poi
 arrow icons nudge toward their destination on hover. `components/reveal.tsx` gives
 once-only, staggered scroll entrances with IntersectionObserver (no animation library):
 server-rendered content stays visible, only below-the-fold elements animate, and reduced
-motion shows everything immediately. Interactive marketing cards use `.lift`. The landing
+motion shows everything immediately. Interactive marketing cards use `.lift`.
+Landing choreography is CSS only, animates transform, opacity or clip-path, and is
+switched off under reduced motion: each agent name's brush stroke paints in left to
+right; the example report's meter fills segment by segment and its findings settle in;
+the "After the Fix Kit" panel lands its tag, then its markup line by line, then the
+agent's reading; the agent-lane routes arrive in turn and the lane tag pings three
+times. Animations inside a `Reveal` are paused (`animation-play-state`) until it is
+shown, so they play when seen. The landing
 navbar is scroll-aware (clear at the top, frosted over the hero, solid with a shadow past
 it); other pages add a shadow once scrolled. Large panels share a 28px radius. The shared
 `MarketingFooter` has Product, Resources and Legal columns with real links only. Dark mode

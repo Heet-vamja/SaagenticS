@@ -59,10 +59,11 @@ async def main():
                     )
                     versus = page.get_by_role(
                         "figure",
-                        name="Example: a size picker as a person sees it and as an agent receives it",
+                        name="Example: a size picker as a person sees it, as an agent receives it, and after the Fix Kit",
                     )
                     await versus.scroll_into_view_if_needed()
                     assert await versus.get_by_text("No size names an agent can read.").is_visible()
+                    assert await versus.get_by_text("Agent reads: UK 7, 8, 9 in stock.").is_visible()
                     await page.add_script_tag(path=str(AXE))
                     violations = await page.evaluate(
                         """async()=> (await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))"""
