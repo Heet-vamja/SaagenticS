@@ -54,6 +54,12 @@ def variant_settings(settings: Settings) -> Settings:
     )
 
 
+async def ensure_provider(settings: Settings, transport=None) -> None:
+    """Fail before rendering pages if the model is not configured (missing key, bad URL)."""
+    provider = get_agent_provider(variant_settings(settings), transport=transport)
+    await provider.close()
+
+
 async def extract_catalog(evidence: Evidence, settings: Settings, transport=None):
     """Returns (catalog, usage). Raises InferenceError/InvalidAction on failure."""
     provider = get_agent_provider(variant_settings(settings), transport=transport)

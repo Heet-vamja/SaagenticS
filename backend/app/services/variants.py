@@ -12,7 +12,7 @@ from datetime import UTC, datetime
 from app.core.config import Settings
 from app.engines.variants.contracts import Catalog
 from app.engines.variants.evidence import collect_evidence
-from app.engines.variants.extraction import extract_catalog
+from app.engines.variants.extraction import ensure_provider, extract_catalog
 from app.engines.variants.parity import check_parity
 from app.engines.variants.render import render_variant
 from app.models.domain import SiteVariant, VariantPage
@@ -41,6 +41,7 @@ async def build_variant(
     host: str, settings: Settings, session_factory, publish: bool = True, transport=None
 ) -> BuildResult:
     site_id, origin = _load_site(session_factory, host)
+    await ensure_provider(settings, transport=transport)
     evidence = await collect_evidence(origin, settings)
     if not any(page.text for page in evidence.pages):
         raise ValueError("No rendered content was collected from the origin")

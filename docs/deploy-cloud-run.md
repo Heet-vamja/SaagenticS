@@ -14,7 +14,7 @@ service is an adapter switched on by configuration; nothing in the code requires
 | --- | --- | --- |
 | `db` | Cloud SQL for PostgreSQL | — |
 | `backend` | Cloud Run service | `uvicorn app.main:app` (port 8000) |
-| `frontend` | Cloud Run service (or Firebase Hosting + Cloud Run) | needs a production image, see blockers |
+| `frontend` | Cloud Run service (or Firebase Hosting + Cloud Run) | `frontend/Dockerfile` target `prod` (`node server.js`, port 3000) |
 | `edge` | Cloud Run service on the customer-facing domain | `uvicorn app.edge.main:app` (port 8080) |
 | `jobs` | Cloud Run worker pool, or a service with CPU always allocated and one minimum instance | `python -m app.cli.jobs worker` |
 | migrations | Cloud Run job | `alembic upgrade head` |
@@ -61,13 +61,19 @@ are stored without query strings and clients as keyed hashes, as in PostgreSQL.
 3. Run the migration job, then deploy `backend`, `edge`, `jobs` and `demo-store`.
 4. Map the customer-facing domain to the `edge` service and register the site in the
    dashboard with the public host and its origin.
-5. Deploy the frontend with `BACKEND_URL` pointing at the `backend` service. Next.js
-   resolves rewrites at build time, so the URL must be known when the image is built.
+5. Build and deploy the frontend. Next.js reads `next.config.ts` at build time, so the
+   backend URL for the `/api/v1` rewrite is a build argument:
+
+   ```sh
+   docker build --target prod --build-arg BACKEND_URL=https://<backend-service-url> \
+     -t <region>-docker.pkg.dev/<project>/agentlane/frontend frontend
+   ```
+
+   Verified locally: the image (standalone server, non-root, about 450 MB) serves every
+   route, proxies the API, and passes `test:states` and `test:free-flow`.
 
 ## Blockers before the first deploy
 
-- `frontend/Dockerfile` runs `npm run dev`; a production target (`npm run build` then
-  `npm start`) is needed.
 - The worker pool vs. always-on service choice for `jobs` needs confirming against the
   current Cloud Run offering.
 - Firebase Auth for the dashboard is not implemented; the dashboard uses the operator

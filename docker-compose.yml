@@ -116,7 +116,9 @@ services:
       timeout: 5s
       retries: 20
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: dev  # The prod target is the standalone image (docs/deploy-cloud-run.md).
     environment:
       BACKEND_URL: http://backend:8000
       NEXT_TELEMETRY_DISABLED: "1"

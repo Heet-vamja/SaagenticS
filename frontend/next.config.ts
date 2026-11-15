@@ -1,6 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Self-contained server for the production image (frontend/Dockerfile, target prod).
+  output: "standalone",
   devIndicators: false,
   allowedDevOrigins: ["127.0.0.1"],
   experimental: { cpus: 2 },

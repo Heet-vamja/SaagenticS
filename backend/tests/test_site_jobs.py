@@ -169,3 +169,24 @@ def test_stale_running_jobs_are_failed_and_fresh_ones_kept(session, factory):
     session.expire_all()
     assert session.get(SiteJob, stale.id).status == "FAILED"
     assert session.get(SiteJob, fresh.id).status == "RUNNING"
+
+
+def test_build_without_a_gemini_key_fails_before_rendering(session, factory, monkeypatch):
+    settings = get_settings().model_copy(
+        update={
+            "agent_llm_provider": "gemini",
+            "agent_llm_base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+            "gemini_api_key": type(get_settings().gemini_api_key)(""),
+        }
+    )
+
+    async def never(*_):
+        pytest.fail("Pages must not be rendered when the model is not configured")
+
+    monkeypatch.setattr("app.services.variants.collect_evidence", never)
+    site = _site(session)
+    job = _job(session, site)
+    assert asyncio.run(run_claimed(*claim_next(factory), settings, factory)) == "FAILED"
+    assert session.get(SiteJob, job.id).detail == (
+        "InferenceError: Configure GEMINI_API_KEY for Gemini inference"
+    )

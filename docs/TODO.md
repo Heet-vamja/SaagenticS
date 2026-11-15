@@ -20,9 +20,9 @@ when done; link the commit or doc that closed them if useful.
 
 ## MVP gaps
 
-- First real Google Cloud deploy following `docs/deploy-cloud-run.md` (draft, unverified):
-  production frontend image (Dockerfile runs `npm run dev`), jobs as a worker pool or
-  always-on service, BigQuery sink verified against a real table.
+- First real Google Cloud deploy following `docs/deploy-cloud-run.md` (draft): jobs as a
+  worker pool or always-on service, BigQuery sink verified against a real table. The
+  production frontend image (`--target prod`) is built and verified locally.
 - Firebase Auth for the dashboard (optional adapter; the operator token is used today).
 - Google's agent tokens change: `Google-NotebookLM` is accepted until August 2026 per
   Google's fetcher docs; drop it from the registry after that.
@@ -44,5 +44,3 @@ when done; link the commit or doc that closed them if useful.
 - Sites cannot be edited or removed from the dashboard (CLI or SQL only).
 - The jobs worker does not hot-reload; run `docker compose restart jobs` after backend
   code changes.
-- Variant builds render all pages before the model call; a missing Gemini key is only
-  reported after rendering (about 7 s for the demo store). Consider checking first.
