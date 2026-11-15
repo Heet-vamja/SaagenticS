@@ -13,13 +13,11 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
-  CircleHelp,
-  FileSearch,
+  Copy,
   Globe2,
   LoaderCircle,
   Menu,
   Minus,
-  ShieldCheck,
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -248,22 +246,29 @@ const FAILURES = [
 ];
 
 const PRINCIPLES = [
+  ["Evidence on every finding.", "The page and the markup we saw."],
+  ["Unknown stays unknown.", "A check that can’t run never counts as a pass."],
+  ["Read-only, always.", "Scans never change your site."],
+] as const;
+
+/** The Fix Center's three prompt variants, written for the size-picker example. */
+const PROMPTS = [
   {
-    icon: FileSearch,
-    title: "Evidence on every finding",
-    text: "Each issue shows the page and markup we saw, so your developer can check it.",
+    id: "assistant",
+    label: "Coding assistant",
+    text: "On /trail-runner, give each size button its visible size as text (UK 7 to UK 10). Keep UK 10 disabled. Don’t change the layout or styling.",
   },
   {
-    icon: CircleHelp,
-    title: "Unknown stays unknown",
-    text: "If a check can’t run, the report says so. It never counts as a pass.",
+    id: "general",
+    label: "General AI",
+    text: "The size buttons on my product page have no text, so AI agents can’t tell the sizes apart. Show me how to give each button its size as visible text and keep the sold-out size disabled.",
   },
   {
-    icon: ShieldCheck,
-    title: "Read-only, always",
-    text: "Scans never change your site. You decide which fixes to apply.",
+    id: "ticket",
+    label: "Dev ticket",
+    text: "Size picker on /trail-runner: buttons have no accessible names. Add the visible size (UK 7 to UK 10) to each button; keep UK 10 disabled. Done when a re-scan passes.",
   },
-];
+] as const;
 
 const QUESTIONS = [
   [
@@ -394,7 +399,7 @@ function ExampleReport() {
           <span className={styles.mark} data-tone="danger">
             <X size={12} strokeWidth={2.6} aria-hidden="true" />
           </span>
-          <span>Pricing isn’t in the page HTML</span>
+          <span>Size buttons have no names</span>
           <span>Issue</span>
         </li>
         <li>
@@ -424,14 +429,15 @@ function ExampleReport() {
 
 /** One size picker three ways: as a person sees it, as an agent receives it
  * today, and as an agent receives it once the Fix Kit's change is in. */
+/** Fixed markup as [before, added, after]: the added text is highlighted. */
 const FIXED_SIZES = [
-  '<div class="sizes">',
-  "  <button>UK 7</button>",
-  "  <button>UK 8</button>",
-  "  <button>UK 9</button>",
-  "  <button disabled>UK 10</button>",
-  "</div>",
-];
+  ['<div class="sizes">', "", ""],
+  ["  <button>", "UK 7", "</button>"],
+  ["  <button>", "UK 8", "</button>"],
+  ["  <button>", "UK 9", "</button>"],
+  ["  <button disabled>", "UK 10", "</button>"],
+  ["</div>", "", ""],
+] as const;
 
 function PersonVersusAgent() {
   return (
@@ -474,16 +480,118 @@ function PersonVersusAgent() {
           <p className={styles.versusLabel}>
             After the Fix Kit <span className={styles.fixedTag}>Fixed</span>
           </p>
-          {/* One span per line so the fixed markup can appear line by line. */}
+          {/* One span per line so the fixed markup can appear line by line;
+              the text the fix adds is marked. */}
           <pre>
-            {FIXED_SIZES.map((line) => (
-              <span key={line}>{line}</span>
+            {FIXED_SIZES.map(([before, added, after]) => (
+              <span key={before + added}>
+                {before}
+                {added && <mark>{added}</mark>}
+                {after}
+              </span>
             ))}
           </pre>
           <p className={styles.versusResult}>
             Agent reads: UK 7, 8, 9 in stock.
           </p>
         </div>
+      </div>
+    </figure>
+  );
+}
+
+/** One fix as the Fix Center shows it: evidence, a prompt in three variants, and
+ * the re-scan that verifies it. Example data; the copy button really copies. */
+function FixKitPreview() {
+  const [active, setActive] = useState(0);
+  const [copied, setCopied] = useState(false);
+  const tabs = useRef<(HTMLButtonElement | null)[]>([]);
+  const id = useId();
+  const prompt = PROMPTS[active];
+  const select = (index: number) => {
+    setActive(index);
+    setCopied(false);
+  };
+  const onKeyDown = (event: React.KeyboardEvent) => {
+    const step =
+      event.key === "ArrowRight" ? 1 : event.key === "ArrowLeft" ? -1 : 0;
+    if (!step) return;
+    event.preventDefault();
+    const next = (active + step + PROMPTS.length) % PROMPTS.length;
+    select(next);
+    tabs.current[next]?.focus();
+  };
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(prompt.text);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  };
+  return (
+    <figure
+      className={styles.fix}
+      aria-label="Example: one fix from the Fix Kit"
+    >
+      <div className={styles.fixTop}>
+        <p>
+          <span>Fix 1 of 7 · Issue</span>
+          <strong>Size buttons have no names</strong>
+        </p>
+        <span className={styles.example}>Example</span>
+      </div>
+      <div className={styles.fixEvidence}>
+        <p>
+          Evidence · <code>/trail-runner</code>
+        </p>
+        <pre>{"<button></button>  4 buttons, no accessible name"}</pre>
+      </div>
+      <div className={styles.fixPrompt}>
+        <div
+          className={styles.fixTabs}
+          role="tablist"
+          aria-label="Prompt for"
+          onKeyDown={onKeyDown}
+        >
+          {PROMPTS.map((item, i) => (
+            <button
+              key={item.id}
+              ref={(node) => {
+                tabs.current[i] = node;
+              }}
+              type="button"
+              role="tab"
+              id={`${id}-${item.id}`}
+              aria-selected={i === active}
+              aria-controls={`${id}-panel`}
+              tabIndex={i === active ? 0 : -1}
+              onClick={() => select(i)}
+            >
+              {item.label}
+            </button>
+          ))}
+        </div>
+        <p
+          id={`${id}-panel`}
+          role="tabpanel"
+          aria-labelledby={`${id}-${prompt.id}`}
+          className={styles.fixText}
+        >
+          {prompt.text}
+        </p>
+        <div className={styles.fixActions}>
+          <Button type="button" variant="ink" size="sm" onClick={copy}>
+            {copied ? <Check size={14} /> : <Copy size={14} />}
+            {copied ? "Copied" : "Copy prompt"}
+          </Button>
+          <span>
+            Then <strong>Re-scan to verify</strong>
+          </span>
+        </div>
+        <span className="sr-only" aria-live="polite">
+          {copied ? "Prompt copied" : ""}
+        </span>
       </div>
     </figure>
   );
@@ -635,7 +743,7 @@ export function Landing() {
           <Reveal>
             <p className={styles.label}>How it works</p>
             <h2 id="how-title" className={styles.title}>
-              Find it. Fix it. <span>Check it again.</span>
+              Find it. Fix it. Check it again.
             </h2>
           </Reveal>
           <ol className={styles.steps}>
@@ -666,26 +774,37 @@ export function Landing() {
         </div>
       </section>
 
-      <section className={styles.section} aria-labelledby="principles-title">
-        <div className={styles.wrap}>
+      <section
+        id="fix-kit"
+        className={`${styles.section} ${styles.kit}`}
+        aria-labelledby="kit-title"
+      >
+        <div className={`${styles.wrap} ${styles.split}`}>
           <Reveal>
-            <p className={styles.label}>How we work</p>
-            <h2 id="principles-title" className={styles.title}>
-              Verified, not claimed.
+            <p className={styles.label}>Inside the Fix Kit</p>
+            <h2 id="kit-title" className={styles.title}>
+              Every fix comes with proof and a prompt.
             </h2>
             <p className={styles.intro}>
-              A report you can check, from a scan that never touches your site.
+              Hand it to your developer or paste it into your coding assistant.
+              Then re-scan: a fix counts only when new evidence confirms it.
             </p>
+            <ul className={styles.proof}>
+              {PRINCIPLES.map(([title, text]) => (
+                <li key={title}>
+                  <span aria-hidden="true">
+                    <Check size={13} strokeWidth={3} />
+                  </span>
+                  <p>
+                    <strong>{title}</strong> {text}
+                  </p>
+                </li>
+              ))}
+            </ul>
           </Reveal>
-          <ul className={styles.principles}>
-            {PRINCIPLES.map((item, i) => (
-              <Reveal as="li" key={item.title} delay={i * 80}>
-                <item.icon size={22} strokeWidth={1.7} aria-hidden="true" />
-                <h3>{item.title}</h3>
-                <p>{item.text}</p>
-              </Reveal>
-            ))}
-          </ul>
+          <Reveal delay={100}>
+            <FixKitPreview />
+          </Reveal>
         </div>
       </section>
 
@@ -700,7 +819,7 @@ export function Landing() {
           <Reveal>
             <p className={styles.label}>Pricing</p>
             <h2 id="pricing-title" className={styles.title}>
-              Start free. <span>Pay once when you want the kit.</span>
+              Start free. Pay once when you want the kit.
             </h2>
           </Reveal>
           <div className={styles.prices}>
@@ -732,6 +851,7 @@ export function Landing() {
                   Get your free report <ArrowRight size={16} />
                 </a>
               </Button>
+              <p className={styles.planHint}>Email code, no account.</p>
             </Reveal>
             <Reveal
               as="article"
@@ -765,9 +885,12 @@ export function Landing() {
               </ul>
               <Button asChild variant="lime" size="lg">
                 <a href="#scan">
-                  Start with a free scan <ArrowRight size={16} />
+                  Get the Fix Kit <ArrowRight size={16} />
                 </a>
               </Button>
+              <p className={styles.planHint}>
+                Starts with a free scan of your domain.
+              </p>
             </Reveal>
           </div>
           <p className={styles.priceNote}>

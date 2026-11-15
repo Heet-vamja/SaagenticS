@@ -19,7 +19,7 @@ export function AgentLaneShowcase() {
         <Reveal>
           <p className={styles.label}>Agent lane · in development</p>
           <h2 id="agent-lane-title" className={styles.title}>
-            One site. <span>Two lanes.</span>
+            One site. Two lanes.
           </h2>
           <p className={styles.intro}>
             People and search engines see your site exactly as it is. AI agents

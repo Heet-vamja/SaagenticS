@@ -22,7 +22,9 @@ The landing follows the brief's story: hero (headline, one sentence, scan box, o
 caption line; an example report card beside it), the problem (three common failures and
 a size-picker example in three panels: what a person sees, what an agent receives, and the
 same markup after the Fix Kit), how it works (three steps and what the scan checks),
-principles ("Verified, not claimed"), the agent lane (in development), pricing, FAQ and
+"Inside the Fix Kit" (a sunken band: the three principles as proof points beside one
+example fix with evidence, a prompt in the Fix Center's three variants with a working copy
+button, and "Re-scan to verify"), the agent lane (in development), pricing, FAQ and
 a closing scan card with the disclosure. Buttons and controls use `--radius-control`
 (12px), badges 8px, cards 20 to 24px. Instrument Sans sets headings and text and
 JetBrains Mono (ligatures off) sets code and data. Funnel Display (`--font-agent`) is used
@@ -302,10 +304,11 @@ arrow icons nudge toward their destination on hover. `components/reveal.tsx` giv
 once-only, staggered scroll entrances with IntersectionObserver (no animation library):
 server-rendered content stays visible, only below-the-fold elements animate, and reduced
 motion shows everything immediately. Interactive marketing cards use `.lift`.
-Landing choreography is CSS only, animates transform, opacity or clip-path, and is
+Only the problem headline uses a muted second sentence; other section titles are a
+single ink line. Landing choreography is CSS only, animates transform, opacity or clip-path, and is
 switched off under reduced motion: each agent name's brush stroke paints in left to
 right; the example report's meter fills segment by segment and its findings settle in;
-the "After the Fix Kit" panel lands its tag, then its markup line by line, then the
+the "After the Fix Kit" panel (whose added text is marked in lime) lands its tag, then its markup line by line, then the
 agent's reading; the agent-lane routes arrive in turn and the lane tag pings three
 times. Animations inside a `Reveal` are paused (`animation-play-state`) until it is
 shown, so they play when seen. The landing
