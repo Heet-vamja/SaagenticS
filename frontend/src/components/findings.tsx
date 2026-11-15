@@ -65,7 +65,7 @@ export function Findings({
               />
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-semibold">{first.title}</h3>
-                <p className="mono mt-1.5 break-all text-[9px] text-muted-foreground">
+                <p className="mono mt-1.5 break-all text-[12px] text-muted-foreground">
                   {rule} · {affected || 1} {affected === 1 ? "page" : "pages"}{" "}
                   affected
                   {items.length > pages.size
@@ -87,11 +87,11 @@ export function Findings({
                 <div className="mt-4 flex gap-3 rounded-lg bg-accent-soft p-4">
                   <Lightbulb
                     size={16}
-                    className="mt-0.5 shrink-0 text-primary"
+                    className="mt-0.5 shrink-0 text-signal"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-[10px] font-medium text-primary">
+                      <span className="text-[12px] font-medium text-signal">
                         Recommended fix
                       </span>
                       <CopyButton value={first.recommendation} />
@@ -110,7 +110,7 @@ export function Findings({
                 <div className="mt-3 space-y-4">
                   {items.slice(0, 10).map((finding, index) => (
                     <div key={finding.id ?? index}>
-                      <p className="mono break-all text-[10px] text-muted-foreground">
+                      <p className="mono break-all text-[12px] text-muted-foreground">
                         {String(finding.evidence.url ?? "Site-wide check")}
                       </p>
                       <pre tabIndex={0} className="code-panel mt-2">
@@ -119,7 +119,7 @@ export function Findings({
                     </div>
                   ))}
                   {items.length > 10 && (
-                    <p className="text-[11px] text-muted-foreground">
+                    <p className="text-[13px] text-muted-foreground">
                       Showing 10 evidence entries. Export JSON or CSV for every
                       occurrence.
                     </p>

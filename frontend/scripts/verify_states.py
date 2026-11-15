@@ -142,7 +142,7 @@ async def main():
                 "http://localhost"
             )
             await page.get_by_role(
-                "button", name="Scan your website", exact=True
+                "button", name="Scan Website", exact=True
             ).first.click()
             await page.get_by_text(
                 "Local and metadata service hostnames are not supported", exact=False

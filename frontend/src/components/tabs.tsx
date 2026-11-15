@@ -47,13 +47,13 @@ export function Tabs({
             aria-selected={value === item.value}
             aria-controls={`${id}-panel`}
             tabIndex={value === item.value ? 0 : -1}
-            className={`relative flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-0.5 text-xs ${value === item.value ? "border-primary font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
+            className={`relative flex min-h-12 shrink-0 items-center gap-2 border-b-2 px-0.5 text-xs ${value === item.value ? "border-signal font-medium text-foreground" : "border-transparent text-muted-foreground hover:text-foreground"}`}
             onClick={() => onChange(item.value)}
           >
             {item.label}
             {item.count !== undefined && (
               <span
-                className={`rounded px-1.5 py-0.5 text-[9px] ${value === item.value ? "bg-accent-soft text-primary" : "bg-muted"}`}
+                className={`rounded px-1.5 py-0.5 text-[12px] ${value === item.value ? "bg-accent-soft text-signal" : "bg-muted"}`}
               >
                 {item.count}
               </span>

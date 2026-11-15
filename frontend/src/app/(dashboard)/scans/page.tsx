@@ -1,4 +1,4 @@
-import { Workspace } from "@/components/workspace";
-export default function ScansPage() {
-  return <Workspace view="scans" />;
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/");
 }

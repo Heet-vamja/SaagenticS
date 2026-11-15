@@ -51,7 +51,7 @@ const failureName: Record<string, string> = {
 function Outcome({ value }: { value?: string | null }) {
   if (!value) {
     return (
-      <span className="inline-flex items-center gap-1 text-[10px] text-muted-foreground">
+      <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
         <CircleHelp size={12} />
         Pending
       </span>
@@ -67,7 +67,7 @@ function Outcome({ value }: { value?: string | null }) {
           : CircleHelp;
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-medium ${outcomeClass[value] ?? "border-border bg-muted text-muted-foreground"}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] font-medium ${outcomeClass[value] ?? "border-border bg-muted text-muted-foreground"}`}
     >
       <Icon size={11} />
       {value.toLowerCase().replaceAll("_", " ")}
@@ -98,7 +98,7 @@ function ReplayDialog({ run }: { run: AgentTaskRunSummary }) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-1 text-[10px] font-medium text-primary hover:underline"
+        className="inline-flex items-center gap-1 text-[12px] font-medium text-signal hover:underline"
       >
         <Eye size={12} /> Replay {steps.length}{" "}
         {steps.length === 1 ? "step" : "steps"}
@@ -120,7 +120,7 @@ function ReplayDialog({ run }: { run: AgentTaskRunSummary }) {
             >
               <ArrowLeft size={13} /> Previous
             </button>
-            <span className="mono text-[10px] text-muted-foreground">
+            <span className="mono text-[12px] text-muted-foreground">
               Step {index + 1} of {steps.length}
             </span>
             <button
@@ -175,7 +175,7 @@ function StepEvidence({
       </div>
       <div className="min-w-0 space-y-3 text-xs">
         <div>
-          <p className="eyebrow text-[8px]">Action</p>
+          <p className="eyebrow text-[12px]">Action</p>
           <p className="mt-1 font-medium">
             {step.action_type.replaceAll("_", " ")}
           </p>
@@ -186,17 +186,17 @@ function StepEvidence({
           </p>
         </div>
         <div>
-          <p className="eyebrow text-[8px]">Page</p>
-          <p className="mono mt-1 break-all text-[10px] text-muted-foreground">
+          <p className="eyebrow text-[12px]">Page</p>
+          <p className="mono mt-1 break-all text-[12px] text-muted-foreground">
             {step.page_url}
           </p>
         </div>
         {step.error_message && (
-          <p className="rounded-md border border-danger/20 bg-danger/5 p-3 text-[10px] leading-5 text-danger">
+          <p className="rounded-md border border-danger/20 bg-danger/5 p-3 text-[12px] leading-5 text-danger">
             {step.error_message}
           </p>
         )}
-        <p className="text-[10px] text-muted-foreground">
+        <p className="text-[12px] text-muted-foreground">
           {step.duration_ms.toLocaleString()} ms
         </p>
       </div>
@@ -219,7 +219,7 @@ function RunRow({
     <article className="rounded-lg border bg-background/70 p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <span className="mono text-[9px] text-muted-foreground">
+          <span className="mono text-[12px] text-muted-foreground">
             RUN {String(run.run_number).padStart(2, "0")}
           </span>
           <Outcome value={run.outcome} />
@@ -227,13 +227,13 @@ function RunRow({
         {run.id && (
           <Link
             href={`/agent-tests/${run.id}`}
-            className="text-[10px] font-medium text-primary hover:underline"
+            className="text-[12px] font-medium text-signal hover:underline"
           >
             Open workspace replay
           </Link>
         )}
       </div>
-      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[9px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
         <span>{verificationName[run.verification_method ?? "unverified"]}</span>
         {run.model_identifier && (
           <span
@@ -256,15 +256,15 @@ function RunRow({
         <span>Estimated cost: {money(run.estimated_cost_usd)}</span>
       </div>
       {category && (
-        <p className="mt-2 text-[10px] text-muted-foreground">{category}</p>
+        <p className="mt-2 text-[12px] text-muted-foreground">{category}</p>
       )}
       {run.failure_reason && (
-        <p className="mt-2 text-[10px] leading-5 text-muted-foreground">
+        <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
           {run.failure_reason}
         </p>
       )}
       {excluded && (
-        <p className="mt-2 rounded-md border border-border bg-muted/60 px-2.5 py-2 text-[9px] text-muted-foreground">
+        <p className="mt-2 rounded-md border border-border bg-muted/60 px-2.5 py-2 text-[12px] text-muted-foreground">
           Infrastructure unavailable; excluded from site scoring.
         </p>
       )}
@@ -297,7 +297,7 @@ export function AgentTaskCards({ tasks }: { tasks: AgentTaskSummary[] }) {
               <h3 className="text-sm font-semibold">
                 {taskName(task.task_type)}
               </h3>
-              <p className="mt-1 text-[10px] leading-5 text-muted-foreground">
+              <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
                 {task.runs_completed ?? task.runs.length} of{" "}
                 {task.requested_runs ?? task.runs.length} runs completed
                 {task.eligible_runs != null
@@ -313,19 +313,19 @@ export function AgentTaskCards({ tasks }: { tasks: AgentTaskSummary[] }) {
             <Outcome value={task.outcome} />
           </div>
           {task.failure_reason && (
-            <p className="border-b px-4 py-3 text-[10px] leading-5 text-muted-foreground sm:px-5">
+            <p className="border-b px-4 py-3 text-[12px] leading-5 text-muted-foreground sm:px-5">
               {task.failure_reason}
             </p>
           )}
           {task.outcome === "UNAVAILABLE" && (
-            <p className="border-b px-4 py-3 text-[10px] leading-5 text-muted-foreground sm:px-5">
+            <p className="border-b px-4 py-3 text-[12px] leading-5 text-muted-foreground sm:px-5">
               Agent infrastructure was unavailable. These runs are excluded from
               site scoring.
             </p>
           )}
           <div className="space-y-2 p-4 sm:p-5">
             {task.runs.length === 0 ? (
-              <p className="text-[10px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground">
                 Run details are not available.
               </p>
             ) : (

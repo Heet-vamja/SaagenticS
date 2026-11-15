@@ -199,7 +199,7 @@ export function StaticScore({
       aria-label="Static readiness score"
     >
       <div className="grid md:grid-cols-[.85fr_1.15fr]">
-        <div className="bg-accent-soft p-6 sm:p-8">
+        <div className="bg-muted p-6 sm:p-8">
           <p className="eyebrow">Static readiness · {summary.version}</p>
           <p className="my-4 font-display text-6xl font-medium tracking-tight">
             {score ?? "—"}
@@ -208,13 +208,13 @@ export function StaticScore({
           <p className="text-xs leading-6 text-muted-foreground">
             Deterministic website checks. Agent task success is not included.
           </p>
-          <span className="mt-3 inline-flex rounded border bg-card px-2 py-1 text-[10px]">
+          <span className="mt-3 inline-flex rounded border bg-card px-2 py-1 text-[12px]">
             {summary.provisional ? "Partial coverage" : "Evaluated sample"} ·{" "}
             {known}/{total} checks evaluated
           </span>
           {scanId && (
             <Link
-              className="mt-5 flex items-center gap-2 text-xs font-medium text-primary"
+              className="mt-5 flex items-center gap-2 text-xs font-medium text-foreground"
               href={`/scans/${scanId}/report`}
             >
               Open report, priority fixes and exports <ArrowRight size={14} />
@@ -236,7 +236,7 @@ export function StaticScore({
                 </div>
                 <div className="h-1.5 overflow-hidden rounded-full bg-muted">
                   <span
-                    className="block h-full rounded-full bg-primary/70"
+                    className="block h-full rounded-full bg-foreground/70"
                     style={{ width: `${value ?? 0}%` }}
                   />
                 </div>
@@ -245,7 +245,7 @@ export function StaticScore({
           )}
         </div>
       </div>
-      <div className="flex flex-wrap gap-4 border-t px-6 py-3 text-[11px] text-muted-foreground">
+      <div className="flex flex-wrap gap-4 border-t px-6 py-3 text-[13px] text-muted-foreground">
         <span>{summary.counts?.PASS ?? 0} passed</span>
         <span>{summary.counts?.FAIL ?? 0} failed</span>
         <span>{summary.counts?.UNKNOWN ?? 0} inconclusive</span>
@@ -279,7 +279,7 @@ export function ScoreHistory({ scans }: { scans: Scan[] }) {
                 className="rounded-lg border p-4 hover:bg-muted"
                 key={scan.id}
               >
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[12px] text-muted-foreground">
                   {formatDate(scan.started_at)}
                 </span>
                 <strong className="my-2 block text-2xl">
@@ -290,11 +290,11 @@ export function ScoreHistory({ scans }: { scans: Scan[] }) {
                 </strong>
                 <span className="block h-1 rounded bg-muted">
                   <span
-                    className="block h-full rounded bg-primary/60"
+                    className="block h-full rounded bg-foreground/60"
                     style={{ width: `${scan.overall_score}%` }}
                   />
                 </span>
-                <small className="mt-2 block text-[9px] text-muted-foreground">
+                <small className="mt-2 block text-[12px] text-muted-foreground">
                   {kind.replaceAll("_", " ")} · {summary?.version} ·{" "}
                   {summary?.provisional
                     ? "partial coverage"
@@ -302,7 +302,7 @@ export function ScoreHistory({ scans }: { scans: Scan[] }) {
                 </small>
                 {summary?.static_score != null &&
                   summary.agent?.agent_score != null && (
-                    <small className="mt-2 block text-[9px] text-muted-foreground">
+                    <small className="mt-2 block text-[12px] text-muted-foreground">
                       Static {summary.static_score} · Agent{" "}
                       {summary.agent.agent_score}
                     </small>
@@ -375,7 +375,7 @@ function Comparison({ id, projectId }: { id: string; projectId?: string }) {
               ["Not retested", compare.not_retested?.length ?? 0],
             ].map(([label, value]) => (
               <div key={label}>
-                <span className="text-[10px] text-muted-foreground">
+                <span className="text-[12px] text-muted-foreground">
                   {label}
                 </span>
                 <strong className="mt-2 block text-2xl font-medium">
@@ -384,7 +384,7 @@ function Comparison({ id, projectId }: { id: string; projectId?: string }) {
               </div>
             ))}
           </div>
-          <p className="text-[11px] leading-6 text-muted-foreground">
+          <p className="text-[13px] leading-6 text-muted-foreground">
             {compare.note}
             {compare.coverage_changed &&
               " Coverage changed between these scans."}
@@ -392,7 +392,7 @@ function Comparison({ id, projectId }: { id: string; projectId?: string }) {
               " Agent task coverage changed; compare task outcomes separately."}
           </p>
           {compare.score_components && (
-            <div className="mt-4 grid gap-3 rounded-lg border bg-muted/30 p-4 text-[10px] sm:grid-cols-3">
+            <div className="mt-4 grid gap-3 rounded-lg border bg-muted/30 p-4 text-[12px] sm:grid-cols-3">
               <span>
                 Static score change:{" "}
                 {compare.score_components.static_delta == null
@@ -421,7 +421,7 @@ function Comparison({ id, projectId }: { id: string; projectId?: string }) {
                 {compare.agent_task_changes.map((task) => (
                   <div
                     key={task.task_type}
-                    className="flex flex-wrap justify-between gap-2 text-[10px]"
+                    className="flex flex-wrap justify-between gap-2 text-[12px]"
                   >
                     <span className="font-medium">
                       {task.task_type.replaceAll("_", " ")}
@@ -452,7 +452,7 @@ function Comparison({ id, projectId }: { id: string; projectId?: string }) {
                   {checks.map((c, i) => (
                     <li key={i}>
                       <strong>{c.title}</strong>
-                      <span className="mono mt-1 block break-all text-[10px] text-muted-foreground">
+                      <span className="mono mt-1 block break-all text-[12px] text-muted-foreground">
                         {c.url}
                       </span>
                     </li>
@@ -508,7 +508,7 @@ export function ReportView({
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `agentreadiness-report.${format}`;
+      a.download = `agentlane-report.${format}`;
       a.click();
       setTimeout(() => URL.revokeObjectURL(url), 1000);
     } catch (e) {
@@ -524,7 +524,7 @@ export function ReportView({
       {token && (
         <div className="mb-10 flex flex-wrap items-center justify-between gap-4">
           <Brand />
-          <span className="rounded-full border px-3 py-2 text-[10px] text-muted-foreground">
+          <span className="rounded-full border px-3 py-2 text-[12px] text-muted-foreground">
             Shared static report · anyone with this link
           </span>
         </div>
@@ -735,12 +735,12 @@ export function ReportView({
                       <td>{c.status.replaceAll("_", " ")}</td>
                       <td>
                         <span
-                          className="mono block max-w-[300px] truncate text-[10px]"
+                          className="mono block max-w-[300px] truncate text-[12px]"
                           title={c.url ?? undefined}
                         >
                           {c.url}
                         </span>
-                        <details className="mt-2 text-[10px]">
+                        <details className="mt-2 text-[12px]">
                           <summary>Details</summary>
                           <p className="mt-2 leading-5">{c.description}</p>
                           <pre tabIndex={0} className="code-panel mt-2">
@@ -753,7 +753,7 @@ export function ReportView({
                 </tbody>
               </table>
             </div>
-            <ul className="mt-5 list-disc space-y-2 pl-4 text-[11px] leading-6 text-muted-foreground">
+            <ul className="mt-5 list-disc space-y-2 pl-4 text-[13px] leading-6 text-muted-foreground">
               {data.scan.audit_summary.limitations?.map((text) => (
                 <li key={text}>{text}</li>
               ))}
@@ -761,7 +761,7 @@ export function ReportView({
           </details>
         </>
       )}
-      <p className="mt-7 flex items-start gap-2 text-[11px] leading-6 text-muted-foreground">
+      <p className="mt-7 flex items-start gap-2 text-[13px] leading-6 text-muted-foreground">
         <ShieldCheck size={15} className="mt-1 shrink-0" />
         Static readiness measures the inspected sample. It does not certify
         accessibility or independently verify agent task success.
@@ -769,7 +769,7 @@ export function ReportView({
       {token && (
         <Link
           href="/"
-          className="mt-6 inline-flex items-center gap-2 text-xs font-medium text-primary"
+          className="mt-6 inline-flex items-center gap-2 text-xs font-medium text-foreground"
         >
           <ArrowLeft size={14} />
           Scan your own website

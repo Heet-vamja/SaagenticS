@@ -129,7 +129,7 @@ export function ScanDetail({ id }: { id: string }) {
           </>
         }
       />
-      <div className="-mt-5 mb-7 flex items-center gap-1 text-[9px] text-muted-foreground">
+      <div className="-mt-5 mb-7 flex items-center gap-1 text-[12px] text-muted-foreground">
         <span className="mono break-all">{scan.id}</span>
         <CopyButton value={scan.id} />
       </div>
@@ -146,9 +146,9 @@ export function ScanDetail({ id }: { id: string }) {
       {["RUNNING", "PENDING"].includes(scan.status) && (
         <div
           role="status"
-          className="mb-5 flex items-center gap-3 rounded-xl border border-primary/20 bg-accent-soft px-5 py-4"
+          className="mb-5 flex items-center gap-3 rounded-xl border border-signal/20 bg-accent-soft px-5 py-4"
         >
-          <LoaderCircle size={16} className="animate-spin text-primary" />
+          <LoaderCircle size={16} className="animate-spin text-signal" />
           <div>
             <p className="text-xs font-medium">
               {scan.status === "PENDING"
@@ -161,7 +161,7 @@ export function ScanDetail({ id }: { id: string }) {
                       ? "Preparing your report"
                       : "Discovering and checking your website"}
             </p>
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-[13px] text-muted-foreground">
               {scan.audit_summary?.phase === "AGENT_TASKS"
                 ? "Static checks are complete; task runs, actions and verification results are updating automatically."
                 : "Progress refreshes automatically. Discovery → static checks → browser sample → AI browser tasks → report."}
@@ -271,35 +271,32 @@ export function ScanDetail({ id }: { id: string }) {
                             }}
                           >
                             <span
-                              className="mono block max-w-full truncate text-[10px] text-primary"
+                              className="mono block max-w-full truncate text-[12px] text-signal"
                               title={page.url}
                             >
                               {page.url}
                             </span>
-                            <span className="mt-1.5 block truncate text-[11px] text-muted-foreground">
+                            <span className="mt-1.5 block truncate text-[13px] text-muted-foreground">
                               {page.title ?? "No title found"}
                             </span>
                           </button>
                         </td>
                         <td>
                           <span
-                            className={`rounded border px-2 py-1 font-mono text-[10px] ${page.status_code && page.status_code < 400 ? "border-primary/15 bg-accent-soft text-primary" : "border-danger/15 bg-danger/5 text-danger"}`}
+                            className={`rounded border px-2 py-1 font-mono text-[12px] ${page.status_code && page.status_code < 400 ? "border-signal/15 bg-accent-soft text-signal" : "border-danger/15 bg-danger/5 text-danger"}`}
                           >
                             {page.status_code ?? "—"}
                           </span>
                         </td>
-                        <td className="mono text-[10px]">{page.crawl_depth}</td>
+                        <td className="mono text-[12px]">{page.crawl_depth}</td>
                         <td className="max-w-[250px]">
                           <span
-                            className={`inline-flex items-center gap-1.5 text-[10px] ${page.crawl_error ? "text-danger" : "text-muted-foreground"}`}
+                            className={`inline-flex items-center gap-1.5 text-[12px] ${page.crawl_error ? "text-danger" : "text-muted-foreground"}`}
                           >
                             {page.crawl_error ? (
                               <AlertTriangle size={12} />
                             ) : (
-                              <CheckCircle2
-                                size={12}
-                                className="text-primary"
-                              />
+                              <CheckCircle2 size={12} className="text-signal" />
                             )}
                             {page.crawl_error ??
                               (page.page_metadata.skipped
@@ -319,7 +316,7 @@ export function ScanDetail({ id }: { id: string }) {
               </div>
             )}
             <div className="flex items-center justify-between border-t px-5 py-3">
-              <span className="text-[10px] text-muted-foreground">
+              <span className="text-[12px] text-muted-foreground">
                 Page {offset / 30 + 1}
               </span>
               <div className="flex gap-2">
@@ -327,7 +324,7 @@ export function ScanDetail({ id }: { id: string }) {
                   variant="outline"
                   disabled={offset === 0}
                   onClick={() => setOffset((n) => Math.max(0, n - 30))}
-                  className="h-8 px-3 text-[10px]"
+                  className="h-8 px-3 text-[12px]"
                 >
                   <ArrowLeft size={12} />
                   Previous
@@ -336,7 +333,7 @@ export function ScanDetail({ id }: { id: string }) {
                   variant="outline"
                   disabled={pages.length < 30}
                   onClick={() => setOffset((n) => n + 30)}
-                  className="h-8 px-3 text-[10px]"
+                  className="h-8 px-3 text-[12px]"
                 >
                   Next
                   <ArrowRight size={12} />
@@ -396,7 +393,7 @@ export function ScanDetail({ id }: { id: string }) {
           <DialogTitle className="mt-2 pr-5 text-xl font-semibold tracking-tight">
             {selected?.title ?? "Page metadata"}
           </DialogTitle>
-          <DialogDescription className="mono mt-3 break-all text-[10px] leading-5 text-muted-foreground">
+          <DialogDescription className="mono mt-3 break-all text-[12px] leading-5 text-muted-foreground">
             {selected?.url}
           </DialogDescription>
           {selected && (
@@ -411,7 +408,7 @@ export function ScanDetail({ id }: { id: string }) {
                     key={label}
                     className="rounded-lg border bg-background p-3"
                   >
-                    <p className="text-[9px] text-muted-foreground">{label}</p>
+                    <p className="text-[12px] text-muted-foreground">{label}</p>
                     <p className="mt-2 text-xs font-medium">{value}</p>
                   </div>
                 ))}
@@ -421,20 +418,20 @@ export function ScanDetail({ id }: { id: string }) {
               )}
               <dl className="space-y-4 text-xs">
                 <div>
-                  <dt className="eyebrow text-[9px]">Meta description</dt>
+                  <dt className="eyebrow text-[12px]">Meta description</dt>
                   <dd className="mt-2 leading-6 text-muted-foreground">
                     {selected.meta_description || "Not provided"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="eyebrow text-[9px]">Canonical URL</dt>
-                  <dd className="mono mt-2 break-all text-[10px] text-muted-foreground">
+                  <dt className="eyebrow text-[12px]">Canonical URL</dt>
+                  <dd className="mono mt-2 break-all text-[12px] text-muted-foreground">
                     {selected.canonical_url || "Not provided"}
                   </dd>
                 </div>
                 <div>
-                  <dt className="eyebrow text-[9px]">Content type</dt>
-                  <dd className="mono mt-2 text-[10px] text-muted-foreground">
+                  <dt className="eyebrow text-[12px]">Content type</dt>
+                  <dd className="mono mt-2 text-[12px] text-muted-foreground">
                     {selected.content_type || "Unknown"}
                   </dd>
                 </div>

@@ -11,7 +11,9 @@
     "format": "prettier --write src *.json *.ts *.mjs",
     "format:check": "prettier --check src *.json *.ts *.mjs",
     "test:ui": "../backend/.venv/bin/python scripts/verify_ui.py",
-    "test:states": "../backend/.venv/bin/python scripts/verify_states.py"
+    "test:free-flow": "../backend/.venv/bin/python scripts/verify_free_flow.py",
+    "test:states": "../backend/.venv/bin/python scripts/verify_states.py",
+    "test:landing": "../backend/.venv/bin/python scripts/verify_landing.py"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

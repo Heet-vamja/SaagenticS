@@ -1,8 +1,10 @@
-import { Shell } from "@/components/shell";
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <Shell>{children}</Shell>;
+import { MarketingNav, MarketingFooter } from "@/components/marketing-nav";
+export default function Layout({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <MarketingNav />
+      {children}
+      <MarketingFooter />
+    </>
+  );
 }

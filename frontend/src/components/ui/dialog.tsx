@@ -16,10 +16,10 @@ export function DialogContent({
 }: ComponentProps<typeof DialogPrimitive.Content>) {
   return (
     <DialogPrimitive.Portal>
-      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-black/35" />
+      <DialogPrimitive.Overlay className="fixed inset-0 z-50 bg-[#111111]/40 backdrop-blur-[6px]" />
       <DialogPrimitive.Content
         className={cn(
-          "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-2xl border bg-card p-7 shadow-xl",
+          "fixed left-1/2 top-1/2 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 rounded-[28px] border bg-card p-8 shadow-[var(--shadow-float)]",
           className,
         )}
         {...props}
@@ -27,9 +27,9 @@ export function DialogContent({
         {children}
         <DialogPrimitive.Close
           aria-label="Close"
-          className="absolute right-4 top-4 rounded p-1 text-muted-foreground hover:bg-muted"
+          className="absolute right-4 top-4 grid size-9 place-items-center rounded-full bg-muted text-muted-foreground hover:text-foreground"
         >
-          <X size={18} />
+          <X size={17} />
         </DialogPrimitive.Close>
       </DialogPrimitive.Content>
     </DialogPrimitive.Portal>

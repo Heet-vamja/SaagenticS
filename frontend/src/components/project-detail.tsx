@@ -99,13 +99,13 @@ export function ProjectDetail({ id }: { id: string }) {
             <p className="truncate text-sm font-medium">
               {domainOf(project.website_url)}
             </p>
-            <p className="mt-1.5 text-[11px] text-muted-foreground">
+            <p className="mt-1.5 text-[13px] text-muted-foreground">
               Added {formatDate(project.created_at)} · Exact-host crawl scope
             </p>
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-muted-foreground">Latest scan</span>
+          <span className="text-[12px] text-muted-foreground">Latest scan</span>
           {latest ? (
             <Status value={latest.status} />
           ) : (
@@ -180,15 +180,15 @@ export function ProjectDetail({ id }: { id: string }) {
               <tbody>
                 {scans.map((scan) => (
                   <tr key={scan.id} className="table-row">
-                    <td className="mono text-[11px]">
+                    <td className="mono text-[13px]">
                       <Link
-                        className="hover:text-primary"
+                        className="hover:text-signal"
                         href={`/scans/${scan.id}`}
                       >
                         {scan.id.slice(0, 8)}
                       </Link>
                     </td>
-                    <td className="text-[11px] text-muted-foreground">
+                    <td className="text-[13px] text-muted-foreground">
                       {formatDate(scan.started_at)}
                     </td>
                     <td>
@@ -208,10 +208,10 @@ export function ProjectDetail({ id }: { id: string }) {
                       {scan.audit_summary?.version ? (
                         <Link
                           href={`/scans/${scan.id}/report`}
-                          className="font-medium text-primary"
+                          className="font-medium text-signal"
                         >
                           {scan.overall_score ?? "—"}
-                          <small className="ml-1 text-[9px] text-muted-foreground">
+                          <small className="ml-1 text-[12px] text-muted-foreground">
                             /100
                           </small>
                         </Link>

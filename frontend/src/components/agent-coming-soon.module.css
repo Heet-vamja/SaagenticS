@@ -1,0 +1,320 @@
+/* A dark Apple-style feature tile: ink canvas, lime highlight, a light calendar panel. */
+.launch {
+  --tile-bg: var(--brand-ink);
+  --tile-fg: #fafaf7;
+  --tile-muted: #c9c9c3;
+  --tile-border: transparent;
+  --panel-bg: #ffffff;
+  --panel-fg: var(--brand-ink);
+  --panel-muted: #5c5c57;
+  --panel-border: #e4e3dc;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  max-width: 1180px;
+  margin: 40px auto;
+  border: 1px solid var(--tile-border);
+  border-radius: 32px;
+  background: var(--tile-bg);
+  color: var(--tile-fg);
+  text-align: left;
+}
+:global([data-theme="dark"]) .launch {
+  --tile-bg: var(--card);
+  --tile-muted: var(--muted-foreground);
+  --tile-border: var(--border);
+  --panel-bg: var(--muted);
+  --panel-fg: var(--foreground);
+  --panel-muted: var(--muted-foreground);
+  --panel-border: var(--border);
+}
+/* Soft brand glow; purely decorative. */
+.launch::before {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  inset: -40% -20% auto auto;
+  width: 70%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--brand-lime) 30%, transparent) 0%,
+    transparent 65%
+  );
+  opacity: 0.55;
+  pointer-events: none;
+}
+.main {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(280px, 0.85fr);
+  gap: 56px;
+  align-items: center;
+  padding: 64px 64px 48px;
+}
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  border: 1px solid color-mix(in srgb, var(--tile-fg) 18%, transparent);
+  border-radius: 999px;
+  padding: 6px 13px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tile-muted);
+}
+.eyebrow > span {
+  width: 8px;
+  height: 8px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--lime);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--lime) 25%, transparent);
+}
+.copy h2 {
+  margin-top: 24px;
+  max-width: 12ch;
+  font-size: clamp(2.25rem, 5vw, 4rem);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.028em;
+  color: var(--tile-fg);
+}
+.copy h2 span {
+  color: var(--lime);
+}
+.description {
+  margin-top: 22px;
+  max-width: 440px;
+  color: var(--tile-muted);
+  font-size: 17px;
+  line-height: 1.65;
+  text-wrap: pretty;
+}
+.promise {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+}
+.promise > li {
+  border-radius: 999px;
+  padding: 6px 13px;
+  background: color-mix(in srgb, var(--tile-fg) 9%, transparent);
+  color: var(--tile-fg);
+  font-size: 13px;
+  font-weight: 600;
+}
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin-top: 32px;
+  border-radius: 999px;
+  padding: 12px 22px;
+  background: var(--lime);
+  color: var(--lime-foreground);
+  font-size: 15px;
+  font-weight: 700;
+}
+.link:hover {
+  filter: brightness(0.95);
+}
+.link svg {
+  transition: transform 0.16s;
+}
+.link:hover svg {
+  transform: translateX(3px);
+}
+
+.release {
+  overflow: hidden;
+  border: 1px solid var(--panel-border);
+  border-radius: 24px;
+  background: var(--panel-bg);
+  color: var(--panel-fg);
+  box-shadow: 0 30px 70px -30px #000000a0;
+}
+.calendar {
+  display: grid;
+  gap: 10px;
+  padding: 22px 24px 24px;
+  border-bottom: 1px solid var(--panel-border);
+}
+.releaseLabel,
+.planned {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--panel-muted);
+}
+.planned {
+  justify-self: start;
+  border-radius: 999px;
+  padding: 4px 10px;
+  background: var(--lime);
+  color: var(--lime-foreground);
+  font-weight: 600;
+}
+.date {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.day {
+  font-family: var(--font-heading), sans-serif;
+  font-size: 84px;
+  font-weight: 800;
+  line-height: 0.9;
+  letter-spacing: -0.035em;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+.monthYear {
+  display: grid;
+  gap: 2px;
+  font-family: var(--font-heading), sans-serif;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.monthYear > span:first-child {
+  font-size: 22px;
+  letter-spacing: -0.02em;
+}
+.monthYear > span:last-child {
+  font-size: 18px;
+  color: var(--panel-muted);
+}
+.journeys {
+  display: grid;
+}
+.journey {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 24px;
+}
+.journey + .journey {
+  border-top: 1px solid var(--panel-border);
+}
+.journey > div {
+  flex: 1;
+  min-width: 0;
+}
+.journey p {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.journey > div > span {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--panel-muted);
+}
+.number {
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 12px;
+  color: var(--panel-muted);
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px 18px;
+  margin: 0 64px;
+  padding: 22px 0 28px;
+  border-top: 1px solid color-mix(in srgb, var(--tile-fg) 14%, transparent);
+}
+.badge {
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: color-mix(in srgb, var(--tile-fg) 10%, transparent);
+  color: var(--tile-fg);
+  font-size: 13px;
+  font-weight: 700;
+}
+.footer p {
+  color: var(--tile-muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Compact variant, embedded in the landing page. */
+.compact {
+  margin: 0 auto;
+}
+.compact .main {
+  gap: 44px;
+  padding: 48px 48px 36px;
+}
+.compact .copy h2 {
+  font-size: clamp(2rem, 4vw, 3.25rem);
+}
+.compact .footer {
+  margin: 0 48px;
+  padding: 18px 0 24px;
+}
+
+@media (max-width: 860px) {
+  .main,
+  .compact .main {
+    grid-template-columns: 1fr;
+    gap: 36px;
+    padding: 40px 24px 28px;
+  }
+  .footer,
+  .compact .footer {
+    margin: 0 24px;
+  }
+  .launch {
+    border-radius: 26px;
+  }
+}
+@media (max-width: 420px) {
+  .main,
+  .compact .main {
+    padding: 32px 18px 24px;
+  }
+  .footer,
+  .compact .footer {
+    margin: 0 18px;
+  }
+  .journey,
+  .calendar {
+    padding-inline: 18px;
+  }
+  .day {
+    font-size: 68px;
+  }
+  .eyebrow {
+    letter-spacing: 0.04em;
+  }
+}
+@media (max-width: 560px) {
+  .eyebrow {
+    border-radius: 14px;
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .release {
+    animation: float-in 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+}
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) rotate(-1deg);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

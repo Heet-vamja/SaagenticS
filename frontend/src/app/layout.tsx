@@ -1,23 +1,19 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./product-theme.css";
 import localFont from "next/font/local";
-const manrope = localFont({
-  src: "./fonts/Manrope-Variable.ttf",
-  variable: "--font-manrope",
+const funnel = localFont({
+  src: "./fonts/FunnelDisplay-Variable.ttf",
+  variable: "--font-heading",
   display: "swap",
-  weight: "200 800",
-});
-const spaceGrotesk = localFont({
-  src: "./fonts/SpaceGrotesk-Variable.ttf",
-  variable: "--font-space-grotesk",
-  display: "swap",
-  weight: "300 700",
+  weight: "300 800",
 });
 import { GeistMono } from "geist/font/mono";
+import { GeistSans } from "geist/font/sans";
 export const metadata: Metadata = {
-  title: "AgentReadiness — Can AI agents use your website?",
+  title: "AgentLane — Can AI agents use your website?",
   description:
-    "Test how real AI agents discover, navigate, and interact with your website.",
+    "Find technical barriers for AI agents. Verify your email, get a static readiness score, and unlock the full report for $19.",
 };
 export default function RootLayout({
   children,
@@ -25,9 +21,18 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
-      className={`${manrope.variable} ${spaceGrotesk.variable} ${GeistMono.variable}`}
+      className={`${funnel.variable} ${GeistSans.variable} ${GeistMono.variable}`}
     >
+      <head>
+        <script
+          id="theme-init"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){var t;try{t=localStorage.getItem('ar-theme')}catch(e){}document.documentElement.dataset.theme=t==='dark'||t==='light'?t:window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'})()`,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

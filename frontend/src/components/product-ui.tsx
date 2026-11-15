@@ -1,7 +1,6 @@
 "use client";
 import Link from "next/link";
 import {
-  Waypoints,
   ArrowLeft,
   ArrowUpRight,
   Check,
@@ -15,19 +14,51 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/** AgentLane mark: a lime tile with an ink lane vanishing into an "A". */
+export function LogoMark({
+  size = 32,
+  className,
+}: {
+  size?: number;
+  className?: string;
+}) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      width={size}
+      height={size}
+      aria-hidden="true"
+      focusable="false"
+      className={cn("brand-symbol shrink-0", className)}
+    >
+      <rect width="32" height="32" rx="9" fill="#c8f03c" />
+      <path
+        d="M7.6 25.4 16 7l8.4 18.4"
+        fill="none"
+        stroke="#111111"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <g stroke="#111111" strokeLinecap="round">
+        <path d="M16 25.2v-4" strokeWidth="3" />
+        <path d="M16 17.8v-2.4" strokeWidth="2.4" />
+        <path d="M16 13v-.4" strokeWidth="1.8" />
+      </g>
+    </svg>
+  );
+}
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       href="/"
-      aria-label="AgentReadiness home"
-      className="inline-flex shrink-0 items-center gap-2.5 font-semibold tracking-[-.04em]"
+      aria-label="AgentLane home"
+      className="inline-flex shrink-0 items-center gap-2.5"
     >
-      <span className="brand-symbol grid size-8 place-items-center rounded-[9px] bg-primary text-primary-foreground">
-        <Waypoints size={21} strokeWidth={1.9} />
-      </span>
+      <LogoMark />
       {!compact && (
-        <span className="text-[17px]">
-          AgentReadiness<span className="text-primary">.</span>
+        <span className="font-display text-[19px] font-extrabold tracking-[-.022em]">
+          AgentLane
         </span>
       )}
     </Link>
@@ -44,15 +75,23 @@ export function ThemeToggle() {
   );
   useEffect(() => {
     try {
+      const saved = localStorage.getItem("ar-theme");
       document.documentElement.dataset.theme =
-        localStorage.getItem("ar-theme") ?? "light";
+        saved === "dark" || saved === "light"
+          ? saved
+          : (document.documentElement.dataset.theme ??
+            (window.matchMedia("(prefers-color-scheme: dark)").matches
+              ? "dark"
+              : "light"));
       window.dispatchEvent(new Event("ar-theme"));
     } catch {}
   }, []);
   return (
     <button
       aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
-      className="grid size-9 place-items-center rounded-lg border bg-card text-muted-foreground hover:text-foreground"
+      title={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+      aria-pressed={theme === "dark"}
+      className="grid size-10 place-items-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
       onClick={() => {
         const next = theme === "dark" ? "light" : "dark";
         document.documentElement.dataset.theme = next;
@@ -62,7 +101,7 @@ export function ThemeToggle() {
         window.dispatchEvent(new Event("ar-theme"));
       }}
     >
-      {theme === "dark" ? <Sun size={15} /> : <Moon size={15} />}
+      {theme === "dark" ? <Sun size={17} /> : <Moon size={17} />}
     </button>
   );
 }
@@ -99,7 +138,7 @@ export function DomainIcon({ className = "" }: { className?: string }) {
   return (
     <span
       className={cn(
-        "grid size-10 shrink-0 place-items-center rounded-xl border bg-muted/50 text-muted-foreground",
+        "grid size-10 shrink-0 place-items-center rounded-xl bg-accent-soft text-signal",
         className,
       )}
     >
@@ -121,7 +160,7 @@ export function PageHeading({
   back?: { href: string; label: string };
 }) {
   return (
-    <div className="mb-8">
+    <div className="page-heading mb-8">
       {back && (
         <Link
           href={back.href}
@@ -134,11 +173,11 @@ export function PageHeading({
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           {eyebrow && <p className="eyebrow mb-2">{eyebrow}</p>}
-          <h1 className="break-words text-2xl font-semibold tracking-[-.045em] sm:text-[30px]">
+          <h1 className="font-display break-words text-[28px] font-extrabold leading-tight tracking-[-.025em] sm:text-[38px]">
             {title}
           </h1>
           {description && (
-            <p className="mt-2 max-w-2xl text-[13px] leading-6 text-muted-foreground">
+            <p className="mt-3 max-w-2xl text-[16px] leading-7 text-muted-foreground">
               {description}
             </p>
           )}
@@ -163,14 +202,14 @@ export function Metric({
 }) {
   return (
     <div className="metric-card surface p-5">
-      <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+      <div className="flex items-center justify-between gap-2 text-[13px] text-muted-foreground">
         <span>{label}</span>
         <Icon size={15} strokeWidth={1.6} />
       </div>
-      <p className="my-3 text-[30px] font-medium leading-none tracking-[-.06em] tabular-nums">
+      <p className="my-3 font-display text-[34px] font-extrabold leading-none tracking-[-.025em] tabular-nums">
         {value}
       </p>
-      {detail && <p className="text-[10px] text-muted-foreground">{detail}</p>}
+      {detail && <p className="text-[12px] text-muted-foreground">{detail}</p>}
     </div>
   );
 }
@@ -191,13 +230,13 @@ export function SectionHeader({
         <div className="flex items-center gap-2">
           <h2 className="section-title">{title}</h2>
           {count !== undefined && (
-            <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+            <span className="rounded-full bg-muted px-2 py-0.5 text-[12px] font-semibold text-muted-foreground">
               {count}
             </span>
           )}
         </div>
         {description && (
-          <p className="mt-1 text-[11px] leading-5 text-muted-foreground">
+          <p className="mt-1 text-[13px] leading-5 text-muted-foreground">
             {description}
           </p>
         )}
@@ -220,7 +259,7 @@ export function TextLink({
       href={href}
       target={external ? "_blank" : undefined}
       rel={external ? "noopener noreferrer" : undefined}
-      className="inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-primary"
+      className="inline-flex items-center gap-1 text-xs font-semibold text-signal hover:underline hover:underline-offset-4"
     >
       {children}
       {external ? <ArrowUpRight size={13} /> : <ChevronRight size={13} />}
@@ -237,7 +276,7 @@ export function CopyButton({ value }: { value: string }) {
   return (
     <button
       aria-label={copied ? "Copied" : "Copy ID"}
-      className="rounded p-1.5 text-muted-foreground hover:bg-muted"
+      className="rounded-full p-1.5 text-muted-foreground hover:bg-muted"
       onClick={async () => {
         try {
           await navigator.clipboard.writeText(value);
@@ -253,7 +292,7 @@ export function CopyButton({ value }: { value: string }) {
 }
 export function VerificationNotice() {
   return (
-    <div className="flex items-start gap-2 text-[10px] leading-5 text-muted-foreground">
+    <div className="flex items-start gap-2 text-[12px] leading-5 text-muted-foreground">
       <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-warning" />
       <span>
         <strong className="font-medium text-foreground">

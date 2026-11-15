@@ -97,7 +97,7 @@ function OutcomePill({ value }: { value: string | null | undefined }) {
     return <span className="text-xs text-muted-foreground">Pending</span>;
   return (
     <span
-      className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-medium ${outcomeTone[value] ?? "border-border bg-muted text-muted-foreground"}`}
+      className={`inline-flex rounded-full border px-2.5 py-1 text-[12px] font-medium ${outcomeTone[value] ?? "border-border bg-muted text-muted-foreground"}`}
     >
       {value.replaceAll("_", " ").toLowerCase()}
     </span>
@@ -113,20 +113,20 @@ function FailureMessage({ message }: { message: string }) {
           ? "Model inference is unavailable"
           : "This execution needs attention"}
       </div>
-      <p className="mt-2 break-words text-[11px] leading-6 text-muted-foreground">
+      <p className="mt-2 break-words text-[13px] leading-6 text-muted-foreground">
         {billing
           ? "The inference endpoint requires credits or billing. Configure a funded Hugging Face endpoint or a working local model server, then start a new test."
           : message}
       </p>
       {billing && (
-        <details className="mt-2 text-[10px] text-muted-foreground">
+        <details className="mt-2 text-[12px] text-muted-foreground">
           <summary>Technical details</summary>
           <p className="mt-2 break-words leading-5">{message}</p>
         </details>
       )}
       <Link
         href="/docs#agent"
-        className="mt-3 inline-flex items-center gap-1 text-[10px] font-medium text-danger"
+        className="mt-3 inline-flex items-center gap-1 text-[12px] font-medium text-danger"
       >
         Inference setup guide
         <ChevronRight size={11} />
@@ -165,7 +165,7 @@ function BrowserEvidence({
             Browser evidence
           </h2>
           {step && (
-            <span className="mono text-[9px] text-muted-foreground">
+            <span className="mono text-[12px] text-muted-foreground">
               STEP {String(step.step_number).padStart(2, "0")}
             </span>
           )}
@@ -176,7 +176,7 @@ function BrowserEvidence({
               <span key={n} className="size-1.5 rounded-full border bg-muted" />
             ))}
           </div>
-          <div className="mono flex min-w-0 flex-1 items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[9px] text-muted-foreground">
+          <div className="mono flex min-w-0 flex-1 items-center gap-2 rounded-md border bg-card px-2.5 py-1.5 text-[12px] text-muted-foreground">
             <ShieldCheck size={10} className="shrink-0" />
             <span
               className="truncate"
@@ -219,14 +219,14 @@ function BrowserEvidence({
                 ? "Screenshot could not be loaded"
                 : "No screenshot for this step"}
             </p>
-            <p className="mt-2 max-w-[260px] text-[11px] leading-6 text-muted-foreground">
+            <p className="mt-2 max-w-[260px] text-[13px] leading-6 text-muted-foreground">
               {test.status === "PENDING"
                 ? "Evidence appears as the agent begins its journey."
                 : "A screenshot was not captured here. The recorded page observation is available below."}
             </p>
           </div>
         )}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-[9px] text-muted-foreground">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t px-4 py-3 text-[12px] text-muted-foreground">
           <span className="inline-flex items-center gap-1.5">
             <ShieldCheck size={11} />
             Captured evidence · inputs masked
@@ -244,7 +244,7 @@ function BrowserEvidence({
             <FileText size={15} className="text-muted-foreground" />
             Page observation
           </h3>
-          <span className="text-[9px] text-muted-foreground">
+          <span className="text-[12px] text-muted-foreground">
             Recorded at this step
           </span>
         </div>
@@ -253,19 +253,19 @@ function BrowserEvidence({
           <p
             tabIndex={0}
             aria-label="Observed visible page text"
-            className="mt-3 max-h-[220px] overflow-y-auto whitespace-pre-wrap text-[11px] leading-6 text-muted-foreground"
+            className="mt-3 max-h-[220px] overflow-y-auto whitespace-pre-wrap text-[13px] leading-6 text-muted-foreground"
           >
             {text}
           </p>
         ) : (
-          <p className="mt-3 text-[11px] leading-6 text-muted-foreground">
+          <p className="mt-3 text-[13px] leading-6 text-muted-foreground">
             {step
               ? "No visible text was recorded for this step."
               : "Select a step to inspect what the agent observed."}
           </p>
         )}
         {elements.length > 0 && (
-          <details className="mt-4 border-t pt-4 text-[11px]">
+          <details className="mt-4 border-t pt-4 text-[13px]">
             <summary className="text-muted-foreground">
               {elements.length} observed interactive elements
             </summary>
@@ -275,7 +275,7 @@ function BrowserEvidence({
                 return (
                   <div
                     key={index}
-                    className="flex min-w-0 items-start gap-2 rounded-md bg-background px-3 py-2 text-[10px]"
+                    className="flex min-w-0 items-start gap-2 rounded-md bg-background px-3 py-2 text-[12px]"
                   >
                     <span className="mono shrink-0 text-muted-foreground">
                       {String(item.role ?? item.tag ?? "element")}
@@ -295,7 +295,7 @@ function BrowserEvidence({
           </details>
         )}
         {step && (
-          <details className="mt-4 border-t pt-4 text-[10px] text-muted-foreground">
+          <details className="mt-4 border-t pt-4 text-[12px] text-muted-foreground">
             <summary>Raw observation data</summary>
             <pre tabIndex={0} className="code-panel mt-3">
               {JSON.stringify(step.observation_summary, null, 2)}
@@ -357,18 +357,18 @@ export function AgentDetail({ id }: { id: string }) {
         }
       />
       <div className="-mt-4 mb-6 flex items-center gap-1 text-muted-foreground">
-        <span className="mono break-all text-[9px]">{test.id}</span>
+        <span className="mono break-all text-[12px]">{test.id}</span>
         <CopyButton value={test.id} />
       </div>
       {task && (
         <section className="surface mb-6 overflow-hidden">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b px-5 py-4">
             <div>
-              <p className="eyebrow text-[8px]">Aggregate task result</p>
+              <p className="eyebrow text-[12px]">Aggregate task result</p>
               <h2 className="mt-1 text-sm font-semibold">
                 {taskName(task.task_type)}
               </h2>
-              <p className="mt-1 text-[10px] text-muted-foreground">
+              <p className="mt-1 text-[12px] text-muted-foreground">
                 {task.eligible_runs} eligible runs · {task.runs_completed}/
                 {task.requested_runs} runs completed
                 {task.consistency === null
@@ -381,7 +381,7 @@ export function AgentDetail({ id }: { id: string }) {
             <OutcomePill value={task.outcome} />
           </div>
           {task.failure_reason && (
-            <p className="border-b px-5 py-3 text-[11px] leading-5 text-muted-foreground">
+            <p className="border-b px-5 py-3 text-[13px] leading-5 text-muted-foreground">
               {task.failure_reason}
             </p>
           )}
@@ -392,11 +392,11 @@ export function AgentDetail({ id }: { id: string }) {
                 className={`flex flex-wrap items-center justify-between gap-3 px-5 py-3 ${run.id === test.id ? "bg-accent-soft/30" : ""}`}
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <span className="mono text-[9px] text-muted-foreground">
+                  <span className="mono text-[12px] text-muted-foreground">
                     RUN {String(run.run_number ?? 1).padStart(2, "0")}
                   </span>
                   <OutcomePill value={run.outcome} />
-                  <span className="text-[10px] text-muted-foreground">
+                  <span className="text-[12px] text-muted-foreground">
                     {
                       verificationLabels[
                         run.verification_method ?? "unverified"
@@ -405,13 +405,13 @@ export function AgentDetail({ id }: { id: string }) {
                   </span>
                 </div>
                 {run.id === test.id ? (
-                  <span className="text-[10px] font-medium text-primary">
+                  <span className="text-[12px] font-medium text-signal">
                     Current run
                   </span>
                 ) : (
                   <Link
                     href={`/agent-tests/${run.id}`}
-                    className="text-[10px] font-medium text-primary hover:underline"
+                    className="text-[12px] font-medium text-signal hover:underline"
                   >
                     Open replay
                   </Link>
@@ -424,38 +424,38 @@ export function AgentDetail({ id }: { id: string }) {
       <section className="surface mb-6 overflow-hidden">
         <div className="grid grid-cols-2 gap-px bg-border md:grid-cols-[1.5fr_1fr_.65fr_.65fr]">
           <div className="min-w-0 bg-card p-4 sm:px-5">
-            <p className="eyebrow text-[8px]">Model used</p>
+            <p className="eyebrow text-[12px]">Model used</p>
             <p
-              className="mono mt-2 truncate text-[10px]"
+              className="mono mt-2 truncate text-[12px]"
               title={test.model_identifier}
             >
               {test.model_identifier}
             </p>
           </div>
           <div className="min-w-0 bg-card p-4 sm:px-5">
-            <p className="eyebrow text-[8px]">Website</p>
-            <p className="mono mt-2 truncate text-[10px]">
+            <p className="eyebrow text-[12px]">Website</p>
+            <p className="mono mt-2 truncate text-[12px]">
               {domainOf(test.starting_url)}
             </p>
           </div>
           <div className="bg-card p-4 sm:px-5">
-            <p className="eyebrow text-[8px]">Steps executed</p>
+            <p className="eyebrow text-[12px]">Steps executed</p>
             <p className="mt-1 text-lg font-medium tabular-nums">
               {test.steps_completed}
-              <span className="ml-1 text-[10px] text-muted-foreground">
+              <span className="ml-1 text-[12px] text-muted-foreground">
                 / 15 max
               </span>
             </p>
           </div>
           <div className="bg-card p-4 sm:px-5">
-            <p className="eyebrow text-[8px]">Duration</p>
+            <p className="eyebrow text-[12px]">Duration</p>
             <p className="mono mt-2 text-sm">
               {duration(test.execution_duration)}
             </p>
           </div>
         </div>
         <div className="border-t px-5 py-3">
-          <div className="mb-2 flex items-center gap-2 text-[9px] font-medium text-muted-foreground">
+          <div className="mb-2 flex items-center gap-2 text-[12px] font-medium text-muted-foreground">
             <Workflow size={13} />
             Agent-reported outcome
           </div>
@@ -471,33 +471,35 @@ export function AgentDetail({ id }: { id: string }) {
             </p>
           )}
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            <span className="text-[9px] text-muted-foreground">Evaluation</span>
+            <span className="text-[12px] text-muted-foreground">
+              Evaluation
+            </span>
             <span
-              className={`rounded-full border px-2.5 py-1 text-[9px] ${test.verification_method === "rules" ? "border-success/25 bg-success/5 text-success" : test.verification_method === "judged" ? "border-warning/30 bg-warning/5 text-warning" : "border-border bg-muted text-muted-foreground"}`}
+              className={`rounded-full border px-2.5 py-1 text-[12px] ${test.verification_method === "rules" ? "border-success/25 bg-success/5 text-success" : test.verification_method === "judged" ? "border-warning/30 bg-warning/5 text-warning" : "border-border bg-muted text-muted-foreground"}`}
             >
               {verificationLabels[test.verification_method ?? "unverified"]}
             </span>
             <OutcomePill value={test.outcome} />
             {test.failure_category && (
-              <span className="rounded-full border px-2.5 py-1 text-[9px] text-muted-foreground">
+              <span className="rounded-full border px-2.5 py-1 text-[12px] text-muted-foreground">
                 {failureLabels[test.failure_category] ?? test.failure_category}
               </span>
             )}
           </div>
           {test.verification_method === "judged" && (
-            <p className="mt-2 text-[10px] text-muted-foreground">
+            <p className="mt-2 text-[12px] text-muted-foreground">
               This outcome was judged by the configured model from final page
               evidence.
             </p>
           )}
           {(test.verification_method ?? "unverified") === "unverified" && (
-            <p className="mt-2 text-[10px] text-muted-foreground">
+            <p className="mt-2 text-[12px] text-muted-foreground">
               The agent claim was not independently verified.
             </p>
           )}
           {test.verification_evidence &&
             Object.keys(test.verification_evidence).length > 0 && (
-              <details className="mt-3 border-t pt-3 text-[10px]">
+              <details className="mt-3 border-t pt-3 text-[12px]">
                 <summary className="text-muted-foreground">
                   Evidence used for evaluation
                 </summary>
@@ -511,25 +513,25 @@ export function AgentDetail({ id }: { id: string }) {
       <section className="surface mb-6">
         <div className="grid grid-cols-2 gap-px bg-border sm:grid-cols-4">
           <div className="bg-card p-4">
-            <p className="eyebrow text-[8px]">Prompt tokens</p>
+            <p className="eyebrow text-[12px]">Prompt tokens</p>
             <p className="mono mt-2 text-sm">
               {(test.prompt_tokens ?? 0).toLocaleString()}
             </p>
           </div>
           <div className="bg-card p-4">
-            <p className="eyebrow text-[8px]">Completion tokens</p>
+            <p className="eyebrow text-[12px]">Completion tokens</p>
             <p className="mono mt-2 text-sm">
               {(test.completion_tokens ?? 0).toLocaleString()}
             </p>
           </div>
           <div className="bg-card p-4">
-            <p className="eyebrow text-[8px]">Estimated cost</p>
+            <p className="eyebrow text-[12px]">Estimated cost</p>
             <p className="mono mt-2 text-sm">
               {Money({ value: test.estimated_cost_usd })}
             </p>
           </div>
           <div className="bg-card p-4">
-            <p className="eyebrow text-[8px]">Run duration</p>
+            <p className="eyebrow text-[12px]">Run duration</p>
             <p className="mono mt-2 text-sm">
               {duration(test.execution_duration)}
             </p>
@@ -537,7 +539,7 @@ export function AgentDetail({ id }: { id: string }) {
         </div>
         {(test.outcome === "UNAVAILABLE" ||
           test.failure_category === "infra_error") && (
-          <p className="border-t px-4 py-3 text-[10px] leading-5 text-muted-foreground">
+          <p className="border-t px-4 py-3 text-[12px] leading-5 text-muted-foreground">
             This run was unavailable because of an inference or execution
             service problem. It is excluded from site scoring.
           </p>
@@ -556,7 +558,7 @@ export function AgentDetail({ id }: { id: string }) {
               Execution timeline
             </h2>
             <button
-              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[9px] ${follow ? "border-primary/20 bg-accent-soft text-primary" : "text-muted-foreground"}`}
+              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-1 text-[12px] ${follow ? "border-signal/20 bg-accent-soft text-signal" : "text-muted-foreground"}`}
               aria-pressed={follow}
               onClick={() => setFollow((v) => !v)}
             >
@@ -603,7 +605,7 @@ export function AgentDetail({ id }: { id: string }) {
                           step.error_message
                             ? "border-danger/25 text-danger"
                             : step.action_type === "finish"
-                              ? "border-primary/25 text-primary"
+                              ? "border-signal/25 text-signal"
                               : "text-muted-foreground",
                         )}
                       >
@@ -613,7 +615,7 @@ export function AgentDetail({ id }: { id: string }) {
                         className={cn(
                           "rounded-xl border transition-colors",
                           chosen
-                            ? "border-primary/30 bg-accent-soft/30"
+                            ? "border-signal/30 bg-accent-soft/30"
                             : "border-transparent hover:border-border hover:bg-background",
                         )}
                       >
@@ -626,33 +628,33 @@ export function AgentDetail({ id }: { id: string }) {
                           }}
                         >
                           <span className="mb-2 flex items-center justify-between gap-2">
-                            <span className="mono text-[8px] uppercase tracking-wide text-muted-foreground">
+                            <span className="mono text-[12px] uppercase tracking-wide text-muted-foreground">
                               Step {String(step.step_number).padStart(2, "0")}
                             </span>
-                            <span className="mono text-[8px] text-muted-foreground">
+                            <span className="mono text-[12px] text-muted-foreground">
                               {step.duration_ms < 1000
                                 ? `${step.duration_ms} ms`
                                 : `${(step.duration_ms / 1000).toFixed(1)}s`}
                             </span>
                           </span>
-                          <span className="block text-[11px] font-semibold">
+                          <span className="block text-[13px] font-semibold">
                             {info.label}
                           </span>
-                          <span className="mt-1.5 block text-[10px] leading-5 text-muted-foreground">
+                          <span className="mt-1.5 block text-[12px] leading-5 text-muted-foreground">
                             {step.reasoning_summary}
                           </span>
-                          <span className="mono mt-2 block truncate text-[8px] text-muted-foreground">
+                          <span className="mono mt-2 block truncate text-[12px] text-muted-foreground">
                             {step.page_url}
                           </span>
                           {step.error_message && (
-                            <span className="mt-2 block text-[10px] font-medium text-danger">
+                            <span className="mt-2 block text-[12px] font-medium text-danger">
                               {step.error_message.includes("402")
                                 ? "Inference unavailable · HTTP 402"
                                 : step.error_message}
                             </span>
                           )}
                         </button>
-                        <details className="mx-3 mb-3 border-t border-border/70 pt-2 text-[9px] text-muted-foreground">
+                        <details className="mx-3 mb-3 border-t border-border/70 pt-2 text-[12px] text-muted-foreground">
                           <summary>Action & execution result</summary>
                           <pre tabIndex={0} className="code-panel mt-2">
                             {JSON.stringify(
@@ -670,9 +672,9 @@ export function AgentDetail({ id }: { id: string }) {
                   );
                 })}
                 {current && (
-                  <li className="mt-3 flex items-center gap-3 pl-10 text-[10px] text-muted-foreground">
+                  <li className="mt-3 flex items-center gap-3 pl-10 text-[12px] text-muted-foreground">
                     <LoaderCircle
-                      className="animate-spin text-primary"
+                      className="animate-spin text-signal"
                       size={13}
                     />
                     Waiting for the next observation…
@@ -681,7 +683,7 @@ export function AgentDetail({ id }: { id: string }) {
               </ol>
             )}
           </div>
-          <div className="border-t bg-background/40 px-5 py-3 text-[9px] text-muted-foreground">
+          <div className="border-t bg-background/40 px-5 py-3 text-[12px] text-muted-foreground">
             {current
               ? "Live updates every 2 seconds"
               : "Execution finished · showing recorded evidence"}
@@ -696,7 +698,7 @@ export function AgentDetail({ id }: { id: string }) {
         <pre tabIndex={0} className="code-panel mt-4">
           {JSON.stringify(test.metrics, null, 2)}
         </pre>
-        <p className="mono mt-4 break-all text-[9px] text-muted-foreground">
+        <p className="mono mt-4 break-all text-[12px] text-muted-foreground">
           Final URL: {test.final_url ?? "Not recorded"}
         </p>
       </details>

@@ -15,6 +15,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import { cn } from "@/lib/utils";
+import { LEGAL_DETAILS } from "@/lib/legal";
 import { Brand, ThemeToggle } from "./product-ui";
 import {
   Dialog,
@@ -55,19 +56,19 @@ export function Shell({ children }: { children: ReactNode }) {
             compact && "justify-center px-0",
           )}
         >
-          <span className="grid size-7 shrink-0 place-items-center rounded-md border bg-card text-[10px] font-semibold">
+          <span className="grid size-7 shrink-0 place-items-center rounded-md border bg-card text-[12px] font-semibold">
             AR
           </span>
           {!compact && (
             <div>
-              <p className="text-[11px] font-medium">Your workspace</p>
-              <p className="mt-0.5 text-[10px] text-muted-foreground">
+              <p className="text-[13px] font-medium">Your workspace</p>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
                 Local workspace
               </p>
             </div>
           )}
         </div>
-        {!compact && <p className="eyebrow mb-3 px-3 text-[9px]">Workspace</p>}
+        {!compact && <p className="eyebrow mb-3 px-3 text-[12px]">Workspace</p>}
         <nav aria-label="Workspace" className="space-y-1">
           {navigation.map(({ href, label, icon: Icon }) => (
             <Link
@@ -77,9 +78,9 @@ export function Shell({ children }: { children: ReactNode }) {
               aria-current={path.startsWith(href) ? "page" : undefined}
               onClick={() => setOpen(false)}
               className={cn(
-                "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[12px]",
+                "flex min-h-10 items-center gap-3 rounded-lg px-3 text-[14px]",
                 path.startsWith(href)
-                  ? "bg-accent-soft font-medium text-primary"
+                  ? "bg-accent-soft font-medium text-signal"
                   : "text-muted-foreground hover:bg-muted hover:text-foreground",
                 compact && "justify-center px-0",
               )}
@@ -93,12 +94,13 @@ export function Shell({ children }: { children: ReactNode }) {
       <div className="mt-auto p-4">
         {!compact && (
           <div className="mb-4 rounded-xl border bg-background p-4">
-            <span className="mb-3 inline-flex items-center gap-1.5 text-[10px] font-medium text-primary">
-              <span className="size-1.5 rounded-full bg-primary" />
-              Real agents. Real browsers.
+            <span className="mb-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-signal">
+              <span className="size-1.5 rounded-full bg-signal" />
+              AI agent tests · Christmas 2026
             </span>
-            <p className="text-[11px] leading-5 text-muted-foreground">
-              See what your website looks like from an agent’s perspective.
+            <p className="text-[13px] leading-5 text-muted-foreground">
+              Coming soon. Start with static checks and evidence-backed fixes
+              today.
             </p>
           </div>
         )}
@@ -125,6 +127,27 @@ export function Shell({ children }: { children: ReactNode }) {
         >
           <PanelLeftClose size={15} className={compact ? "rotate-180" : ""} />
         </button>
+        {!compact && (
+          <div className="mt-4 border-t px-2 pt-4 text-[12px] text-muted-foreground">
+            <nav aria-label="Legal" className="flex flex-wrap gap-x-4 gap-y-2">
+              <Link
+                href="/privacy"
+                onClick={() => setOpen(false)}
+                className="hover:text-foreground"
+              >
+                Privacy Policy
+              </Link>
+              <Link
+                href="/terms"
+                onClick={() => setOpen(false)}
+                className="hover:text-foreground"
+              >
+                Terms & Conditions
+              </Link>
+            </nav>
+            <p className="mt-3">© {LEGAL_DETAILS.copyrightYear} AgentLane.</p>
+          </div>
+        )}
       </div>
     </>
   );
@@ -174,7 +197,7 @@ export function Shell({ children }: { children: ReactNode }) {
           >
             <Menu size={18} />
           </button>
-          <div className="flex min-w-0 items-center gap-2 text-[11px] text-muted-foreground">
+          <div className="flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground">
             <span className="hidden sm:inline">Workspace</span>
             <ChevronRight className="hidden sm:block" size={12} />
             <Link href={current.href} className="font-medium text-foreground">
@@ -195,7 +218,7 @@ export function Shell({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <span className="hidden items-center gap-1.5 text-[10px] text-muted-foreground sm:flex">
+          <span className="hidden items-center gap-1.5 text-[12px] text-muted-foreground sm:flex">
             <ShieldCheck size={13} />
             Read-only testing
           </span>

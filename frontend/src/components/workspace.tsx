@@ -78,9 +78,9 @@ export function Workspace({
       />
       {view === "overview" && (
         <>
-          <section className="workspace-welcome relative mb-6 flex flex-wrap items-center justify-between gap-5 overflow-hidden rounded-xl border border-primary/15 bg-accent-soft px-6 py-6">
+          <section className="workspace-welcome relative mb-6 flex flex-wrap items-center justify-between gap-5 overflow-hidden rounded-xl border border-signal/15 bg-accent-soft px-6 py-6">
             <div className="flex items-start gap-4">
-              <span className="hidden size-11 shrink-0 place-items-center rounded-xl border border-primary/15 bg-card/70 text-primary sm:grid">
+              <span className="hidden size-11 shrink-0 place-items-center rounded-xl border border-signal/15 bg-card/70 text-signal sm:grid">
                 <Waypoints size={23} strokeWidth={1.5} />
               </span>
               <div>
@@ -144,7 +144,7 @@ export function Workspace({
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Search projects…"
-                    className="w-36 bg-transparent text-[11px] outline-none"
+                    className="w-36 bg-transparent text-[13px] outline-none"
                   />
                 </label>
               )
@@ -206,10 +206,10 @@ export function Workspace({
                             >
                               <DomainIcon className="size-9 rounded-lg" />
                               <span>
-                                <span className="block text-xs font-medium group-hover:text-primary">
+                                <span className="block text-xs font-medium group-hover:text-signal">
                                   {project.name}
                                 </span>
-                                <span className="mono mt-1 block text-[10px] text-muted-foreground">
+                                <span className="mono mt-1 block text-[12px] text-muted-foreground">
                                   {domainOf(project.website_url)}
                                 </span>
                               </span>
@@ -219,7 +219,7 @@ export function Workspace({
                             {scan ? (
                               <Status value={scan.status} />
                             ) : (
-                              <span className="text-[11px] text-muted-foreground">
+                              <span className="text-[13px] text-muted-foreground">
                                 Not scanned yet
                               </span>
                             )}
@@ -298,13 +298,13 @@ export function Workspace({
                       <tr key={scan.id} className="table-row">
                         <td>
                           <Link
-                            className="font-medium hover:text-primary"
+                            className="font-medium hover:text-signal"
                             href={`/scans/${scan.id}`}
                           >
                             {projects.find((p) => p.id === scan.project_id)
                               ?.name ?? "Website scan"}
                           </Link>
-                          <p className="mono mt-1 text-[9px] text-muted-foreground">
+                          <p className="mono mt-1 text-[12px] text-muted-foreground">
                             {scan.id.slice(0, 8)}
                           </p>
                         </td>
@@ -318,7 +318,7 @@ export function Workspace({
                             / {scan.pages_discovered}
                           </span>
                         </td>
-                        <td className="text-[11px] text-muted-foreground">
+                        <td className="text-[13px] text-muted-foreground">
                           {formatDate(scan.started_at)}
                         </td>
                         <td>
@@ -335,7 +335,7 @@ export function Workspace({
           )}
         </section>
       )}
-      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 text-[10px] text-muted-foreground">
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-3 text-[12px] text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Globe2 size={12} />
           Your data, from actual crawl and execution records.

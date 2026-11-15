@@ -5,6 +5,140 @@ export type Project = {
   created_at: string;
   updated_at: string;
 };
+export type FreeScanAccepted = {
+  report_path: string;
+  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+  expires_at: string;
+};
+export type FixAction =
+  | "PROMPT_COPIED"
+  | "FIX_APPLIED"
+  | "USEFUL"
+  | "NOT_USEFUL"
+  | "PRICE_INTERESTED"
+  | "PRICE_NOT_INTERESTED";
+export type RobotsPreset = "keep_existing" | "allow_search" | "block_training";
+export type CustomerFix = {
+  key: string;
+  title: string;
+  category: string;
+  severity: string;
+  url: string | null;
+  evidence: string;
+  recommendation: string;
+  template_version: string;
+  prompts: Record<
+    "coding_assistant" | "general_llm" | "developer_ticket",
+    string
+  >;
+  status: "OPEN" | "PROMPT_COPIED" | "FIX_APPLIED" | "STILL_FAILING";
+};
+export type FixCenter = {
+  version: string;
+  fixes: CustomerFix[];
+  truncated: boolean;
+  assets: {
+    key: string;
+    filename: string;
+    content: string;
+    media_type: string;
+    placement: string;
+    provenance: string;
+    validated: boolean;
+    version: string;
+  }[];
+  missing_information: string[];
+  comparison: {
+    available: boolean;
+    reason: string | null;
+    confirmed: number;
+    total: number;
+    score_before: number | null;
+    score_after: number | null;
+    score_delta: number | null;
+    results: {
+      key: string;
+      title: string;
+      url: string | null;
+      status: "VERIFIED_FIXED" | "STILL_FAILING" | "NOT_RETESTED";
+    }[];
+  };
+  events: string[];
+  agent_status: "NOT_RUN";
+  agent_message: string;
+};
+export type FreeReportCategory = {
+  name: string;
+  score: number | null;
+  weight: number;
+  tested: boolean;
+  evaluated: number;
+  total: number;
+};
+export type FreeReportInsight = {
+  category: string;
+  severity: string;
+  title: string;
+  description: string;
+  evidence_url: string | null;
+  evidence_summary: string | null;
+  recommendation: string | null;
+};
+export type FreeReportCheck = {
+  category: string;
+  status: "PASS" | "FAIL" | "UNKNOWN" | "INFO" | "NOT_APPLICABLE";
+  title: string;
+  description: string;
+  url: string | null;
+  evidence_summary: string | null;
+  recommendation: string | null;
+};
+export type FreeAccessPolicy = {
+  user_agent: string;
+  kind: "SCANNER" | "AI_BOT";
+  policy: "ALLOWED" | "DISALLOWED" | "UNKNOWN";
+  sampled_url: string;
+  source_url: string;
+  http_status: number | null;
+};
+export type FreeReport = {
+  standards_coverage?: StandardsCoverage | null;
+  full_report_unlocked?: boolean;
+  development_access?: boolean;
+  development_skip_available?: boolean;
+  development_payment_skipped?: boolean;
+  rescan_until?: string | null;
+  status: "PENDING" | "RUNNING" | "COMPLETED" | "FAILED";
+  website: string;
+  phase: string;
+  progress_message: string;
+  score_version: string;
+  score: number | null;
+  score_status: string;
+  access_policies?: FreeAccessPolicy[];
+  score_explanation: string;
+  category_scores: FreeReportCategory[];
+  coverage: {
+    evaluated: number;
+    total: number;
+    passed: number;
+    problems: number;
+    untested: number;
+    checks_total: number;
+    checks_passed: number;
+    checks_failed: number;
+    checks_inconclusive: number;
+    checks_informational: number;
+    checks_not_applicable: number;
+  };
+  checks: FreeReportCheck[];
+  checks_truncated: boolean;
+  insights: FreeReportInsight[];
+  pages_crawled: number;
+  pages_discovered: number;
+  pages_failed: number;
+  failure_message: string | null;
+};
 export type Scan = {
   id: string;
   project_id: string;
@@ -269,4 +403,37 @@ export type ScanComparison = {
   resolved?: StaticCheck[];
   unchanged?: StaticCheck[];
   not_retested?: StaticCheck[];
+};
+
+export type FreeFixPreview = {
+  fixes: CustomerFix[];
+  assets: FixCenter["assets"];
+  remaining_fixes: number;
+  remaining_assets: number;
+  truncated: boolean;
+};
+
+export type StandardsCoverage = {
+  mapping_version: string;
+  spec_version: string;
+  reviewed_on: string;
+  source_url: string;
+  conformance: "NOT_ASSESSED";
+  checks_truncated: boolean;
+  requirements: {
+    id: string;
+    stage: "FIND" | "READ" | "ACT";
+    level: "MUST" | "SHOULD" | "MAY";
+    title: string;
+    implementation: "PARTIAL" | "NOT_IMPLEMENTED";
+    assessment: "PARTIAL_EVIDENCE" | "INCONCLUSIVE" | "NOT_TESTED";
+    observations: {
+      passed: number;
+      issues: number;
+      inconclusive: number;
+      informational: number;
+      not_applicable: number;
+    };
+    limitations: string;
+  }[];
 };

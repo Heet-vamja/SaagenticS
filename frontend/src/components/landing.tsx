@@ -1,42 +1,116 @@
 "use client";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowRight,
   ArrowUpRight,
-  Bot,
   Check,
-  CheckCircle2,
-  ChevronRight,
-  Circle,
   FileSearch,
   Globe2,
   LoaderCircle,
-  MousePointer2,
   ShieldCheck,
-  Terminal,
-  BookOpen,
-  Fingerprint,
+  Menu,
+  X,
+  Code2,
+  RotateCw,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Project } from "@/lib/types";
 import { Button } from "./ui/button";
-import { MarketingFooter, MarketingNav } from "./marketing-nav";
+import { Brand, ThemeToggle } from "./product-ui";
+import styles from "./landing.module.css";
 import { InlineError } from "./states";
+import { ScanTransition } from "./scan-transition";
+import { DomainVerification } from "./domain-verification";
+import { AgentLaneShowcase } from "./agent-lane-showcase";
+import { HeroScanPreview } from "./hero-scan-preview";
+import { MarketingFooter } from "./marketing-nav";
+import { Reveal } from "./reveal";
+const subscribeToHydration = () => () => {};
+const clientReady = () => true;
+const serverReady = () => false;
+function ScanLaunch({
+  website,
+  reportPath,
+}: {
+  website: string;
+  reportPath?: string;
+}) {
+  const screen = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const original = document.body.style.overflow;
+    const background = document.getElementById("main-content");
+    const originallyInert = background?.inert ?? false;
+    document.body.style.overflow = "hidden";
+    if (background) background.inert = true;
+    screen.current?.focus({ preventScroll: true });
+    return () => {
+      document.body.style.overflow = original;
+      if (background) background.inert = originallyInert;
+    };
+  }, []);
+  return createPortal(
+    <div
+      ref={screen}
+      tabIndex={-1}
+      aria-label="Preparing your scan"
+      className="fixed inset-0 z-[100] overflow-y-auto bg-background outline-none"
+    >
+      <ScanTransition website={website} reportPath={reportPath} />
+    </div>,
+    document.body,
+  );
+}
+
 function WebsiteInput({ compact = false }: { compact?: boolean }) {
   const inputId = useId();
   const router = useRouter();
+  // Prevent a native GET/reload before React has attached the submit handler.
+  const hydrated = useSyncExternalStore(
+    subscribeToHydration,
+    clientReady,
+    serverReady,
+  );
   const [url, setUrl] = useState("");
+  const [verificationUrl, setVerificationUrl] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const created = useRef<Project | null>(null);
+  const [submittedDomain, setSubmittedDomain] = useState("");
+  const [reportPath, setReportPath] = useState<string>();
+  const inFlight = useRef(false);
+  const input = useRef<HTMLInputElement>(null);
+  async function startScan(normalized: string) {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setSubmittedDomain(new URL(normalized).hostname);
+    setBusy(true);
+    setError("");
+    try {
+      const scan = await api.startFreeScan(normalized);
+      if (!/^\/free-reports\/[A-Za-z0-9_-]+$/.test(scan.report_path))
+        throw new Error("Invalid report link. Please try again.");
+      setReportPath(scan.report_path);
+      router.push(scan.report_path);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not start your scan.");
+      inFlight.current = false;
+      setBusy(false);
+      window.requestAnimationFrame(() => input.current?.focus());
+    }
+  }
   return (
     <form
-      className={`website-entry ${compact ? "entry-compact" : ""}`}
-      onSubmit={async (e) => {
+      className={`website-entry ${styles.scanForm} ${compact ? "entry-compact" : ""}`}
+      onSubmit={(e) => {
         e.preventDefault();
-        setBusy(true);
+        if (inFlight.current) return;
         setError("");
         try {
           const normalized = new URL(
@@ -44,27 +118,9 @@ function WebsiteInput({ compact = false }: { compact?: boolean }) {
               ? url.trim()
               : `https://${url.trim()}`,
           ).toString();
-          let project = created.current;
-          if (project?.website_url !== normalized) {
-            const existing = await api.projects();
-            project =
-              existing.find((p) => p.website_url === normalized) ??
-              (await api.createProject(
-                new URL(normalized).hostname,
-                normalized,
-              ));
-            created.current = project;
-          }
-          const scan = await api.createScan(project.id);
-          router.push(`/scans/${scan.id}`);
-        } catch (e) {
-          setError(
-            e instanceof Error
-              ? e.message
-              : "Could not start your scan. Please try again.",
-          );
-        } finally {
-          setBusy(false);
+          setVerificationUrl(normalized);
+        } catch {
+          setError("Enter a valid public website domain.");
         }
       }}
     >
@@ -73,33 +129,39 @@ function WebsiteInput({ compact = false }: { compact?: boolean }) {
       </label>
       <div className="entry-field">
         <Globe2
-          className="ml-3 hidden shrink-0 text-muted-foreground sm:block"
-          size={18}
-          strokeWidth={1.6}
+          className="hidden shrink-0 text-muted-foreground sm:block"
+          size={19}
+          strokeWidth={1.8}
+          aria-hidden="true"
         />
         <input
+          ref={input}
           id={inputId}
           type="text"
           inputMode="url"
           value={url}
+          disabled={busy || !hydrated}
           onChange={(e) => setUrl(e.target.value)}
-          placeholder="https://yourwebsite.com"
+          placeholder="yourdomain.com"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
           maxLength={2048}
           required
           aria-describedby={
             error ? `${inputId}-error` : `${inputId}-description`
           }
-          className="min-h-12 min-w-0 flex-1 rounded-lg bg-transparent px-3 text-sm outline-none placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-h-12 min-w-0 flex-1 bg-transparent px-3 outline-none placeholder:text-muted-foreground"
         />
-        <Button className="entry-submit" disabled={busy}>
+        <Button className="entry-submit" size="lg" disabled={busy || !hydrated}>
           {busy ? (
             <>
               <LoaderCircle size={15} className="animate-spin" />
-              Starting your scan…
+              Starting scan…
             </>
           ) : (
             <>
-              Scan your website
+              Scan Website
               <ArrowRight size={15} />
             </>
           )}
@@ -112,587 +174,469 @@ function WebsiteInput({ compact = false }: { compact?: boolean }) {
       ) : (
         <p id={`${inputId}-description`} className="entry-caption">
           <span className="inline-flex items-center gap-1.5">
-            <Check size={12} className="text-primary" />
-            No account required
+            <Check size={14} aria-hidden="true" />
+            Email verification required
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <ShieldCheck size={12} className="text-primary" />
+            <ShieldCheck size={14} aria-hidden="true" />
             Read-only testing
           </span>
           <span className="inline-flex items-center gap-1.5">
-            <Bot size={12} className="text-primary" />
-            Real browser agents
+            <FileSearch size={14} aria-hidden="true" />
+            Up to 10 pages
           </span>
         </p>
       )}
+      {verificationUrl && (
+        <DomainVerification
+          key={verificationUrl}
+          website={verificationUrl}
+          open
+          onClose={() => setVerificationUrl(null)}
+          onVerified={() => {
+            const target = verificationUrl;
+            setVerificationUrl(null);
+            void startScan(target);
+          }}
+        />
+      )}
+      {busy && <ScanLaunch website={submittedDomain} reportPath={reportPath} />}
     </form>
   );
 }
 
-function AgentIllustration() {
+// What the free scan measures today (deterministic checks; see /docs for coverage).
+const CHECKS = [
+  "Robots and AI crawler policies",
+  "Sitemaps",
+  "HTTP status and soft 404s",
+  "Content in the initial HTML",
+  "Rendered pages",
+  "JSON-LD structured data",
+  "llms.txt",
+  "Pricing shown as text",
+  "Accessible names and labels",
+];
+
+const NAV_LINKS = [
+  ["How it works", "#how-it-works"],
+  ["Pricing", "#pricing"],
+  ["Agent lane", "#agent-lane"],
+  ["Docs", "/docs"],
+] as const;
+
+const STEPS = [
+  {
+    icon: Globe2,
+    title: "Find what’s getting in the way.",
+    text: "Verify your email, then we inspect up to 10 public pages. Your preliminary score and up to 10 priority issues with practical fixes are free.",
+  },
+  {
+    icon: Code2,
+    title: "Turn the finding into a change.",
+    text: "Try up to three complete fix prompts or crawl-grounded assets free. Unlock the complete Fix Kit for $19 when you’re ready.",
+  },
+  {
+    icon: RotateCw,
+    title: "Check what actually improved.",
+    text: "After unlocking, re-scan the same domain at no extra charge for 30 days. See which checks now pass and which still need attention.",
+  },
+];
+
+const QUESTIONS = [
+  [
+    "Does the free scan run real AI agents?",
+    "Not yet. Today’s report uses deterministic checks of your public pages, content, access policies and markup. Real browser-agent testing is planned for Christmas 2026 and is separate from the current report.",
+  ],
+  [
+    "Will this get my website recommended by ChatGPT?",
+    "We can identify technical barriers, not guarantee recommendations, rankings or visibility in any AI platform. The score reflects only the checks actually completed.",
+  ],
+  [
+    "Do you change anything on my website?",
+    "No. Scanning is read-only. You or your developer choose which fixes to apply. Asset drafts must be reviewed before publishing.",
+  ],
+  [
+    "Is the agent lane available today?",
+    "Not yet. It’s in development: an agent version of your site at the same URLs, actions agents can call, and a dashboard of agent visits and failures. The free scan and Fix Kit are available now, and the scan shows what the agent lane would fix.",
+  ],
+];
+
+// Illustrative names only; the scan does not test any specific model.
+// Logos keep each brand's color; the pill stays AgentLane lime.
+const AGENT_NAMES: {
+  name: string;
+  logo?: string;
+  color?: string;
+  size?: string;
+}[] = [
+  { name: "AI agents" },
+  {
+    name: "ChatGPT",
+    logo: "/agent-logos/chatgpt.svg",
+    color: "#10a37f",
+    // This file carries extra internal padding; enlarge it to match the others.
+    size: "130%",
+  },
+  {
+    name: "Claude",
+    logo: "/agent-logos/claude.svg",
+    color: "#d97757",
+  },
+  {
+    name: "Gemini",
+    logo: "/agent-logos/gemini.svg",
+    color: "linear-gradient(135deg, #4796e3, #9177c7 55%, #ca6673)",
+  },
+  {
+    name: "Perplexity",
+    logo: "/agent-logos/perplexity.svg",
+    color: "#20808d",
+  },
+];
+
+function RotatingAgentName() {
+  const [index, setIndex] = useState(0);
+  useEffect(() => {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => {
+      const active = document.activeElement;
+      // Hold still while the tab is hidden or someone is typing a domain.
+      if (document.hidden || active?.closest("form.website-entry")) return;
+      setIndex((current) => (current + 1) % AGENT_NAMES.length);
+    }, 2600);
+    return () => window.clearInterval(timer);
+  }, []);
+  const previous = (index - 1 + AGENT_NAMES.length) % AGENT_NAMES.length;
   return (
-    <div className="agent-illustration reveal-in">
-      <div className="journey-heading">
-        <span>
-          <span className="signal-dot" /> THE AGENT’S VIEW
-        </span>
-        <span className="demo-label">ILLUSTRATIVE PRODUCT WALKTHROUGH</span>
-      </div>
-      <div className="journey-workbench">
-        <aside className="journey-map">
-          <span className="mini-eyebrow">THE PATH IT CHOSE</span>
-          <ol>
-            <li>
-              <Globe2 size={16} />
-              <div>
-                Homepage<small>Observe navigation</small>
-              </div>
-              <Check size={12} />
-            </li>
-            <li>
-              <MousePointer2 size={16} />
-              <div>
-                Pricing<small>Choose a relevant link</small>
-              </div>
-              <Check size={12} />
-            </li>
-            <li>
-              <FileSearch size={16} />
-              <div>
-                Signup<small>Inspect required fields</small>
-              </div>
-              <Circle size={12} />
-            </li>
-          </ol>
-          <div className="journey-model">
-            <Bot size={16} />
-            <span>
-              Open-weight reasoning<small>Real Playwright browser</small>
-            </span>
-          </div>
-        </aside>
-        <div className="agent-window">
-          <div className="demo-window-heading">
-            <span>
-              <Bot size={18} /> Decision stream
-            </span>
-            <span className="stream-tag">STEP 03</span>
-          </div>
-          <div className="session-body">
-            <div className="session-task">
-              <span className="mini-eyebrow">USER GOAL</span>Find pricing and
-              inspect the signup form.
-            </div>
-            <ol className="session-actions">
-              <li>
-                <CheckCircle2 size={16} />
-                <span>Pricing link discovered</span>
-              </li>
-              <li>
-                <CheckCircle2 size={16} />
-                <span>Available plans identified</span>
-              </li>
-              <li>
-                <Circle size={16} />
-                <span>Inspecting form controls</span>
-              </li>
-            </ol>
-            <div className="agent-reply">
-              <span className="agent-avatar">
-                <Bot size={15} />
+    <span className={`headline-pill ${styles.agentPill}`}>
+      {/* A stable accessible name; the rotation is visual only. */}
+      <span className="sr-only">AI agents</span>
+      <span className={styles.agentNames} aria-hidden="true">
+        {AGENT_NAMES.map(({ name, logo, color, size }, i) => (
+          <span
+            key={name}
+            data-state={
+              i === index ? "active" : i === previous ? "leaving" : "waiting"
+            }
+          >
+            {logo && (
+              <span className={styles.agentMark}>
+                {/* The single-color SVG is used as a mask so it takes the brand color. */}
+                <span
+                  className={styles.agentLogo}
+                  style={{
+                    WebkitMaskImage: `url(${logo})`,
+                    maskImage: `url(${logo})`,
+                    WebkitMaskSize: size,
+                    maskSize: size,
+                    background: color,
+                  }}
+                />
               </span>
-              <p>
-                The email field has a label. I can identify the required input
-                without submitting the form.
-              </p>
-            </div>
-            <div className="session-input">
-              <span>observe</span>
-              <ArrowRight size={12} />
-              <span>reason</span>
-              <ArrowRight size={12} />
-              <span>act</span>
-            </div>
-          </div>
-        </div>
-        <div className="journey-page">
-          <div className="browser-toolbar">
-            <span className="traffic-dots">
-              <i />
-              <i />
-              <i />
-            </span>
-            <span className="browser-address">northstar.example/signup</span>
-            <ShieldCheck size={12} />
-          </div>
-          <div className="journey-page-content">
-            <span className="sample-wordmark">
-              <span />
-              northstar
-            </span>
-            <h3>
-              Make room
-              <br />
-              for your next idea.
-            </h3>
-            <p>
-              A little less setup.
-              <br />A lot more possibility.
-            </p>
-            <div className="sample-field">
-              Work email <span>*</span>
-              <span className="sample-input">you@company.com</span>
-            </div>
-            <div className="observed-control">
-              <span>element_04</span>
-              <span>Required · email</span>
-            </div>
-            <span className="sample-cta">
-              Start your workspace <ArrowRight size={13} />
-            </span>
-            <span className="sample-readonly">
-              <ShieldCheck size={11} />
-              Illustration · forms are never submitted
-            </span>
-          </div>
-        </div>
-      </div>
-      <div className="journey-footer">
-        <span>
-          <Fingerprint size={15} /> An explanation, an observation, and a
-          screenshot at every step.
-        </span>
-        <span>Agent-declared outcomes are not independently verified.</span>
-      </div>
-    </div>
+            )}
+            {name}
+          </span>
+        ))}
+      </span>
+    </span>
   );
 }
-function BrowserExample({ blocked = false }: { blocked?: boolean }) {
-  return (
-    <div>
-      <div className="example-browser">
-        <div className="browser-toolbar">
-          <span className="traffic-dots">
-            <i />
-            <i />
-            <i />
-          </span>
-          <span className="browser-address">
-            northstar.example/{blocked ? "signup" : "pricing"}
-          </span>
-          <span className={blocked ? "http-bad" : "http-good"}>
-            {blocked ? "403" : "200"}
-          </span>
-        </div>
-        <div className="example-viewport">
-          {blocked ? (
-            <div className="blocked-content">
-              <ShieldCheck size={28} strokeWidth={1} />
-              <strong>One more step to continue.</strong>
-              <span>Verifying your browser…</span>
-              <div className="challenge-dots">
-                <i />
-                <i />
-                <i />
-              </div>
-            </div>
-          ) : (
-            <div className="pricing-content">
-              <span className="mini-eyebrow">A PLAN FOR YOUR NEXT CHAPTER</span>
-              <h4>Build something great.</h4>
-              <div className="mini-plans">
-                {[
-                  ["Starter", "$12"],
-                  ["Team", "$29"],
-                  ["Business", "$59"],
-                ].map(([name, price], i) => (
-                  <div key={name} className={i === 1 ? "featured-plan" : ""}>
-                    <span>{name}</span>
-                    <strong>
-                      {price}
-                      <small>/mo</small>
-                    </strong>
-                    <span className="mini-plan-button">
-                      {i === 1 ? "Choose Team" : "Get started"}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        <div
-          className={`browser-observation ${blocked ? "observation-bad" : ""}`}
-        >
-          <Terminal size={12} />
-          <span>
-            {blocked
-              ? "Agent observed: access restricted"
-              : "Agent observed: plan names, prices, signup links"}
-          </span>
-        </div>
-      </div>
-      <div className="example-caption">
-        <span className={blocked ? "caption-dot bad" : "caption-dot"} />
-        <h3>
-          {blocked ? "A journey that stops." : "A journey that continues."}
-        </h3>
-        <p>
-          {blocked
-            ? "A page can work for a person while an agent encounters an access restriction. We record the failure and stop."
-            : "Clear content and usable controls let an agent find the information it needs and decide what to do next."}
-        </p>
-      </div>
-    </div>
-  );
+
+/** Navbar state: clear at the top, frosted over the hero, solid past it. */
+function useNavState(hero: React.RefObject<HTMLElement | null>) {
+  const [state, setState] = useState<"top" | "glass" | "solid">("top");
+  useEffect(() => {
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const heroBottom = hero.current?.getBoundingClientRect().bottom ?? 0;
+      setState(
+        window.scrollY < 8 ? "top" : heroBottom > 64 ? "glass" : "solid",
+      );
+    };
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) window.cancelAnimationFrame(frame);
+    };
+  }, [hero]);
+  return state;
 }
-export function ProductPreview() {
-  return (
-    <div className="readiness-report">
-      <div className="report-heading">
-        <span className="report-site">
-          <span>N</span>northstar.example
-        </span>
-        <span className="demo-label">ILLUSTRATIVE PRODUCT DEMO</span>
-      </div>
-      <div className="report-columns">
-        <div className="report-overview">
-          <span className="mini-eyebrow">WEBSITE DISCOVERY</span>
-          <div className="report-number">
-            24<span>pages found</span>
-          </div>
-          <p>A map of what an agent can reach.</p>
-          <div className="report-bars">
-            {[
-              ["Pages crawled", 90],
-              ["Internal links", 76],
-              ["Page metadata", 64],
-            ].map(([name, width]) => (
-              <div key={name}>
-                <span>{name}</span>
-                <i>
-                  <b style={{ width: `${width}%` }} />
-                </i>
-              </div>
-            ))}
-          </div>
-          <span className="report-footnote">
-            Example values · No readiness score calculated
-          </span>
-        </div>
-        <div className="report-results">
-          <span className="mini-eyebrow">FOLLOW THE EVIDENCE</span>
-          {[
-            [Globe2, "Discovery", "Pages, links, robots and sitemaps"],
-            [
-              MousePointer2,
-              "Browser navigation",
-              "The action chosen at each step",
-            ],
-            [
-              FileSearch,
-              "Observed friction",
-              "Errors, missing labels and stopped journeys",
-            ],
-          ].map(([Icon, title, description], i) => {
-            const I = Icon as typeof Bot;
-            return (
-              <div className="report-result" key={String(title)}>
-                <span className="report-index">0{i + 1}</span>
-                <div>
-                  <strong>{String(title)}</strong>
-                  <p>{String(description)}</p>
-                </div>
-                <I size={16} />
-              </div>
-            );
-          })}
-          <p className="report-disclaimer">
-            Illustrative observations. Live scans now include deterministic
-            audits; agent task evaluation remains separate.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+
 export function Landing() {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const hero = useRef<HTMLElement>(null);
+  const navState = useNavState(hero);
   return (
-    <main className="landing-editorial" id="main-content">
-      <div className="landing-dark hero-region">
-        <MarketingNav dark />
-        <div>
-          <section id="scan" className="editorial-wrap hero-layout">
-            <div className="hero-copy reveal-in">
-              <p className="hero-kicker">
-                <span className="signal-dot" /> THE WEB HAS A NEW KIND OF USER
-              </p>
-              <h1>
-                Can AI agents <span className="hero-highlight">actually</span>
-                <br className="hero-linebreak" />
-                use your website?
-              </h1>
-              <p className="hero-description">
-                Test your website with real AI browser agents. Discover
-                navigation failures, broken workflows, and opportunities to
-                become agent-ready.
-              </p>
-              <WebsiteInput />
-              <Link className="hero-underlink" href="/docs#agent">
-                See what happens inside a real agent test{" "}
-                <ArrowUpRight size={12} />
-              </Link>
-            </div>
-            <AgentIllustration />
-            <div className="hero-capabilities">
-              <span>Built on an open stack</span>
-              <span>
-                <Bot size={16} /> Hugging Face
-              </span>
-              <span>
-                <MousePointer2 size={16} /> Playwright
-              </span>
-              <span>
-                <Globe2 size={16} /> Real websites
-              </span>
-              <span>
-                <Fingerprint size={16} /> Recorded evidence
-              </span>
-            </div>
-            <div className="agent-principles">
-              <span>
-                Human-designed interfaces.
-                <br />
-                <strong>Agent-tested experiences.</strong>
-              </span>
-              <p>
-                From the first click to the point of friction.
-                <br />
-                See your product from the other side of the browser.
-              </p>
-              <Link href="/docs#agent">
-                Inside the agent <ArrowUpRight size={17} />
-              </Link>
-            </div>
-          </section>
-        </div>
-      </div>
-      <section
-        id="product"
-        className="editorial-section pale-section audience-section"
+    <main id="main-content" className={styles.page}>
+      <header
+        className={`nav-glass ${styles.nav}`}
+        data-state={menuOpen ? "solid" : navState}
       >
-        <div className="editorial-wrap">
-          <div className="editorial-heading">
-            <p className="mini-eyebrow">THROUGH AN AGENT’S EYES</p>
-            <h2>
-              Your UI has
-              <br />
-              two audiences.
-            </h2>
-            <p>
-              Your visitors can see a page. Can an agent make sense of it? Real
-              browser tests reveal the difference, one interaction at a time.
-            </p>
-          </div>
-          <div className="browser-comparison">
-            <BrowserExample blocked />
-            <BrowserExample />
-          </div>
-          <p className="section-disclaimer">
-            Illustrative browser examples · not customer scan results
-          </p>
-        </div>
-      </section>
-      <section className="editorial-section white-section report-section">
-        <div className="editorial-wrap">
-          <div className="editorial-heading">
-            <p className="mini-eyebrow">FROM A URL TO THE EVIDENCE</p>
-            <h2>
-              A map of the journey.
-              <br />
-              <span className="heading-soft">And the moments that matter.</span>
-            </h2>
-            <p>
-              Connect website discovery with real agent behavior. Inspect the
-              pages, follow the decisions, and understand what happened.
-            </p>
-          </div>
-          <ProductPreview />
-        </div>
-      </section>
-      <section className="landing-dark editorial-section" id="features">
-        <div className="editorial-wrap execution-story">
-          <div className="editorial-heading">
-            <p className="mini-eyebrow">REAL AGENTS. REAL BROWSERS.</p>
-            <h2>
-              Give it a goal.
-              <br />
-              Watch it find a way.
-            </h2>
-            <p>
-              An open-weight model observes your website and chooses its next
-              action. No predefined route. No website-specific script.
-            </p>
-            <div className="story-tasks">
-              <span>
-                <Check size={13} /> Find pricing
-              </span>
-              <span>
-                <Check size={13} /> Find documentation
-              </span>
-              <span>
-                <Check size={13} /> Inspect signup forms
-              </span>
-            </div>
-            <Link className="editorial-link" href="/docs#agent">
-              Explore the agent architecture <ArrowUpRight size={14} />
-            </Link>
-          </div>
-          <div className="trace-console">
-            <div className="console-heading">
-              <span>
-                <Terminal size={13} /> agent / execution
-              </span>
-              <span>ILLUSTRATIVE TRACE</span>
-            </div>
-            <div className="console-task">
-              <span>TASK</span>Find the pricing page and identify the available
-              plans.
-            </div>
-            {[
-              [
-                "01",
-                "observe",
-                "Read the homepage navigation",
-                "Links and visible controls captured",
-              ],
-              [
-                "02",
-                "reason → act",
-                "Choose the pricing link",
-                "click(element_id: 4)",
-              ],
-              [
-                "03",
-                "observe",
-                "Read the pricing page",
-                "Plan names and displayed prices found",
-              ],
-              [
-                "04",
-                "finish",
-                "Agent declared completion",
-                "Not independently verified",
-              ],
-            ].map(([n, kind, title, note]) => (
-              <div className="console-step" key={n}>
-                <span>{n}</span>
-                <div>
-                  <small>{kind}</small>
-                  <strong>{title}</strong>
-                  <p>{note}</p>
-                </div>
-                <Check size={13} />
-              </div>
+        <div className={styles.navInner}>
+          <Brand />
+          <nav className={styles.desktopNav} aria-label="Main navigation">
+            {NAV_LINKS.map(([label, href]) => (
+              <Link key={href} href={href}>
+                {label}
+              </Link>
             ))}
-            <div className="console-footer">
-              <span className="signal-dot" />
-              Bounded execution. Inspectable evidence.
-            </div>
+          </nav>
+          <div className={styles.navActions}>
+            <ThemeToggle />
+            <Button asChild size="sm" className={styles.navCta}>
+              <a href="#scan">
+                Scan your site <ArrowRight size={14} />
+              </a>
+            </Button>
+            <button
+              className={styles.menuButton}
+              onClick={() => setMenuOpen(!menuOpen)}
+              aria-expanded={menuOpen}
+              aria-controls="homepage-mobile-nav"
+              aria-label={menuOpen ? "Close navigation" : "Open navigation"}
+            >
+              {menuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
-      </section>
-      <section id="how-it-works" className="editorial-section pale-section">
-        <div className="editorial-wrap">
-          <div className="editorial-heading">
-            <p className="mini-eyebrow">A CLEARER PATH FOR YOUR NEXT USER</p>
-            <h2>Discover. Test. Understand.</h2>
-          </div>
-          <div className="how-grid">
-            {[
-              [
-                Globe2,
-                "01",
-                "Start with your URL",
-                "Discover pages through robots, sitemaps, and internal links.",
-              ],
-              [
-                Bot,
-                "02",
-                "Give an agent a task",
-                "Let a real model choose how to navigate in an isolated browser.",
-              ],
-              [
-                FileSearch,
-                "03",
-                "Inspect the journey",
-                "Review screenshots, observations, and the exact point of failure.",
-              ],
-            ].map(([Icon, n, title, text]) => {
-              const I = Icon as typeof Bot;
-              return (
-                <div className="how-step" key={String(n)}>
-                  <span className="how-number">{String(n)}</span>
-                  <div className="how-visual">
-                    <I size={24} strokeWidth={1.3} />
-                    <span className="how-line" />
-                    <ChevronRight size={15} />
-                  </div>
-                  <h3>{String(title)}</h3>
-                  <p>{String(text)}</p>
-                </div>
-              );
-            })}
-          </div>
-          <div className="availability-note">
-            <BookOpen size={17} />
-            <p>
-              <strong>
-                Discovery, static audits and reports are available today.
-              </strong>{" "}
-              Static scores describe inspected evidence. Independent agent task
-              evaluation remains separate.
-            </p>
-            <Link href="/docs">
-              Read the guide <ArrowUpRight size={13} />
-            </Link>
-          </div>
-        </div>
-      </section>
-      <section className="closing-section">
-        <div className="editorial-wrap closing-layout">
-          <div>
-            <p className="mini-eyebrow">MEET YOUR WEBSITE’S NEXT VISITOR</p>
-            <h2>
-              Find out where
-              <br />
-              agents get stuck.
-            </h2>
-            <WebsiteInput compact />
-          </div>
-          <div className="closing-report">
-            <div className="report-site">
-              <span>
-                <Globe2 size={15} />
-              </span>
-              Your website<span className="demo-label">YOUR NEXT SCAN</span>
-            </div>
-            <div className="closing-placeholder">
-              ?<span>What will an agent discover?</span>
-            </div>
-            {["Page discovery", "Browser navigation", "Execution evidence"].map(
-              (x) => (
-                <div className="closing-row" key={x}>
-                  <span>{x}</span>
-                  <i />
-                  <small>Awaiting scan</small>
-                </div>
+        {menuOpen && (
+          <nav
+            id="homepage-mobile-nav"
+            className={styles.mobileNav}
+            aria-label="Mobile navigation"
+          >
+            {[...NAV_LINKS, ["Scan your site", "#scan"] as const].map(
+              ([label, href]) => (
+                <Link key={href} href={href} onClick={() => setMenuOpen(false)}>
+                  {label}
+                  <ArrowUpRight size={16} />
+                </Link>
               ),
             )}
-            <p>Enter your domain to start exploring.</p>
-          </div>
+          </nav>
+        )}
+      </header>
+
+      <section ref={hero} className={styles.hero} id="scan">
+        <div className={styles.heroGlow} aria-hidden="true" />
+        <div className={`${styles.wrap} ${styles.heroInner}`}>
+          <p className="chip">
+            <span className="chip-dot" /> Free agent-readiness report
+          </p>
+          <h1 className={`display-xl ${styles.headline}`}>
+            <span className={`hero-title-row ${styles.row}`}>
+              Be the website
+            </span>
+            <span className={`hero-title-row ${styles.row}`}>
+              <RotatingAgentName />
+            </span>
+            <span className={`hero-title-row ${styles.row}`}>
+              can actually use.
+            </span>
+          </h1>
+          <p className={`lede ${styles.heroLede}`}>
+            Find what blocks AI agents on your public pages, hand your developer
+            the fix, and check that it worked.
+          </p>
+          <WebsiteInput />
+          <p className={styles.freeNote}>
+            Free score. Real findings. Your first fixes, on us.
+          </p>
+          <p className={styles.disclosure}>
+            Static checks only. Agent names and logos are examples, belong to
+            their owners and don’t endorse AgentLane; the scan doesn’t test
+            specific models.
+          </p>
+        </div>
+        <div className={`${styles.wrap} ${styles.heroStage}`}>
+          <HeroScanPreview />
         </div>
       </section>
+
+      <section id="how-it-works" className={`${styles.band} ${styles.bandInk}`}>
+        <div className={styles.wrap}>
+          <Reveal className={styles.centerHeading}>
+            <p className={styles.inkEyebrow}>
+              The part that makes a difference
+            </p>
+            <h2 className="display-lg">
+              Find it. Fix it.
+              <br />
+              <span className={styles.limeText}>Check it again.</span>
+            </h2>
+            <p className={styles.inkLede}>
+              Verify your email to get started. No changes made to your website.
+            </p>
+          </Reveal>
+          <ol className={styles.steps}>
+            {STEPS.map((step, i) => (
+              <Reveal as="li" key={step.title} delay={i * 100} className="lift">
+                <span className={styles.stepNumber}>0{i + 1}</span>
+                <step.icon size={22} strokeWidth={1.8} aria-hidden="true" />
+                <h3>{step.title}</h3>
+                <p>{step.text}</p>
+              </Reveal>
+            ))}
+          </ol>
+          <Reveal className={styles.checks}>
+            <p className={styles.checksLabel}>What the free scan checks</p>
+            <ul>
+              {CHECKS.map((check) => (
+                <li key={check}>{check}</li>
+              ))}
+            </ul>
+            <p className={styles.checksNote}>
+              Static evidence finds likely barriers; it doesn’t prove an AI
+              agent can finish a task.{" "}
+              <Link href="/docs">
+                Read about coverage <ArrowUpRight size={13} />
+              </Link>
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
+      <section id="pricing" className={styles.band}>
+        <div className={styles.wrap}>
+          <Reveal className={styles.centerHeading}>
+            <p className="eyebrow">Your next step</p>
+            <h2 className="display-lg">
+              Start with evidence.
+              <br />
+              Pay when you want the kit.
+            </h2>
+            <p className="lede">
+              No subscription. No mystery score. Just what we checked, what we
+              found, and what you can do about it.
+            </p>
+          </Reveal>
+          <div className={styles.priceGrid}>
+            <Reveal as="article" className={`${styles.freePrice} lift`}>
+              <div className={styles.priceTop}>
+                <p className={styles.priceLabel}>The first look</p>
+              </div>
+              <h3>Your readiness report.</h3>
+              <p className={styles.price}>
+                <strong>$0</strong>
+                <span>Start with your domain</span>
+              </p>
+              <ul>
+                <li>
+                  <Check size={16} aria-hidden="true" /> Up to 10 public pages
+                  inspected
+                </li>
+                <li>
+                  <Check size={16} aria-hidden="true" /> Preliminary score and
+                  up to 10 priority insights
+                </li>
+                <li>
+                  <Check size={16} aria-hidden="true" /> Up to 3 complete fix
+                  prompts or validated asset drafts
+                </li>
+              </ul>
+              <Button asChild size="lg">
+                <a href="#scan">
+                  Get your free report <ArrowRight size={16} />
+                </a>
+              </Button>
+            </Reveal>
+            <Reveal
+              as="article"
+              delay={120}
+              className={`${styles.paidPrice} lift`}
+            >
+              <div className={styles.priceTop}>
+                <p className={styles.priceLabel}>The complete Fix Kit</p>
+                <span className={styles.valueBadge}>One-time payment</span>
+              </div>
+              <h3>From insight to implementation.</h3>
+              <p className={styles.price}>
+                <strong>$19</strong>
+                <span>USD / for this domain</span>
+              </p>
+              <ul>
+                <li>
+                  <Check size={16} aria-hidden="true" /> Remaining fixes with
+                  detailed evidence
+                </li>
+                <li>
+                  <Check size={16} aria-hidden="true" /> Coding prompts,
+                  available asset drafts and exports
+                </li>
+                <li>
+                  <Check size={16} aria-hidden="true" /> Same-domain re-scans
+                  included for 30 days
+                </li>
+              </ul>
+              <Button asChild variant="lime" size="lg">
+                <a href="#scan">
+                  Start with a free scan <ArrowRight size={16} />
+                </a>
+              </Button>
+            </Reveal>
+          </div>
+          <p className={styles.priceNote}>
+            Email verification required. Assets are generated only when
+            supported by your crawl. AI agent testing is coming separately.
+          </p>
+        </div>
+      </section>
+
+      <AgentLaneShowcase />
+
+      <section
+        className={`${styles.band} ${styles.questions}`}
+        aria-labelledby="homepage-questions"
+      >
+        <div className={`${styles.wrap} ${styles.questionsGrid}`}>
+          <div>
+            <p className="eyebrow">A few things worth knowing</p>
+            <h2 id="homepage-questions" className="display-lg">
+              Good questions.
+            </h2>
+            <Link href="/docs" className={styles.docsLink}>
+              The details are in our docs <ArrowUpRight size={14} />
+            </Link>
+          </div>
+          <Reveal className={styles.faq} delay={100}>
+            {QUESTIONS.map(([question, answer]) => (
+              <details key={question}>
+                <summary>
+                  {question}
+                  <span aria-hidden="true">+</span>
+                </summary>
+                <p>{answer}</p>
+              </details>
+            ))}
+          </Reveal>
+        </div>
+      </section>
+
+      <section className={styles.closingBand}>
+        <div className={`${styles.wrap}`}>
+          <Reveal className={`block-feature ${styles.closing}`}>
+            <p className={styles.closingEyebrow}>
+              Your next visitor won’t always click like you
+            </p>
+            <h2 className="display-lg">
+              Your next improvement?
+              <br />
+              <span className={styles.limeText}>It starts with a scan.</span>
+            </h2>
+            <WebsiteInput compact />
+            <p className={styles.closingNote}>
+              A practical starting point. Grounded in your public pages.
+            </p>
+          </Reveal>
+        </div>
+      </section>
+
       <MarketingFooter />
     </main>
   );

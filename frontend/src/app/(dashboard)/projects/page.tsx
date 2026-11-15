@@ -1,4 +1,4 @@
-import { Workspace } from "@/components/workspace";
-export default function ProjectsPage() {
-  return <Workspace view="projects" />;
+import { redirect } from "next/navigation";
+export default function Page() {
+  redirect("/");
 }

@@ -44,7 +44,7 @@ function RunLimits({ config }: { config: AgentConfig }) {
   const runMax = Math.max(1, Math.min(config.max_runs, config.runs_limit));
   return (
     <div className="mt-5 flex flex-wrap items-end justify-between gap-4 border-t pt-5">
-      <div className="space-y-1 text-[10px] leading-5 text-muted-foreground">
+      <div className="space-y-1 text-[12px] leading-5 text-muted-foreground">
         <p>
           {config.max_steps} steps maximum · {duration(config.duration_seconds)}
           execution limit
@@ -60,7 +60,7 @@ function RunLimits({ config }: { config: AgentConfig }) {
           {config.action_delay}s between actions
         </p>
       </div>
-      <label className="grid gap-1 text-[10px] text-muted-foreground">
+      <label className="grid gap-1 text-[12px] text-muted-foreground">
         Runs per task
         <select
           name="runs"
@@ -127,7 +127,7 @@ export function AgentTesting({ scanId }: { scanId: string }) {
       <div className="flex flex-wrap items-start justify-between gap-3 border-b px-5 py-5">
         <div>
           <h2 className="section-title flex items-center gap-2">
-            <Bot size={17} className="text-primary" />
+            <Bot size={17} className="text-signal" />
             Give your agent a task
           </h2>
           <p className="mt-2 text-xs leading-6 text-muted-foreground">
@@ -135,7 +135,7 @@ export function AgentTesting({ scanId }: { scanId: string }) {
             actions and evidence afterward.
           </p>
         </div>
-        <span className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-[9px] text-muted-foreground">
+        <span className="inline-flex items-center gap-1.5 rounded-full border bg-background px-2.5 py-1 text-[12px] text-muted-foreground">
           <ShieldCheck size={11} />
           Read-only execution
         </span>
@@ -182,12 +182,12 @@ export function AgentTesting({ scanId }: { scanId: string }) {
         ) : (
           <>
             {!configured && (
-              <div className="mb-4 rounded-lg border border-warning/30 bg-warning/5 p-3 text-[11px] leading-5 text-muted-foreground">
+              <div className="mb-4 rounded-lg border border-warning/30 bg-warning/5 p-3 text-[13px] leading-5 text-muted-foreground">
                 Agent inference is not configured. Add a supported model
                 credential or endpoint before starting a task.
                 <Link
                   href="/docs#agent"
-                  className="ml-1 font-medium text-primary underline"
+                  className="ml-1 font-medium text-signal underline"
                 >
                   Setup guide
                 </Link>
@@ -201,7 +201,7 @@ export function AgentTesting({ scanId }: { scanId: string }) {
                   return (
                     <label
                       key={item.task_type}
-                      className={`relative cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-ring ${item.task_type === task ? "border-primary/60 bg-accent-soft/60" : "bg-card hover:bg-muted/40"}`}
+                      className={`relative cursor-pointer rounded-xl border p-4 transition-colors focus-within:ring-2 focus-within:ring-ring ${item.task_type === task ? "border-signal/60 bg-accent-soft/60" : "bg-card hover:bg-muted/40"}`}
                     >
                       <input
                         className="sr-only"
@@ -211,13 +211,13 @@ export function AgentTesting({ scanId }: { scanId: string }) {
                         checked={task === item.task_type}
                         onChange={() => setTask(item.task_type)}
                       />
-                      <span className="mb-4 grid size-8 place-items-center rounded-lg border bg-background text-primary">
+                      <span className="mb-4 grid size-8 place-items-center rounded-lg border bg-background text-signal">
                         <Icon size={16} />
                       </span>
                       <span className="block text-xs font-semibold">
                         {item.name}
                       </span>
-                      <span className="mt-2 block text-[11px] leading-5 text-muted-foreground">
+                      <span className="mt-2 block text-[13px] leading-5 text-muted-foreground">
                         {item.goal}
                       </span>
                     </label>
@@ -270,19 +270,19 @@ export function AgentHistory({ tests }: { tests: AgentTest[] }) {
             <tr key={test.id} className="table-row">
               <td>
                 <Link
-                  className="font-medium hover:text-primary"
+                  className="font-medium hover:text-signal"
                   href={`/agent-tests/${test.id}`}
                 >
                   {taskName(test.task_type)}
                 </Link>
-                <p className="mono mt-1 text-[9px] text-muted-foreground">
+                <p className="mono mt-1 text-[12px] text-muted-foreground">
                   {test.id.slice(0, 8)} · run {test.run_number ?? 1}
                 </p>
               </td>
               <td>
                 <span
                   title={test.model_identifier}
-                  className="mono block max-w-[210px] truncate text-[10px] text-muted-foreground"
+                  className="mono block max-w-[210px] truncate text-[12px] text-muted-foreground"
                 >
                   {test.model_identifier}
                 </span>
@@ -294,7 +294,7 @@ export function AgentHistory({ tests }: { tests: AgentTest[] }) {
                 />
               </td>
               <td className="tabular-nums">{test.steps_completed}</td>
-              <td className="mono text-[10px] text-muted-foreground">
+              <td className="mono text-[12px] text-muted-foreground">
                 {duration(test.execution_duration)}
               </td>
               <td>

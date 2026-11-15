@@ -10,6 +10,12 @@ import type {
   Scan,
   StaticReport,
   ScanComparison,
+  FreeScanAccepted,
+  FreeReport,
+  FixCenter,
+  FreeFixPreview,
+  FixAction,
+  RobotsPreset,
 } from "./types";
 
 export class ApiError extends Error {
@@ -71,7 +77,135 @@ async function all<T>(path: string): Promise<T[]> {
   }
 }
 
+async function fetchDownload(path: string) {
+  let response: Response;
+  try {
+    response = await fetch(`/api/v1${path}`, {
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch {
+    throw new Error(
+      "Download timed out or the service is unavailable. Please retry.",
+    );
+  }
+  if (!response.ok) {
+    const body = await response.json().catch(() => null);
+    throw new Error(body?.error?.message ?? "Could not download this file.");
+  }
+  return response.blob();
+}
+
 export const api = {
+  verificationStatus: (website_url: string) =>
+    request<{
+      verified: boolean;
+      domain: string;
+      email_hint?: string;
+      development_email?: string | null;
+      development_access?: boolean;
+      development_skip_available?: boolean;
+    }>(`/verification/status?website_url=${encodeURIComponent(website_url)}`),
+  requestCode: (website_url: string, email?: string, candidate_id?: string) =>
+    request<{ challenge_id: string; email_hint: string; expires_in: number }>(
+      "/verification/request",
+      {
+        method: "POST",
+        body: JSON.stringify({ website_url, email, candidate_id }),
+      },
+    ),
+  skipVerification: (
+    website_url: string,
+    email?: string,
+    candidate_id?: string,
+  ) =>
+    request<{ verified: boolean }>("/verification/skip", {
+      method: "POST",
+      body: JSON.stringify({ website_url, email, candidate_id }),
+    }),
+  skipPayment: (token: string) =>
+    request<{ development_payment_skipped: boolean }>(
+      `/free-reports/${encodeURIComponent(token)}/skip-payment`,
+      { method: "POST" },
+    ),
+  verifyCode: (challenge_id: string, code: string) =>
+    request<{ verified: boolean }>("/verification/verify", {
+      method: "POST",
+      body: JSON.stringify({ challenge_id, code }),
+    }),
+  discoverEmails: (website_url: string) =>
+    request<{
+      candidates: { id: string; email_hint: string }[];
+      message: string;
+    }>("/verification/discover", {
+      method: "POST",
+      body: JSON.stringify({ website_url }),
+      signal: AbortSignal.timeout(25000),
+    }),
+  reportTarget: (token: string) =>
+    request<{ website_url: string }>(
+      `/free-reports/${encodeURIComponent(token)}/verification-target`,
+    ),
+  checkout: (token: string) =>
+    request<{ url: string }>(
+      `/free-reports/${encodeURIComponent(token)}/checkout`,
+      { method: "POST" },
+    ),
+  startFreeScan: (website_url: string) =>
+    request<FreeScanAccepted>("/free-scans", {
+      method: "POST",
+      body: JSON.stringify({ website_url }),
+    }),
+  freeReport: (token: string) =>
+    request<FreeReport>(`/free-reports/${encodeURIComponent(token)}`),
+  fixPreview: (token: string) =>
+    request<FreeFixPreview>(
+      `/free-reports/${encodeURIComponent(token)}/fix-preview`,
+    ),
+  fixCenter: (token: string, preset: RobotsPreset) =>
+    request<FixCenter>(
+      `/free-reports/${encodeURIComponent(token)}/fix-center?robots_preset=${preset}`,
+    ),
+  fixEvent: (token: string, event_type: FixAction, fix_key = "") =>
+    request<{ recorded: boolean }>(
+      `/free-reports/${encodeURIComponent(token)}/fix-events`,
+      {
+        method: "POST",
+        body: JSON.stringify({ event_type, fix_key }),
+      },
+    ),
+  rescanFreeReport: (token: string) =>
+    request<FreeScanAccepted>(
+      `/free-reports/${encodeURIComponent(token)}/rescan`,
+      { method: "POST" },
+    ),
+  downloadFixPack: (token: string, preset: RobotsPreset) =>
+    fetchDownload(
+      `/free-reports/${encodeURIComponent(token)}/fix-pack.zip?robots_preset=${preset}`,
+    ),
+  downloadFixAsset: (token: string, filename: string, preset: RobotsPreset) =>
+    fetchDownload(
+      `/free-reports/${encodeURIComponent(token)}/assets/${encodeURIComponent(filename)}?robots_preset=${preset}`,
+    ),
+  exportFreeReport: async (token: string) => {
+    let response: Response;
+    try {
+      response = await fetch(
+        `/api/v1/free-reports/${encodeURIComponent(token)}/export.pdf`,
+        { signal: AbortSignal.timeout(30000) },
+      );
+    } catch {
+      throw new Error(
+        "PDF export timed out or the service is unavailable. Please retry.",
+      );
+    }
+    if (!response.ok) {
+      const body = await response.json().catch(() => null);
+      throw new Error(
+        body?.error?.message ?? "Could not download this report.",
+      );
+    }
+    return response.blob();
+  },
   report: (id: string) =>
     request<StaticReport>(`/scans/${encodeURIComponent(id)}/report`),
   sharedReport: (token: string) =>

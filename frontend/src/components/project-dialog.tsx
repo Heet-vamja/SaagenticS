@@ -29,7 +29,7 @@ export function ProjectDialog({
         </Button>
       </DialogTrigger>
       <DialogContent>
-        <span className="mb-5 grid size-11 place-items-center rounded-xl border bg-accent-soft text-primary">
+        <span className="mb-5 grid size-11 place-items-center rounded-xl border bg-accent-soft text-signal">
           <Globe2 size={21} />
         </span>
         <DialogTitle className="text-xl font-semibold tracking-tight">
@@ -98,7 +98,7 @@ export function ProjectDialog({
               </>
             )}
           </Button>
-          <p className="text-center text-[10px] leading-5 text-muted-foreground">
+          <p className="text-center text-[12px] leading-5 text-muted-foreground">
             Creating a project does not start a scan.
           </p>
         </form>

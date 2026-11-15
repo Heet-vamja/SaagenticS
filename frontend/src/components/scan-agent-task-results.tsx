@@ -24,7 +24,7 @@ export function AgentTaskStatusList({ tasks }: { tasks: AgentTaskSummary[] }) {
       {tasks.map((task, index) => (
         <div
           key={task.id ?? `${task.task_type}-${index}`}
-          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[10px]"
+          className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[12px]"
         >
           <span className="font-medium">
             {task.task_type.replaceAll("_", " ")}
@@ -111,7 +111,7 @@ export function ScanAgentTaskResults({ scanId }: { scanId: string }) {
         <InlineError>{error.message}</InlineError>
         <button
           type="button"
-          className="text-xs text-primary hover:underline"
+          className="text-xs text-signal hover:underline"
           onClick={retry}
         >
           Retry loading agent task results

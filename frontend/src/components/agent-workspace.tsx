@@ -73,7 +73,7 @@ export function AgentWorkspace() {
             <label className="text-xs font-medium" htmlFor="test-scan">
               Choose a scan
             </label>
-            <p className="mb-3 mt-1 text-[11px] text-muted-foreground">
+            <p className="mb-3 mt-1 text-[13px] text-muted-foreground">
               Your agent starts at the website associated with this scan.
             </p>
             <select
@@ -94,7 +94,7 @@ export function AgentWorkspace() {
             {!scans.length && (
               <Link
                 href="/projects"
-                className="mt-3 inline-flex items-center gap-2 text-xs text-primary"
+                className="mt-3 inline-flex items-center gap-2 text-xs text-signal"
               >
                 Create a project and scan first
                 <ArrowRight size={13} />
@@ -112,7 +112,7 @@ export function AgentWorkspace() {
           action={
             <select
               aria-label="Filter executions by status"
-              className="rounded-lg border bg-background px-3 py-2 text-[10px] text-muted-foreground"
+              className="rounded-lg border bg-background px-3 py-2 text-[12px] text-muted-foreground"
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
             >
