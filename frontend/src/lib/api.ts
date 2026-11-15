@@ -16,6 +16,8 @@ import type {
   FreeFixPreview,
   FixAction,
   RobotsPreset,
+  DashboardOverview,
+  DashboardSite,
 } from "./types";
 
 export class ApiError extends Error {
@@ -95,7 +97,23 @@ async function fetchDownload(path: string) {
   return response.blob();
 }
 
+const bearer = (token: string) => ({ Authorization: `Bearer ${token}` });
+
 export const api = {
+  dashboardSites: (token: string) =>
+    request<{ sites: DashboardSite[] }>("/dashboard/sites", {
+      headers: bearer(token),
+    }),
+  dashboardOverview: (token: string, host: string, days: number) =>
+    request<DashboardOverview>(
+      `/dashboard/sites/${encodeURIComponent(host)}/overview?days=${days}`,
+      { headers: bearer(token) },
+    ),
+  refreshSessions: (token: string, host: string) =>
+    request<{ requests: number; created: number; extended: number }>(
+      `/dashboard/sites/${encodeURIComponent(host)}/sessions`,
+      { method: "POST", headers: bearer(token) },
+    ),
   verificationStatus: (website_url: string) =>
     request<{
       verified: boolean;

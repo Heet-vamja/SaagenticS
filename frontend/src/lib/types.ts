@@ -437,3 +437,80 @@ export type StandardsCoverage = {
     limitations: string;
   }[];
 };
+
+// Owner dashboard (phase 3/4). Session labels are model-judged; QA outcomes are
+// rule-verified. Keep the two separate in the UI.
+export type DashboardSite = {
+  host: string;
+  name: string;
+  routing_enabled: boolean;
+};
+
+export type DashboardOverview = {
+  site: DashboardSite;
+  window_days: number;
+  variant: {
+    version: number;
+    published_at: string | null;
+    products: number;
+  } | null;
+  totals: {
+    requests: number;
+    agent_requests: number;
+    crawler_requests: number;
+    variant_requests: number;
+    sessions: number;
+    unlabeled_sessions: number;
+  };
+  agents: {
+    agent: string;
+    kind: "agent" | "crawler";
+    requests: number;
+    variant_requests: number;
+    errors: number;
+    sessions: number;
+    last_seen: string;
+  }[];
+  tasks: {
+    task: string;
+    sessions: number;
+    succeeded: number;
+    failed: number;
+    unknown: number;
+  }[];
+  failures: {
+    task: string;
+    failed_step: string;
+    sessions: number;
+    agents: string[];
+    explanation: string | null;
+    suggested_fix: string | null;
+  }[];
+  qa: QASummary | null;
+};
+
+export type QATargetSummary = {
+  runs: number;
+  passed: number;
+  failed: number;
+  errors: number;
+  eligible: number;
+  tokens: number;
+  steps: number;
+  duration_ms: number;
+};
+
+export type QASummary = {
+  batch_id: string;
+  created_at: string;
+  original: QATargetSummary;
+  variant: QATargetSummary;
+  tasks: {
+    task: string;
+    prompt: string;
+    original?: "PASSED" | "FAILED" | "ERROR";
+    variant?: "PASSED" | "FAILED" | "ERROR";
+    original_steps?: number;
+    variant_steps?: number;
+  }[];
+};
