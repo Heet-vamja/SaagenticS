@@ -171,7 +171,7 @@ function Insight({
           {String(index + 1).padStart(2, "0")}
         </span>
         <span
-          className={`rounded-full px-2.5 py-1 text-[12px] font-bold uppercase tracking-wide ${severityStyle}`}
+          className={`rounded-full px-2.5 py-1 text-[12.5px] font-semibold ${severityStyle}`}
         >
           {severity} priority
         </span>
@@ -187,7 +187,7 @@ function Insight({
 
       {insight.recommendation && (
         <div className="mt-4 rounded-2xl bg-action-soft p-4 dark:bg-accent-soft">
-          <p className="text-[12px] font-bold uppercase tracking-[.1em] text-primary">
+          <p className="text-[13px] font-semibold text-muted-foreground">
             How to fix it
           </p>
           <p className="mt-2 whitespace-pre-wrap break-words text-[14px] leading-6 text-foreground">
@@ -223,14 +223,14 @@ function Insight({
           </summary>
           <div className="mt-3 space-y-3 rounded-2xl bg-muted p-4 text-muted-foreground">
             <div>
-              <p className="mb-1 text-[12px] font-semibold uppercase tracking-wider">
+              <p className="mb-1 text-[13px] font-semibold">
                 Why this matters for this finding
               </p>
               <p className="leading-5">{whyInsightMatters(insight)}</p>
             </div>
             {insight.evidence_summary && (
               <div>
-                <p className="mb-1 text-[12px] font-semibold uppercase tracking-wider">
+                <p className="mb-1 text-[13px] font-semibold">
                   What we observed
                 </p>
                 <p className="whitespace-pre-wrap break-words leading-5">
@@ -240,9 +240,7 @@ function Insight({
             )}
             {safeUrl && (
               <div>
-                <p className="mb-1 text-[12px] font-semibold uppercase tracking-wider">
-                  Affected page
-                </p>
+                <p className="mb-1 text-[13px] font-semibold">Affected page</p>
                 <a
                   href={safeUrl}
                   target="_blank"

@@ -1,31 +1,30 @@
 # Frontend design and verification
 
-AgentLane uses the **Split lane** identity (canvas: the "AgentLane brand identity"
+AgentLane uses the **Lane green** identity (canvas: the "AgentLane brand identity"
 design artifact; brief: "AgentLane brand and design brief"). The logo is one path that
 forks: the straight paper lane is the site as people and search engines see it, the
-lime lane branches off for AI agents (`LogoMark` in `product-ui.tsx`, `app/icon.svg`,
+mint lane branches off for AI agents (`LogoMark` in `product-ui.tsx`, `app/icon.svg`,
 `app/apple-icon.png`). Its colors come from `--logo-*` tokens: an ink tile in light
 mode, a raised `#23262c` tile in dark mode, the same lanes in both.
 
-The guiding rule is restraint: the product must look calm and considered, never
-funky. Ink (`#0e1013`) is the action color on warm paper (`#f6f5ef`); in dark mode
-actions turn lane lime (`#cbf34a`) with ink text. Lime is a highlight only: a fill
-behind ink (buttons in dark, the slim `.mark-lime` band, the $19 price), never body
-text on paper and never a decorative glow. Agent violet (`#5b3df5`, text `#4a2edb`,
-dark `#b4a6ff`) marks agent things: the rotating agent name, agent-lane rows,
-"Model-judged" labels, links and focus. Eyebrows and labels stay neutral grey.
-Headlines are two-tone (foreground plus a quieter grey second line) rather than
-colored. No gradients, glows or outlined numerals.
+The guiding rule is restraint, so the product reads premium rather than loud. Ink
+(`#0e1013`) and warm paper (`#f6f5ef`) carry every page. Green is the only accent and
+means go and verified: text `#146c43` (dark `#7fdcae`), tint `#e4f4eb` (dark
+`#133425`), and mint `#a7e8c4` as the highlight fill and the dark-mode button. The
+rotating hero name is deep green `#0e5a37` on mint in both themes. Model judgments are
+neutral grey, so green never stands for an unverified claim. Labels are small and
+sentence case (no mono capitals); headlines use weight 560 with a quieter grey second
+phrase; sections are separated by hairlines, not colored bands. No gradients, glows,
+sparkle icons, outlined numerals or fake browser chrome.
 
-Consistency rules: one highlight signature (the slim lime marker band; in dark mode
-the band is off and the words carry the emphasis); one primary button style per
-surface (ink on light, lime on dark); buttons and segmented controls use
-`--radius-control` (12px), badges 8px, cards 20px; demo and real score rings use
-the `--score-*` status colors; every page shares one navigation (The report, What we
-check, How it works, Pricing, Docs). Instrument Sans sets both headings (700, tracking
--0.022 to -0.032em) and text; JetBrains Mono sets code, data and metadata. Dark mode
-is available from the header and persists in local storage; Tailwind's `dark:`
-variant follows that toggle.
+The landing follows the brief's story: hero (headline, one sentence, scan box, one
+caption line; an example report card beside it), the problem (three common failures and
+a person-vs-agent example), how it works (three steps and what the scan checks),
+principles ("Verified, not claimed"), the agent lane (in development), pricing, FAQ and
+a closing scan card with the disclosure. Buttons and controls use `--radius-control`
+(12px), badges 8px, cards 20 to 24px. Instrument Sans sets headings and text; JetBrains
+Mono (ligatures off) sets code and data. Dark mode is available from the header and
+persists in local storage; Tailwind's `dark:` variant follows that toggle.
 
 ## Tokens and components
 

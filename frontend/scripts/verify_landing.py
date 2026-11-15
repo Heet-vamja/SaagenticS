@@ -38,9 +38,9 @@ async def main():
                     )
                     await page.goto(BASE, wait_until="networkidle")
                     await page.evaluate("document.fonts.ready")
-                    await page.wait_for_function(
-                        "document.querySelector('[aria-label^=\"Illustrative readiness score\"] strong')?.textContent === '42'"
-                    )
+                    await page.get_by_role(
+                        "figure", name="Example readiness report with illustrative data"
+                    ).wait_for()
                     assert await page.evaluate(
                         "document.documentElement.scrollWidth <= innerWidth"
                     ), f"Overflow {width}/{theme}"
@@ -57,25 +57,12 @@ async def main():
                     await page.screenshot(
                         path=str(OUTPUT / f"{width}-{theme}-full.png"), full_page=True
                     )
-                    preview = page.get_by_role(
-                        "complementary", name="Illustrative readiness report, demo data"
+                    versus = page.get_by_role(
+                        "figure",
+                        name="Example: a pricing page as a person sees it and as an agent receives it",
                     )
-                    await preview.get_by_role(
-                        "button", name="What a human sees"
-                    ).click()
-                    assert await preview.get_by_text(
-                        "Implementation guidance"
-                    ).is_visible()
-                    await preview.get_by_role(
-                        "button", name="What an agent sees"
-                    ).click()
-                    assert await preview.get_by_text("<main></main>").is_visible()
-                    assert (
-                        await page.locator("[class*='cursor']").first.evaluate(
-                            "e => getComputedStyle(e).animationName"
-                        )
-                        == "none"
-                    )
+                    await versus.scroll_into_view_if_needed()
+                    assert await versus.get_by_text("No prices in the page an agent reads.").is_visible()
                     await page.add_script_tag(path=str(AXE))
                     violations = await page.evaluate(
                         """async()=> (await axe.run(document,{runOnly:{type:'tag',values:['wcag2a','wcag2aa','wcag21aa']}})).violations.map(v=>({id:v.id,impact:v.impact,nodes:v.nodes.map(n=>n.target)}))"""
@@ -134,27 +121,9 @@ async def main():
                     assert not errors, errors
                     await context.close()
                     print(
-                        f"PASS {width}px/{theme}: layout, contrast, CLS={cls:.3f}, view toggle, reduced motion, saved theme, domain verification entry",
+                        f"PASS {width}px/{theme}: layout, contrast, CLS={cls:.3f}, example report, person vs agent, saved theme, domain verification entry",
                         flush=True,
                     )
-            context = await browser.new_context(
-                viewport={"width": 1280, "height": 1000}
-            )
-            page = await context.new_page()
-            await page.goto(BASE, wait_until="networkidle")
-            await page.wait_for_function(
-                "document.querySelector('[aria-label^=\"Illustrative readiness score\"] strong')?.textContent === '42'"
-            )
-            await page.get_by_role("button", name="Pause demo animation").click()
-            assert (
-                await page.locator("[class*='cursor']").first.evaluate(
-                    "e => getComputedStyle(e).animationPlayState"
-                )
-                == "paused"
-            )
-            await page.get_by_role("button", name="Resume demo animation").click()
-            await context.close()
-            print("PASS animated demo count-up and pause control. No external actions triggered.")
         finally:
             await browser.close()
 

@@ -1,191 +1,101 @@
+/* Agent lane (in development): words left, the routing card right. Matches the
+   landing's section rhythm in landing.module.css. */
 .section {
-  padding: 96px 0;
-  background: var(--muted);
-  border-block: 1px solid var(--border);
+  padding: 128px 0;
+  border-top: 1px solid var(--border);
 }
 .wrap {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 72px;
   align-items: center;
-  gap: 56px;
-  width: min(1180px, calc(100% - 32px));
+  width: min(1200px, calc(100% - 40px));
   margin-inline: auto;
 }
-.copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 18px;
-}
-.list {
-  display: grid;
-  gap: 14px;
-  margin-top: 6px;
-}
-.list li {
-  display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 12px;
-  font-size: 15px;
-  line-height: 1.55;
+.label {
+  font-size: 14px;
+  font-weight: 500;
   color: var(--muted-foreground);
 }
-.list li svg {
-  margin-top: 3px;
-  color: var(--signal);
+.title {
+  margin-top: 14px;
+  font-size: clamp(2rem, 3.8vw, 3rem);
+  font-weight: 560;
+  line-height: 1.08;
+  letter-spacing: -0.03em;
 }
-.list strong {
-  color: var(--foreground);
-  font-weight: 600;
-}
-.actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 14px 18px;
-  margin-top: 10px;
-}
-.actions p {
-  font-size: 13px;
+.title span {
   color: var(--muted-foreground);
 }
-
-/* Routing illustration. */
-.router {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-.routerBar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  font-family: var(--font-code), monospace;
-  font-size: 13px;
-}
-.host {
-  color: var(--foreground);
-}
-.tag {
-  border-radius: 999px;
-  padding: 3px 10px;
-  background: var(--accent-soft);
-  color: var(--signal);
-  font-family: var(--font-body), sans-serif;
-  font-size: 12px;
-  font-weight: 600;
+.intro {
+  max-width: 46ch;
+  margin-top: 20px;
+  font-size: 18px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
 }
 .routes {
-  display: grid;
-  gap: 12px;
-  padding: 22px 20px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 8px;
+  background: var(--card);
 }
 .routes li {
   display: grid;
-  grid-template-columns: minmax(0, 10rem) minmax(40px, 1fr) minmax(0, 11.5rem);
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 14px;
-  padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card);
+  gap: 12px;
+  padding: 18px 20px;
+}
+.routes li + li:not([data-lane]) {
+  border-top: 1px solid var(--border);
 }
 .routes li[data-lane] {
-  border-color: color-mix(in srgb, var(--brand-violet) 45%, var(--border));
-  background: color-mix(in srgb, var(--accent-soft) 70%, var(--card));
+  border-radius: 16px;
+  background: var(--accent-soft);
+}
+.routes li[data-lane] + li {
+  border-top: 0;
 }
 .who {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
+  font-weight: 500;
+}
+.routes li[data-lane] .who {
+  color: var(--signal);
 }
 .to {
-  justify-self: end;
-  border-radius: 999px;
-  padding: 5px 12px;
-  background: var(--muted);
-  color: var(--foreground);
-  font-size: 13px;
-  font-weight: 600;
-  text-align: center;
-}
-.routes li[data-lane] .to {
-  background: var(--lime);
-  color: var(--brand-violet);
-}
-/* A request travelling along the track. Disabled by the global reduced-motion rule. */
-.track {
-  position: relative;
-  height: 2px;
-  border-radius: 999px;
-  background: repeating-linear-gradient(
-    90deg,
-    var(--border) 0 6px,
-    transparent 6px 10px
-  );
-}
-.track i {
-  position: absolute;
-  top: 50%;
-  left: 0;
-  width: 8px;
-  height: 8px;
-  margin-top: -4px;
-  border-radius: 999px;
-  background: var(--muted-foreground);
-  animation: travel 2.4s var(--ease-out) infinite;
-}
-.routes li[data-lane] .track i {
-  background: var(--brand-violet);
-}
-.routes li:nth-child(2) .track i {
-  animation-delay: 0.4s;
-}
-.routes li:nth-child(3) .track i {
-  animation-delay: 0.8s;
-}
-@keyframes travel {
-  0% {
-    left: 0;
-    opacity: 0;
-  }
-  15%,
-  85% {
-    opacity: 1;
-  }
-  100% {
-    left: calc(100% - 8px);
-    opacity: 0;
-  }
-}
-.routerNote {
-  padding: 0 20px 18px;
-  font-size: 13px;
-  line-height: 1.55;
+  font-size: 14px;
   color: var(--muted-foreground);
 }
-
+.routes li[data-lane] .to {
+  border-radius: 8px;
+  padding: 4px 10px;
+  background: var(--brand-lime);
+  color: var(--brand-ink);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.note {
+  margin-top: 16px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--muted-foreground);
+}
 @media (max-width: 1023px) {
   .wrap {
     grid-template-columns: 1fr;
-    gap: 40px;
+    gap: 48px;
   }
 }
-@media (max-width: 640px) {
+@media (max-width: 760px) {
   .section {
-    padding: 80px 0;
+    padding: 88px 0;
   }
+}
+@media (max-width: 480px) {
   .routes li {
     grid-template-columns: 1fr;
-    gap: 10px;
-  }
-  .track {
-    display: none;
+    gap: 8px;
   }
   .to {
     justify-self: start;

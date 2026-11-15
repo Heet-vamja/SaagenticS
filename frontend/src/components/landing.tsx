@@ -13,14 +13,14 @@ import {
   ArrowRight,
   ArrowUpRight,
   Check,
+  CircleHelp,
   FileSearch,
   Globe2,
   LoaderCircle,
-  ShieldCheck,
   Menu,
+  Minus,
+  ShieldCheck,
   X,
-  Code2,
-  RotateCw,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { Button } from "./ui/button";
@@ -30,7 +30,6 @@ import { InlineError } from "./states";
 import { ScanTransition } from "./scan-transition";
 import { DomainVerification } from "./domain-verification";
 import { AgentLaneShowcase } from "./agent-lane-showcase";
-import { HeroScanPreview } from "./hero-scan-preview";
 import { MarketingFooter } from "./marketing-nav";
 import { Reveal } from "./reveal";
 const subscribeToHydration = () => () => {};
@@ -173,18 +172,7 @@ function WebsiteInput({ compact = false }: { compact?: boolean }) {
         </div>
       ) : (
         <p id={`${inputId}-description`} className="entry-caption">
-          <span className="inline-flex items-center gap-1.5">
-            <Check size={14} aria-hidden="true" />
-            Email verification required
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <ShieldCheck size={14} aria-hidden="true" />
-            Read-only testing
-          </span>
-          <span className="inline-flex items-center gap-1.5">
-            <FileSearch size={14} aria-hidden="true" />
-            Up to 10 pages
-          </span>
+          Free · up to 10 pages · read-only · email code, no account
         </p>
       )}
       {verificationUrl && (
@@ -227,19 +215,53 @@ const NAV_LINKS = [
 
 const STEPS = [
   {
-    icon: Globe2,
-    title: "Find what’s getting in the way.",
-    text: "Verify your email, then we inspect up to 10 public pages. Your preliminary score and up to 10 priority issues with practical fixes are free.",
+    title: "See what blocks agents",
+    price: "Free",
+    text: "Confirm your email and we inspect up to 10 public pages. You get a preliminary score, up to 10 priority issues and your first three fixes.",
   },
   {
-    icon: Code2,
-    title: "Turn the finding into a change.",
-    text: "Try up to three complete fix prompts or crawl-grounded assets free. Unlock the complete Fix Kit for $19 when you’re ready.",
+    title: "Fix it with exact steps",
+    price: "$19 once, per domain",
+    text: "Every finding with its evidence, copy-ready prompts for your coding assistant, asset drafts and a downloadable fix pack.",
   },
   {
-    icon: RotateCw,
-    title: "Check what actually improved.",
-    text: "After unlocking, re-scan the same domain at no extra charge for 30 days. See which checks now pass and which still need attention.",
+    title: "Check that it worked",
+    price: "Re-scans included for 30 days",
+    text: "Re-scan the same domain after you change something. A fix counts only when new evidence confirms it.",
+  },
+];
+
+// Typical barriers, described generally; the scan reports what it finds on your site.
+const FAILURES = [
+  {
+    title: "Content that only appears after JavaScript",
+    text: "The agent reads the page and finds an empty shell. Prices and plans never arrive.",
+  },
+  {
+    title: "Controls without names",
+    text: "A size picker made of unlabeled buttons gives the agent nothing to choose from.",
+  },
+  {
+    title: "Facts behind a login or a pop-up",
+    text: "Delivery dates behind a sign-in, offers behind a modal: the agent stops there.",
+  },
+];
+
+const PRINCIPLES = [
+  {
+    icon: FileSearch,
+    title: "Evidence on every finding",
+    text: "Each issue shows the page and markup we saw, so your developer can check it.",
+  },
+  {
+    icon: CircleHelp,
+    title: "Unknown stays unknown",
+    text: "If a check can’t run, the report says so. It never counts as a pass.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Read-only, always",
+    text: "Scans never change your site. You decide which fixes to apply.",
   },
 ];
 
@@ -343,6 +365,100 @@ function RotatingAgentName() {
   );
 }
 
+/** A calm example of the report beside the hero copy. Illustrative data only. */
+function ExampleReport() {
+  return (
+    <figure
+      className={styles.report}
+      aria-label="Example readiness report with illustrative data"
+    >
+      <div className={styles.reportTop}>
+        <span className={styles.reportSite}>northstar.example</span>
+        <span className={styles.example}>Example</span>
+      </div>
+      <p className={styles.score}>
+        <strong>42</strong>
+        <span>out of 100 · agent readiness</span>
+      </p>
+      <div className={styles.meter} aria-hidden="true">
+        {Array.from({ length: 10 }, (_, i) => (
+          <i key={i} data-on={i < 4 ? "" : undefined} />
+        ))}
+      </div>
+      <ul className={styles.findings}>
+        <li>
+          <span className={styles.mark} data-tone="danger">
+            <X size={12} strokeWidth={2.6} aria-hidden="true" />
+          </span>
+          <span>Pricing isn’t in the page HTML</span>
+          <span>Issue</span>
+        </li>
+        <li>
+          <span className={styles.mark} data-tone="warning">
+            <Minus size={12} strokeWidth={2.6} aria-hidden="true" />
+          </span>
+          <span>Navigation names need review</span>
+          <span>Review</span>
+        </li>
+        <li>
+          <span className={styles.mark} data-tone="success">
+            <Check size={12} strokeWidth={2.6} aria-hidden="true" />
+          </span>
+          <span>Sitemap is reachable</span>
+          <span>Pass</span>
+        </li>
+      </ul>
+      <figcaption className={styles.reportFoot}>
+        <span>
+          <strong>3 fixes</strong> ready for your developer
+        </span>
+        <span>Illustrative</span>
+      </figcaption>
+    </figure>
+  );
+}
+
+/** The same pricing page, as a person sees it and as an agent receives it. */
+function PersonVersusAgent() {
+  return (
+    <figure
+      className={styles.versus}
+      aria-label="Example: a pricing page as a person sees it and as an agent receives it"
+    >
+      <div className={styles.versusTop}>
+        <span className={styles.reportSite}>northstar.example/pricing</span>
+        <span className={styles.example}>Example</span>
+      </div>
+      <div className={styles.versusBody}>
+        <div className={styles.versusPerson}>
+          <p className={styles.versusLabel}>What a person sees</p>
+          <ul className={styles.plans}>
+            {[
+              ["Starter", "₹999"],
+              ["Team", "₹2,499"],
+              ["Business", "₹5,999"],
+            ].map(([plan, price]) => (
+              <li key={plan}>
+                <span>{plan}</span>
+                <strong>{price}</strong>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className={styles.versusAgent}>
+          <p className={styles.versusLabel}>What an agent receives</p>
+          <pre>
+            {"<main></main>\n<!-- plans load later with JavaScript -->"}
+          </pre>
+          <p className={styles.versusResult}>
+            No prices in the page an agent reads.
+          </p>
+        </div>
+      </div>
+    </figure>
+  );
+}
+
 /** Navbar state: clear at the top, frosted over the hero, solid past it. */
 function useNavState(hero: React.RefObject<HTMLElement | null>) {
   const [state, setState] = useState<"top" | "glass" | "solid">("top");
@@ -424,68 +540,86 @@ export function Landing() {
       </header>
 
       <section ref={hero} className={styles.hero} id="scan">
-        <div className={styles.heroGlow} aria-hidden="true" />
-        <div className={`${styles.wrap} ${styles.heroInner}`}>
-          <p className="chip">
-            <span className="chip-dot" /> Free agent-readiness report
-          </p>
-          <h1 className={`display-xl ${styles.headline}`}>
-            <span className={`hero-title-row ${styles.row}`}>
-              Be the website
-            </span>
-            <span className={`hero-title-row ${styles.row}`}>
-              <RotatingAgentName />
-            </span>
-            <span className={`hero-title-row ${styles.row}`}>
-              can actually use.
-            </span>
-          </h1>
-          <p className={`lede ${styles.heroLede}`}>
-            Find what blocks AI agents on your public pages, hand your developer
-            the fix, and check that it worked.
-          </p>
-          <WebsiteInput />
-          <p className={styles.freeNote}>
-            Free score. Real findings. Your first fixes, on us.
-          </p>
-          <p className={styles.disclosure}>
-            Static checks only. Agent names and logos are examples, belong to
-            their owners and don’t endorse AgentLane; the scan doesn’t test
-            specific models.
-          </p>
-        </div>
-        <div className={`${styles.wrap} ${styles.heroStage}`}>
-          <HeroScanPreview />
+        <div className={`${styles.wrap} ${styles.heroGrid}`}>
+          <div>
+            <h1 className={styles.headline}>
+              <span className={`hero-title-row ${styles.row}`}>
+                Be the website
+              </span>
+              <span className={`hero-title-row ${styles.row}`}>
+                <RotatingAgentName />
+              </span>
+              <span className={`hero-title-row ${styles.row}`}>
+                can actually use.
+              </span>
+            </h1>
+            <p className={styles.heroLede}>
+              Find what blocks AI agents on your public pages, hand your
+              developer the fix, and check that it worked.
+            </p>
+            <WebsiteInput />
+          </div>
+          <ExampleReport />
         </div>
       </section>
 
-      <section id="how-it-works" className={`${styles.band} ${styles.bandInk}`}>
+      <section className={styles.section} aria-labelledby="problem-title">
         <div className={styles.wrap}>
-          <Reveal className={styles.centerHeading}>
-            <p className={styles.inkEyebrow}>
-              The part that makes a difference
-            </p>
-            <h2 className="display-lg">
-              Find it. Fix it.
-              <br />
-              <span className={styles.limeText}>Check it again.</span>
+          <div className={`${styles.split} ${styles.splitTop}`}>
+            <Reveal>
+              <p className={styles.label}>The problem</p>
+              <h2 id="problem-title" className={styles.title}>
+                Your site works for people. <span>Agents fail quietly.</span>
+              </h2>
+              <p className={styles.intro}>
+                More people ask an AI assistant to find a price or check stock
+                instead of browsing. When the agent can’t, nobody tells you.
+              </p>
+            </Reveal>
+            <Reveal delay={100}>
+              <ol className={styles.failures} aria-label="Common examples">
+                {FAILURES.map((failure, i) => (
+                  <li key={failure.title}>
+                    <span>0{i + 1}</span>
+                    <div>
+                      <strong>{failure.title}</strong>
+                      <p>{failure.text}</p>
+                    </div>
+                  </li>
+                ))}
+              </ol>
+            </Reveal>
+          </div>
+          <Reveal className={styles.compare}>
+            <PersonVersusAgent />
+          </Reveal>
+        </div>
+      </section>
+
+      <section
+        id="how-it-works"
+        className={styles.section}
+        aria-labelledby="how-title"
+      >
+        <div className={styles.wrap}>
+          <Reveal>
+            <p className={styles.label}>How it works</p>
+            <h2 id="how-title" className={styles.title}>
+              Find it. Fix it. <span>Check it again.</span>
             </h2>
-            <p className={styles.inkLede}>
-              Verify your email to get started. No changes made to your website.
-            </p>
           </Reveal>
           <ol className={styles.steps}>
             {STEPS.map((step, i) => (
-              <Reveal as="li" key={step.title} delay={i * 100} className="lift">
+              <Reveal as="li" key={step.title} delay={i * 80}>
                 <span className={styles.stepNumber}>0{i + 1}</span>
-                <step.icon size={22} strokeWidth={1.8} aria-hidden="true" />
                 <h3>{step.title}</h3>
+                <p className={styles.stepPrice}>{step.price}</p>
                 <p>{step.text}</p>
               </Reveal>
             ))}
           </ol>
           <Reveal className={styles.checks}>
-            <p className={styles.checksLabel}>What the free scan checks</p>
+            <p className={styles.label}>What the free scan checks</p>
             <ul>
               {CHECKS.map((check) => (
                 <li key={check}>{check}</li>
@@ -502,30 +636,53 @@ export function Landing() {
         </div>
       </section>
 
-      <section id="pricing" className={styles.band}>
+      <section className={styles.section} aria-labelledby="principles-title">
         <div className={styles.wrap}>
-          <Reveal className={styles.centerHeading}>
-            <p className="eyebrow">Your next step</p>
-            <h2 className="display-lg">
-              Start with evidence.
-              <br />
-              Pay when you want the kit.
+          <Reveal>
+            <p className={styles.label}>How we work</p>
+            <h2 id="principles-title" className={styles.title}>
+              Verified, not claimed.
             </h2>
-            <p className="lede">
-              No subscription. No mystery score. Just what we checked, what we
-              found, and what you can do about it.
+            <p className={styles.intro}>
+              A report you can check, from a scan that never touches your site.
             </p>
           </Reveal>
-          <div className={styles.priceGrid}>
-            <Reveal as="article" className={`${styles.freePrice} lift`}>
-              <div className={styles.priceTop}>
-                <p className={styles.priceLabel}>The first look</p>
+          <ul className={styles.principles}>
+            {PRINCIPLES.map((item, i) => (
+              <Reveal as="li" key={item.title} delay={i * 80}>
+                <item.icon size={22} strokeWidth={1.7} aria-hidden="true" />
+                <h3>{item.title}</h3>
+                <p>{item.text}</p>
+              </Reveal>
+            ))}
+          </ul>
+        </div>
+      </section>
+
+      <AgentLaneShowcase />
+
+      <section
+        id="pricing"
+        className={styles.section}
+        aria-labelledby="pricing-title"
+      >
+        <div className={styles.wrap}>
+          <Reveal>
+            <p className={styles.label}>Pricing</p>
+            <h2 id="pricing-title" className={styles.title}>
+              Start free. <span>Pay once when you want the kit.</span>
+            </h2>
+          </Reveal>
+          <div className={styles.prices}>
+            <Reveal as="article" className={styles.plan}>
+              <div className={styles.planTop}>
+                <p className={styles.planName}>Free scan</p>
               </div>
-              <h3>Your readiness report.</h3>
-              <p className={styles.price}>
+              <p className={styles.amount}>
                 <strong>$0</strong>
-                <span>Start with your domain</span>
+                <span>for your domain</span>
               </p>
+              <h3 className={styles.planFor}>Your readiness report.</h3>
               <ul>
                 <li>
                   <Check size={16} aria-hidden="true" /> Up to 10 public pages
@@ -548,18 +705,20 @@ export function Landing() {
             </Reveal>
             <Reveal
               as="article"
-              delay={120}
-              className={`${styles.paidPrice} lift`}
+              delay={100}
+              className={`${styles.plan} ${styles.planPaid}`}
             >
-              <div className={styles.priceTop}>
-                <p className={styles.priceLabel}>The complete Fix Kit</p>
-                <span className={styles.valueBadge}>One-time payment</span>
+              <div className={styles.planTop}>
+                <p className={styles.planName}>Fix Kit</p>
+                <span className={styles.oneTime}>One-time payment</span>
               </div>
-              <h3>From insight to implementation.</h3>
-              <p className={styles.price}>
+              <p className={styles.amount}>
                 <strong>$19</strong>
-                <span>USD / for this domain</span>
+                <span>USD per domain</span>
               </p>
+              <h3 className={styles.planFor}>
+                From insight to implementation.
+              </h3>
               <ul>
                 <li>
                   <Check size={16} aria-hidden="true" /> Remaining fixes with
@@ -588,16 +747,11 @@ export function Landing() {
         </div>
       </section>
 
-      <AgentLaneShowcase />
-
-      <section
-        className={`${styles.band} ${styles.questions}`}
-        aria-labelledby="homepage-questions"
-      >
-        <div className={`${styles.wrap} ${styles.questionsGrid}`}>
+      <section className={styles.section} aria-labelledby="homepage-questions">
+        <div className={`${styles.wrap} ${styles.split} ${styles.splitTop}`}>
           <div>
-            <p className="eyebrow">A few things worth knowing</p>
-            <h2 id="homepage-questions" className="display-lg">
+            <p className={styles.label}>Questions</p>
+            <h2 id="homepage-questions" className={styles.title}>
               Good questions.
             </h2>
             <Link href="/docs" className={styles.docsLink}>
@@ -618,20 +772,15 @@ export function Landing() {
         </div>
       </section>
 
-      <section className={styles.closingBand}>
-        <div className={`${styles.wrap}`}>
-          <Reveal className={`block-feature ${styles.closing}`}>
-            <p className={styles.closingEyebrow}>
-              Your next visitor won’t always click like you
-            </p>
-            <h2 className="display-lg">
-              Your next improvement?
-              <br />
-              <span className={styles.limeText}>It starts with a scan.</span>
-            </h2>
+      <section className={styles.closing}>
+        <div className={styles.wrap}>
+          <Reveal className={styles.closingCard}>
+            <h2>Find out what agents run into on your site.</h2>
             <WebsiteInput compact />
-            <p className={styles.closingNote}>
-              A practical starting point. Grounded in your public pages.
+            <p className={styles.disclosure}>
+              Static checks only. Agent names and logos are examples, belong to
+              their owners and don’t endorse AgentLane; the scan doesn’t test
+              specific models.
             </p>
           </Reveal>
         </div>

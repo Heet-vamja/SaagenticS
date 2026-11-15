@@ -135,7 +135,7 @@ export function MarketingFooter() {
         </div>
         {FOOTER_GROUPS.map((group) => (
           <nav key={group.title} aria-label={group.title}>
-            <h2 className="font-mono text-[12px] font-medium tracking-[0.08em] text-foreground uppercase">
+            <h2 className="text-[14px] font-medium text-foreground">
               {group.title}
             </h2>
             <ul className="mt-4 space-y-3 text-[14px]">

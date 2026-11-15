@@ -19,7 +19,7 @@ import {
   RefreshCw,
   Search,
   Settings,
-  Sparkles,
+  CircleDashed,
   X,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
@@ -743,8 +743,8 @@ export function OwnerDashboard() {
               >
                 <div className={styles.cardHead}>
                   <h2 id="tasks-title">Task success</h2>
-                  <span className={styles.badge}>
-                    <Sparkles size={12} aria-hidden="true" />
+                  <span className={styles.badge} data-tone="muted">
+                    <CircleDashed size={12} aria-hidden="true" />
                     Model-judged from request logs
                   </span>
                 </div>

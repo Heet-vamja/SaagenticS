@@ -3,6 +3,7 @@
 import asyncio
 import io
 import json
+import os
 import zipfile
 
 from playwright.async_api import async_playwright
@@ -58,6 +59,9 @@ async def run():
             context = await browser.new_context(
                 viewport={"width": 1440, "height": 1000}, reduced_motion="reduce"
             )
+            theme = os.environ.get("QA_THEME")  # Optional: "light" or "dark".
+            if theme:
+                await context.add_init_script(f"localStorage.setItem('ar-theme', '{theme}')")
             page = await context.new_page()
             await page.context.grant_permissions(["clipboard-read", "clipboard-write"])
             page.on("pageerror", lambda error: errors.append(str(error)))

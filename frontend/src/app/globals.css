@@ -79,13 +79,20 @@
   }
   h1,
   h2 {
-    font-weight: 800;
-    letter-spacing: -0.022em;
+    font-weight: 560;
+    letter-spacing: -0.024em;
   }
   h3,
   h4 {
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-weight: 600;
+    letter-spacing: -0.014em;
+  }
+  /* Code shows exactly what was typed: no "<!--" turning into arrows. */
+  code,
+  pre,
+  kbd,
+  samp {
+    font-variant-ligatures: none;
   }
   button,
   a {
@@ -186,23 +193,23 @@
   /* Display type scale for marketing surfaces. */
   .display-xl {
     font-family: var(--font-heading), sans-serif;
-    font-size: clamp(2.625rem, 6.4vw, 5.25rem);
-    font-weight: 700;
-    line-height: 1;
-    letter-spacing: -0.032em;
+    font-size: clamp(2.5rem, 6vw, 4.75rem);
+    font-weight: 560;
+    line-height: 1.04;
+    letter-spacing: -0.034em;
   }
   .display-lg {
     font-family: var(--font-heading), sans-serif;
-    font-size: clamp(2.125rem, 4.6vw, 3.5rem);
-    font-weight: 700;
-    line-height: 1.04;
+    font-size: clamp(2rem, 4.2vw, 3.25rem);
+    font-weight: 560;
+    line-height: 1.08;
     letter-spacing: -0.028em;
   }
   .display-md {
     font-family: var(--font-heading), sans-serif;
-    font-size: clamp(1.625rem, 3vw, 2.25rem);
-    font-weight: 700;
-    line-height: 1.12;
+    font-size: clamp(1.5rem, 2.8vw, 2rem);
+    font-weight: 580;
+    line-height: 1.15;
     letter-spacing: -0.022em;
   }
   .lede {
@@ -269,12 +276,10 @@
   /* Marker highlight sized to the letters, not the font's full glyph box, so it never
      paints over descenders on the line above in tightly set headlines. */
   .mark-lime {
-    padding-inline: 0.14em;
-    border-radius: 0.16em;
-    background: linear-gradient(var(--marker), var(--marker)) no-repeat;
-    background-size: 100% 42%;
-    background-position: 0 84%;
-    color: inherit;
+    padding: 0 0.14em 0.04em;
+    border-radius: 0.14em;
+    background: var(--marker);
+    color: var(--lime-foreground);
     box-decoration-break: clone;
     -webkit-box-decoration-break: clone;
   }
@@ -285,12 +290,9 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    font-family: var(--font-code), monospace;
-    font-size: 12px;
+    font-size: 14px;
     line-height: 1.5;
     font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
     color: var(--muted-foreground);
   }
   /* Pill label used for section kickers on marketing surfaces. */
@@ -302,13 +304,9 @@
     border-radius: 999px;
     padding: 6px 13px;
     background: var(--card);
-    box-shadow: var(--shadow-card);
     color: var(--foreground);
-    font-family: var(--font-code), monospace;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 500;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
   }
   .chip-dot {
     width: 8px;
@@ -330,11 +328,9 @@
   }
   .table-head {
     color: var(--muted-foreground);
-    font-family: var(--font-code), monospace;
-    font-size: 12px;
+    font-size: 13px;
+    font-weight: 500;
     background: var(--muted);
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
   }
   .table-head th {
     position: relative;
