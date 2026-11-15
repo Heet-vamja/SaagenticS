@@ -423,35 +423,37 @@ function PersonVersusAgent() {
   return (
     <figure
       className={styles.versus}
-      aria-label="Example: a pricing page as a person sees it and as an agent receives it"
+      aria-label="Example: a size picker as a person sees it and as an agent receives it"
     >
       <div className={styles.versusTop}>
-        <span className={styles.reportSite}>northstar.example/pricing</span>
+        <span className={styles.reportSite}>
+          northstar.example/trail-runner
+        </span>
         <span className={styles.example}>Example</span>
       </div>
       <div className={styles.versusBody}>
         <div className={styles.versusPerson}>
           <p className={styles.versusLabel}>What a person sees</p>
-          <ul className={styles.plans}>
-            {[
-              ["Starter", "₹999"],
-              ["Team", "₹2,499"],
-              ["Business", "₹5,999"],
-            ].map(([plan, price]) => (
-              <li key={plan}>
-                <span>{plan}</span>
-                <strong>{price}</strong>
-              </li>
-            ))}
-          </ul>
+          <div className={styles.product}>
+            <strong>Trail Runner 2</strong>
+            <span>Choose your size</span>
+            <ul className={styles.sizes} aria-label="Example sizes">
+              <li>UK 7</li>
+              <li data-selected="">UK 8</li>
+              <li>UK 9</li>
+              <li data-sold-out="">UK 10</li>
+            </ul>
+          </div>
         </div>
         <div className={styles.versusAgent}>
           <p className={styles.versusLabel}>What an agent receives</p>
           <pre>
-            {"<main></main>\n<!-- plans load later with JavaScript -->"}
+            {
+              '<div class="sizes">\n  <button></button>\n  <button></button>\n  <button></button>\n  <button disabled></button>\n</div>'
+            }
           </pre>
           <p className={styles.versusResult}>
-            No prices in the page an agent reads.
+            No size names an agent can read.
           </p>
         </div>
       </div>
