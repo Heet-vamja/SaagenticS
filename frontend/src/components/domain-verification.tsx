@@ -35,7 +35,13 @@ export function DomainVerification({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const load = useCallback(() => api.verificationStatus(website), [website]);
-  const { data: status } = useResource(load);
+  const { data: status, error: statusError } = useResource(load);
+  // The API refuses addresses it will never scan (local, private, malformed). Say so
+  // instead of asking for an email first.
+  const rejected =
+    statusError instanceof ApiError && statusError.status === 422
+      ? statusError.message
+      : "";
   const domain = new URL(website).hostname.replace(/^www\./, "");
   async function requestEmail(candidateId?: string, hint?: string) {
     setSelectedCandidate(candidateId);
@@ -84,17 +90,33 @@ export function DomainVerification({
           <ShieldCheck size={22} />
         </span>
         <DialogTitle className="pr-8 font-display text-[26px] font-extrabold leading-tight tracking-[-.022em]">
-          Confirm your email to start.
+          {rejected
+            ? "We can’t scan this address."
+            : "Confirm your email to start."}
         </DialogTitle>
-        <DialogDescription className="mt-3 text-[14px] leading-6 text-muted-foreground">
-          We’ll scan{" "}
-          <strong className="break-all rounded-md bg-lime px-1 font-semibold text-lime-foreground">
-            {domain}
-          </strong>{" "}
-          as soon as you enter the code we email you. No account or password
-          needed.
-        </DialogDescription>
-        {status?.verified && !challenge && !useDifferentEmail ? (
+        {rejected ? (
+          <>
+            <DialogDescription className="mt-3 text-[14px] leading-6 text-muted-foreground">
+              {rejected}. Enter a public website address, such as
+              yourcompany.com.
+            </DialogDescription>
+            <Button onClick={onClose} size="lg" className="mt-5 w-full">
+              Change the address
+            </Button>
+          </>
+        ) : (
+          <DialogDescription className="mt-3 text-[14px] leading-6 text-muted-foreground">
+            We’ll scan{" "}
+            <strong className="break-all rounded-md bg-lime px-1 font-semibold text-lime-foreground">
+              {domain}
+            </strong>{" "}
+            as soon as you enter the code we email you. No account or password
+            needed.
+          </DialogDescription>
+        )}
+        {rejected ? null : status?.verified &&
+          !challenge &&
+          !useDifferentEmail ? (
           <div className="mt-5 space-y-4">
             <p className="rounded-2xl bg-success-soft px-4 py-3 text-[14px] font-medium leading-6 text-success">
               {status.development_access ? "Development access" : "Verified"} as{" "}

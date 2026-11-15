@@ -279,6 +279,7 @@ export function CustomerFixes({ token }: { token: string }) {
                   </Button>
                   <Button
                     variant="ghost"
+                    className="max-w-full whitespace-normal text-center"
                     disabled={busy !== null || fix.status === "FIX_APPLIED"}
                     onClick={() =>
                       perform(fix.key, () => record("FIX_APPLIED", fix.key))

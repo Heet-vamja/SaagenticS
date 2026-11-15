@@ -40,10 +40,6 @@ when done; link the commit or doc that closed them if useful.
 
 ## Engineering hygiene
 
-- 2 pre-existing failing tests: `test_agent_integration.py::test_scan_pipeline_crawls_then_runs_three_rule_checked_tasks`
-  and `::test_agent_inference_failure_keeps_completed_static_scan`.
-- Stale browser scripts: `npm run test:states` and `npm run test:free-flow` no longer match
-  the current UI.
 - Delivery rules can only be set from the CLI (`edge_sites set-delivery`).
 - Sites cannot be edited or removed from the dashboard (CLI or SQL only).
 - The jobs worker does not hot-reload; run `docker compose restart jobs` after backend

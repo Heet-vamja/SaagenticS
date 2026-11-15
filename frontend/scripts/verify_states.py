@@ -1,154 +1,228 @@
-"""Isolated frontend state fixtures; no fixture data is written to the backend."""
+"""Isolated frontend state fixtures; every API response is mocked in the browser and no
+fixture data is written to the backend.
+
+Covers: an address the API refuses, missing and failing reports with retry, the
+customer-release redirects, and the owner dashboard (sign-in, rejected token, first
+site, job lifecycle with polling that stops, and a fully populated overview).
+"""
 
 import asyncio
-from urllib.parse import urlsplit
 
 from playwright.async_api import async_playwright
+from verify_free_flow import report
 from verify_ui import BASE, check_page
+
+TOKEN = "fixture-token"
+
+
+def error(status, message, code="http_error"):
+    return {
+        "status": status,
+        "json": {"error": {"code": code, "message": message, "details": []}},
+    }
+
+
+def overview(with_data):
+    qa = {
+        "batch_id": "fixture",
+        "created_at": "2026-11-15T09:12:00Z",
+        "original": {"runs": 2, "passed": 1, "failed": 1, "errors": 0, "eligible": 2,
+                     "tokens": 90000, "steps": 30, "duration_ms": 120000},
+        "variant": {"runs": 2, "passed": 2, "failed": 0, "errors": 0, "eligible": 2,
+                    "tokens": 20000, "steps": 8, "duration_ms": 30000},
+        "tasks": [
+            {"task": "price", "prompt": "What does the Trail Runner cost?", "original": "PASSED",
+             "variant": "PASSED", "original_steps": 12, "variant_steps": 3},
+            {"task": "sizes", "prompt": "Which sizes are in stock?", "original": "FAILED",
+             "variant": "PASSED", "original_steps": 18, "variant_steps": 5},
+        ],
+    }
+    return {
+        "site": {"host": "store.fixture", "name": "Fixture Store", "routing_enabled": True},
+        "window_days": 7,
+        "variant": {"version": 2, "published_at": "2026-11-14T10:00:00Z", "products": 9}
+        if with_data else None,
+        "totals": {"requests": 9, "agent_requests": 8, "crawler_requests": 1,
+                   "variant_requests": 4 if with_data else 0, "sessions": 3,
+                   "unlabeled_sessions": 0 if with_data else 3},
+        "agents": [
+            {"agent": "ChatGPT-User", "kind": "agent", "requests": 8, "variant_requests": 4,
+             "errors": 0, "sessions": 3, "last_seen": "2026-11-15T09:00:00Z"},
+            {"agent": "Googlebot", "kind": "crawler", "requests": 1, "variant_requests": 0,
+             "errors": 0, "sessions": 0, "last_seen": "2026-11-15T09:00:00Z"},
+        ],
+        "tasks": [{"task": "Find sizes in stock", "sessions": 3, "succeeded": 1, "failed": 2,
+                   "unknown": 0}] if with_data else [],
+        "failures": [{"task": "Find sizes in stock", "failed_step": "size picker has no labels",
+                      "sessions": 2, "agents": ["ChatGPT-User"],
+                      "explanation": "Size buttons had no accessible names.",
+                      "suggested_fix": "Label each size option."}] if with_data else [],
+        "qa": qa if with_data else None,
+    }
+
+
+def job(status, detail=None):
+    return {"id": "job-1", "kind": "build_variant", "status": status, "detail": detail,
+            "result": None, "created_at": "2026-11-15T09:00:00Z",
+            "started_at": None if status == "PENDING" else "2026-11-15T09:00:02Z",
+            "finished_at": "2026-11-15T09:00:09Z" if status in ("FAILED", "SUCCEEDED") else None}
+
+
+async def fulfill(route, spec):
+    if "status" in spec:
+        await route.fulfill(status=spec["status"], json=spec["json"])
+    else:
+        await route.fulfill(json=spec)
+
+
+async def landing_and_reports(page):
+    await page.goto(BASE, wait_until="networkidle")
+    await page.route(
+        "**/api/v1/verification/status**",
+        lambda route: fulfill(
+            route, error(422, "Local and metadata service hostnames are not supported",
+                         "invalid_crawl_scope")),
+    )
+    form = page.locator("form.website-entry").first
+    await form.get_by_label("Website URL").fill("http://localhost")
+    await form.get_by_role("button", name="Scan Website").click()
+    dialog = page.get_by_role("dialog")
+    await dialog.get_by_role("heading", name="We can’t scan this address.").wait_for()
+    await dialog.get_by_text("Local and metadata service hostnames are not supported",
+                             exact=False).wait_for()
+    assert not await dialog.get_by_label("Your email").count(), "No email form for refused URLs"
+    await check_page(page, "refused-address", screenshot=False)
+    await dialog.get_by_role("button", name="Change the address").click()
+    await dialog.wait_for(state="hidden")
+
+    await page.route("**/api/v1/free-reports/missing**",
+                     lambda route: fulfill(route, error(404, "Report not found", "not_found")))
+    await page.goto(BASE + "/free-reports/missing", wait_until="networkidle")
+    await page.get_by_role("heading", name="This report link has expired").wait_for()
+    await check_page(page, "report-expired", screenshot=False)
+
+    state = {"down": True}
+
+    async def flaky(route):
+        if state["down"]:
+            await fulfill(route, error(503, "Database operation unavailable"))
+        else:
+            await route.fulfill(json=report("COMPLETED"))
+
+    await page.route("**/api/v1/free-reports/flaky**", flaky)
+    await page.goto(BASE + "/free-reports/flaky", wait_until="networkidle")
+    await page.get_by_text("Database operation unavailable", exact=True).wait_for()
+    await check_page(page, "report-unavailable", screenshot=False)
+    state["down"] = False
+    await page.get_by_role("button", name="Try again").click()
+    await page.get_by_text("Preliminary static readiness", exact=True).wait_for()
+
+    await page.goto(BASE + "/agent-tests/any", wait_until="networkidle")
+    await page.get_by_label("Real AI agent testing, coming Christmas 2026").first.wait_for()
+    await check_page(page, "agent-tests-coming-soon", screenshot=False)
+    await page.goto(BASE + "/projects", wait_until="networkidle")
+    assert page.url.rstrip("/") == BASE.rstrip("/"), page.url
+
+
+async def dashboard(browser):
+    context = await browser.new_context(viewport={"width": 1440, "height": 1000},
+                                        reduced_motion="reduce")
+    page = await context.new_page()
+    api = {"sites": [], "jobs": [], "overview": overview(False), "job_polls": 0}
+
+    async def route(route):
+        request = route.request
+        url = request.url.split("?")[0]
+        if request.headers.get("authorization") != f"Bearer {TOKEN}":
+            return await fulfill(route, error(401, "A valid dashboard token is required"))
+        if url.endswith("/dashboard/sites") and request.method == "POST":
+            body = request.post_data_json
+            if not body["origin"].startswith("https://"):
+                return await fulfill(route, error(422, "Origins must be public"))
+            site = {"host": body["host"], "name": body["name"], "routing_enabled": True}
+            api["sites"].append(site)
+            return await route.fulfill(status=201, json=site)
+        if url.endswith("/dashboard/sites"):
+            return await route.fulfill(json={"sites": api["sites"]})
+        if url.endswith("/overview"):
+            return await route.fulfill(json=api["overview"])
+        if url.endswith("/variants"):
+            return await route.fulfill(json={"variants": []})
+        if url.endswith("/jobs") and request.method == "POST":
+            api["jobs"] = [job("PENDING")]
+            return await route.fulfill(status=202, json=api["jobs"][0])
+        if url.endswith("/jobs"):
+            api["job_polls"] += 1
+            return await route.fulfill(json={"jobs": api["jobs"]})
+        return await fulfill(route, error(404, "Not found"))
+
+    await page.route("**/api/v1/dashboard/**", route)
+    await page.goto(BASE + "/dashboard", wait_until="networkidle")
+    await page.get_by_role("heading", name="Sign in to your dashboard").wait_for()
+    await check_page(page, "dashboard-sign-in", screenshot=False)
+    await page.get_by_label("Dashboard token").fill("wrong")
+    await page.get_by_role("button", name="Open dashboard").click()
+    await page.get_by_text("A valid dashboard token is required", exact=True).wait_for()
+    await page.get_by_label("Dashboard token").fill(TOKEN)
+    await page.get_by_role("button", name="Open dashboard").click()
+
+    await page.get_by_role("heading", name="Add your first site").wait_for()
+    await check_page(page, "dashboard-first-site", screenshot=False)
+    await page.get_by_label("Site name").fill("Fixture Store")
+    await page.get_by_label("Public host").fill("store.fixture")
+    await page.get_by_label("Origin").fill("http://10.0.0.5")
+    await page.get_by_role("button", name="Add site").last.click()
+    await page.get_by_text("Origins must be public", exact=True).wait_for()
+    await page.get_by_label("Origin").fill("https://origin.fixture")
+    await page.get_by_role("button", name="Add site").last.click()
+    await page.get_by_role("heading", name="Fixture Store").wait_for()
+    await page.get_by_text("No published agent lane yet", exact=True).wait_for()
+    await page.get_by_text("No labeled sessions yet", exact=True).wait_for()
+    await page.get_by_text("No QA batch yet", exact=True).wait_for()
+    assert await page.get_by_role("button", name="Run agent QA").is_disabled(), (
+        "QA needs a published agent lane"
+    )
+    await check_page(page, "dashboard-empty", screenshot=False)
+
+    await page.get_by_role("button", name="Build agent lane").click()
+    await page.get_by_text("Queued · waiting for the jobs worker", exact=True).wait_for()
+    api["jobs"] = [job("RUNNING")]
+    await page.get_by_text("Running since", exact=False).wait_for(timeout=10000)
+    api["jobs"] = [job("FAILED", "InferenceError: Configure GEMINI_API_KEY")]
+    await page.get_by_text("Configure GEMINI_API_KEY", exact=False).wait_for(timeout=10000)
+    await page.get_by_role("button", name="Build agent lane").wait_for()
+    before = api["job_polls"]
+    await asyncio.sleep(5)
+    assert api["job_polls"] == before, "Job polling continued after a terminal status"
+    await check_page(page, "dashboard-job-failed", screenshot=False)
+
+    api["overview"] = overview(True)
+    for theme, width in (("light", 1440), ("dark", 1440), ("light", 390)):
+        await page.set_viewport_size({"width": width, "height": 1000})
+        await page.evaluate(f"localStorage.setItem('ar-theme', '{theme}')")
+        await page.reload(wait_until="networkidle")
+        applied = await page.evaluate("document.documentElement.dataset.theme")
+        assert applied == theme, (theme, applied)
+        await page.get_by_text("Agent lane v2 live · 9 products", exact=True).wait_for()
+        await page.get_by_text("4.5× fewer tokens", exact=True).wait_for()
+        await page.get_by_text("Suggestions, not applied automatically", exact=True).wait_for()
+        await check_page(page, f"dashboard-full-{theme}-{width}", screenshot=False)
+    await context.close()
 
 
 async def main():
     async with async_playwright() as p:
         browser = await p.chromium.launch(headless=True)
         try:
-            page = await browser.new_page(viewport={"width": 1440, "height": 1000})
-            state = {"phase": "PENDING", "requests": 0}
-
-            async def agent_route(route):
-                state["requests"] += 1
-                phase = state["phase"]
-                step = {
-                    "id": "fixture-step",
-                    "step_number": 1,
-                    "page_url": "https://fixture.example/",
-                    "action_type": "navigate",
-                    "reasoning_summary": "Open the fixture homepage",
-                    "action_arguments": {},
-                    "action_result": {"message": "Opened fixture"},
-                    "observation_summary": {
-                        "title": "UI fixture page",
-                        "visible_text": "Fixture content only",
-                        "elements": [],
-                    },
-                    "error_message": None,
-                    "duration_ms": 200,
-                    "has_screenshot": False,
-                }
-                if urlsplit(route.request.url).path.endswith("/steps"):
-                    await route.fulfill(json=[] if phase == "PENDING" else [step])
-                else:
-                    await route.fulfill(
-                        json={
-                            "id": "ui-fixture",
-                            "scan_id": "fixture-scan",
-                            "task_type": "FIND_PRICING",
-                            "task_description": "Find the pricing page (isolated UI fixture)",
-                            "model_identifier": "Fixture model · UI tests only",
-                            "starting_url": "https://fixture.example/",
-                            "allowed_domains": ["fixture.example"],
-                            "status": phase,
-                            "steps_completed": 0 if phase == "PENDING" else 1,
-                            "execution_duration": None
-                            if phase in ("RUNNING", "PENDING")
-                            else 2.4,
-                            "final_url": "https://fixture.example/",
-                            "agent_declared_outcome": "Fixture agent reported pricing."
-                            if phase == "COMPLETED"
-                            else None,
-                            "failure_reason": "Agent execution time limit reached"
-                            if phase == "FAILED"
-                            else None,
-                            "metrics": {"timeouts": 1} if phase == "FAILED" else {},
-                            "verification": "NOT_INDEPENDENTLY_VERIFIED",
-                            "started_at": None,
-                            "completed_at": None,
-                        }
-                    )
-
-            await page.route("**/api/v1/agent-tests/ui-fixture**", agent_route)
-            await page.goto(BASE + "/agent-tests/ui-fixture", wait_until="networkidle")
-            # Both the badge and the metadata row say Pending in this view.
-            await page.get_by_text("Pending", exact=True).first.wait_for()
-            await check_page(page, "fixture-pending", screenshot=False)
-            state["phase"] = "RUNNING"
-            await page.get_by_text("Running", exact=True).wait_for(timeout=10000)
-            await page.get_by_text("Navigate to page", exact=True).wait_for()
-            await page.get_by_text("No screenshot for this step", exact=True).wait_for()
-            state["phase"] = "COMPLETED"
-            await page.get_by_text(
-                "Fixture agent reported pricing.", exact=True
-            ).wait_for(timeout=10000)
-            await page.get_by_text(
-                "The agent claim was not independently verified.", exact=True
-            ).wait_for()
-            await check_page(page, "fixture-completed", screenshot=False)
-            before = state["requests"]
-            await asyncio.sleep(3)
-            assert state["requests"] == before, (
-                "Polling continued after terminal status"
+            context = await browser.new_context(
+                viewport={"width": 1440, "height": 1000}, reduced_motion="reduce"
             )
-            state["phase"] = "FAILED"
-            await page.reload(wait_until="networkidle")
-            await page.get_by_text("Timed out", exact=True).wait_for()
-            await check_page(page, "fixture-timeout", screenshot=False)
-
-            async def missing(route):
-                await route.fulfill(
-                    status=404,
-                    json={
-                        "error": {
-                            "code": "not_found",
-                            "message": "Agent test not found",
-                            "details": [],
-                        }
-                    },
-                )
-
-            await page.route("**/api/v1/agent-tests/ui-missing**", missing)
-            await page.goto(BASE + "/agent-tests/ui-missing", wait_until="networkidle")
-            await page.get_by_text("Agent test not found", exact=True).wait_for()
-            await check_page(page, "fixture-missing", screenshot=False)
-            available = {"yes": False}
-
-            async def projects(route):
-                if available["yes"]:
-                    await route.fulfill(json=[])
-                else:
-                    await route.fulfill(
-                        status=503,
-                        json={
-                            "error": {
-                                "message": "Service temporarily unavailable",
-                                "details": [],
-                            }
-                        },
-                    )
-
-            await page.route("**/api/v1/projects?*", projects)
-            await page.route("**/api/v1/scans?*", lambda route: route.fulfill(json=[]))
-            await page.goto(BASE + "/projects", wait_until="networkidle")
-            await page.get_by_text(
-                "Service temporarily unavailable", exact=True
-            ).wait_for()
-            available["yes"] = True
-            await page.get_by_role("button", name="Try again").click()
-            await page.get_by_text(
-                "Start with your first website", exact=True
-            ).wait_for()
-            await check_page(page, "fixture-empty", screenshot=False)
-            await page.unroute("**/api/v1/projects?*")
-            await page.goto(BASE, wait_until="networkidle")
-            await page.get_by_label("Website URL", exact=True).first.fill(
-                "http://localhost"
-            )
-            await page.get_by_role(
-                "button", name="Scan Website", exact=True
-            ).first.click()
-            await page.get_by_text(
-                "Local and metadata service hostnames are not supported", exact=False
-            ).wait_for()
+            await landing_and_reports(await context.new_page())
+            await context.close()
+            await dashboard(browser)
             print(
-                "PASS isolated pending/running/completed/timeout/missing/empty states, API retry, invalid URL, missing screenshots and terminal polling.",
+                "PASS refused address, expired/unavailable report with retry, customer-release "
+                "redirects, dashboard sign-in/rejected token/first site/job lifecycle/full overview.",
                 flush=True,
             )
         finally:

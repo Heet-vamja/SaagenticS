@@ -18,6 +18,7 @@ async def run():
     fail_next_submission = False
     polls = 0
     report_ready = False
+    verified = False
     next_token = "ui-test-rescan-token"
     prompt = "Fix the observed button label. Preserve its behavior. Re-scan to confirm."
 
@@ -53,15 +54,27 @@ async def run():
     async with async_playwright() as playwright:
         browser = await playwright.chromium.launch(headless=True)
         try:
-            page = await browser.new_page(viewport={"width": 1440, "height": 1000})
+            # Reduced motion keeps axe from sampling animations mid-fade (as in verify_landing).
+            context = await browser.new_context(
+                viewport={"width": 1440, "height": 1000}, reduced_motion="reduce"
+            )
+            page = await context.new_page()
             await page.context.grant_permissions(["clipboard-read", "clipboard-write"])
             page.on("pageerror", lambda error: errors.append(str(error)))
             page.on("console", lambda message: key_errors.append(message.text) if "same key" in message.text else None)
 
             async def api_route(route):
-                nonlocal polls, fail_next_submission
+                nonlocal polls, fail_next_submission, verified
                 url = route.request.url
-                if url.endswith("/free-scans"):
+                if "/verification/status" in url:
+                    body, status = {"verified": verified, "domain": "example.com", "email_hint": "o***@example.com"}, 200
+                elif url.endswith("/verification/request"):
+                    body, status = {"challenge_id": "fixture-challenge", "email_hint": "o***@example.com", "expires_in": 600}, 200
+                elif url.endswith("/verification/verify"):
+                    assert route.request.post_data_json == {"challenge_id": "fixture-challenge", "code": "123456"}
+                    verified = True
+                    body, status = {"verified": True}, 200
+                elif url.endswith("/free-scans"):
                     submissions.append(route.request.post_data_json)
                     if fail_next_submission:
                         fail_next_submission = False
@@ -105,7 +118,16 @@ async def run():
             hero_form = page.locator("form.website-entry").first
             await hero_form.get_by_label("Website URL").fill("example.com")
             await hero_form.get_by_role("button", name="Scan Website").click()
-            await page.get_by_role("heading", name="Preparing your report").wait_for(timeout=1000)
+            # Customer release: a mailbox code is required before the first scan.
+            dialog = page.get_by_role("dialog")
+            await dialog.get_by_role("heading", name="Confirm your email to start.").wait_for()
+            await check_view(page, "verify-email")
+            await dialog.get_by_label("Your email").fill("owner@example.com")
+            await dialog.get_by_role("button", name="Send verification code").click()
+            await dialog.get_by_label("Verification code").fill("123456")
+            await check_view(page, "verify-code")
+            await dialog.get_by_role("button", name="Verify and scan").click()
+            await page.get_by_role("heading", name="Preparing your report").wait_for(timeout=3000)
             await page.get_by_text("Creating your report link…", exact=True).wait_for()
             assert not page.url.endswith(REPORT_PATH)
             await hero_form.evaluate("form => form.requestSubmit()")
@@ -118,7 +140,8 @@ async def run():
             await page.get_by_text("Preliminary static readiness", exact=True).wait_for(timeout=8000)
             await page.get_by_role("heading", name="Your Fix Center").wait_for()
             assert submissions == [{"website_url": "https://example.com/"}]
-            await page.get_by_role("heading", name="Real agent task results").wait_for()
+            # Agent task testing is not part of the customer release; the report says so.
+            await page.get_by_label("Real AI agent testing, coming Christmas 2026").wait_for()
             ring = page.get_by_role("img", name="Readiness score 81 out of 100")
             ring_top = await ring.evaluate("element => element.getBoundingClientRect().top + window.scrollY")
             await page.get_by_text("How this score works", exact=True).click()
@@ -141,8 +164,6 @@ async def run():
             await page.get_by_text("Applied · awaiting rescan", exact=True).wait_for()
             await page.get_by_role("button", name="Yes", exact=True).click()
             await page.get_by_text("Thanks — your feedback was saved.").wait_for()
-            await page.get_by_role("button", name="I’d consider it", exact=True).click()
-            await page.get_by_text("Thanks — recorded as interest, not a purchase.").wait_for()
             async with page.expect_download() as download_info:
                 await page.get_by_role("button", name="Download fix pack").click()
             assert (await download_info.value).suggested_filename == "agentlane-fix-pack.zip"
@@ -159,16 +180,18 @@ async def run():
             retry_form = page.locator("form.website-entry").last
             await retry_form.get_by_label("Website URL").fill("example.com")
             await retry_form.get_by_role("button", name="Scan Website").click()
+            await page.get_by_role("button", name="Continue to scan").click()
             await page.get_by_text("Queue is busy. Please retry.").wait_for()
             assert await retry_form.get_by_label("Website URL").is_enabled()
             assert not await page.get_by_role("heading", name="Preparing your report").count()
             await retry_form.get_by_role("button", name="Scan Website").click()
+            await page.get_by_role("button", name="Continue to scan").click()
             await page.wait_for_url(f"**{REPORT_PATH}")
             await page.get_by_role("heading", name="Your Fix Center").wait_for()
             assert len(submissions) == 3
             assert not errors, errors
             assert not key_errors, key_errors
-            assert {"PROMPT_COPIED", "FIX_APPLIED", "USEFUL", "PRICE_INTERESTED"} <= set(events)
+            assert {"PROMPT_COPIED", "FIX_APPLIED", "USEFUL"} <= set(events)
             print("PASS URL submission → static report → copy/apply → fix pack → feedback → linked rescan; all API/model responses mocked.", flush=True)
         except Exception:
             await page.screenshot(path=str(OUTPUT / "flow-error.png"), full_page=True)

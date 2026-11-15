@@ -226,6 +226,8 @@ def test_scan_pipeline_crawls_then_runs_three_rule_checked_tasks(
         database_url="postgresql+psycopg://agentreadiness:local-development-only@localhost:5432/agentreadiness_test",
         audit_browser_enabled=False,
         agent_pipeline_enabled=True,
+        # The customer release skips the agent stage; these tests cover internal mode.
+        customer_mode_enabled=False,
         agent_free_limits_enabled=False,
         agent_runs_per_task=1,
         agent_duration=30,
@@ -330,6 +332,8 @@ def test_agent_inference_failure_keeps_completed_static_scan(client, session, mo
     settings = Settings(
         audit_browser_enabled=False,
         agent_pipeline_enabled=True,
+        # The customer release skips the agent stage; these tests cover internal mode.
+        customer_mode_enabled=False,
         agent_free_limits_enabled=True,
         agent_free_task_limit=1,
         agent_free_runs_per_task=1,
@@ -374,3 +378,51 @@ def test_agent_inference_failure_keeps_completed_static_scan(client, session, mo
     assert task["outcome"] == "UNAVAILABLE"
     run = client.get(f"/api/v1/agent-tasks/{task['id']}/runs").json()[0]
     assert run["failure_category"] == "infra_error"
+
+
+def test_customer_mode_never_starts_the_agent_stage(client, session, monkeypatch):
+    """The customer release is static-only even when the agent pipeline is configured."""
+    from contextlib import contextmanager
+
+    from app.engines.crawling.crawler import WebsiteCrawler
+    from app.engines.crawling.transport import Fetcher
+    from app.engines.crawling.urls import URLValidator
+    from app.services.crawls import execute_scan
+
+    @contextmanager
+    def factory():
+        yield session
+
+    settings = Settings(
+        audit_browser_enabled=False,
+        agent_pipeline_enabled=True,
+        customer_mode_enabled=False,  # Lets the internal API create the scan below.
+        scan_duration=60,
+    )
+    for module in ("app.api.routes", "app.services.audits", "app.services.agents"):
+        monkeypatch.setattr(f"{module}.get_settings", lambda: settings)
+    project = client.post(
+        "/api/v1/projects",
+        json={"name": "Customer mode fixture", "website_url": "https://fixture.example"},
+    ).json()
+    scan = client.post(f"/api/v1/projects/{project['id']}/scans").json()
+
+    customer = settings.model_copy(update={"customer_mode_enabled": True})
+    monkeypatch.setattr("app.services.crawls.get_settings", lambda: customer)
+
+    def crawler_factory(url, config):
+        return WebsiteCrawler(url, config, Fetcher(URLValidator(url), config, fixture_transport()))
+
+    execute_scan(
+        UUID(scan["id"]),
+        factory,
+        crawler_factory,
+        lambda *args: pytest.fail("No agent browser may start in customer mode"),
+        lambda *args: pytest.fail("No agent provider may start in customer mode"),
+    )
+    session.expire_all()
+    completed = client.get(f"/api/v1/scans/{scan['id']}").json()
+    assert completed["status"] == "COMPLETED"
+    assert completed["audit_summary"]["score_kind"] == "STATIC_READINESS"
+    assert "agent_stage" not in completed["audit_summary"]
+    assert client.get(f"/api/v1/scans/{scan['id']}/agent-tasks").json() == []

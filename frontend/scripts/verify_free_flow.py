@@ -120,11 +120,20 @@ def report(status):
     }
 
 
+# The deepest elements that extend past the viewport, to say what overflows.
+OVERFLOW_SCRIPT = """() => [...document.querySelectorAll('body *')]
+  .filter(el => el.getBoundingClientRect().right > innerWidth + 1
+    && ![...el.children].some(c => c.getBoundingClientRect().right > innerWidth + 1))
+  .slice(0, 6)
+  .map(el => ({tag: el.tagName, cls: String(el.className).slice(0, 60),
+    right: Math.round(el.getBoundingClientRect().right), text: (el.textContent || '').trim().slice(0, 40)}))"""
+
+
 async def check_view(page, label):
     await page.evaluate("document.fonts.ready")
-    assert await page.evaluate("document.documentElement.scrollWidth <= innerWidth"), (
-        f"Page overflow at {label}"
-    )
+    if not await page.evaluate("document.documentElement.scrollWidth <= innerWidth"):
+        offenders = await page.evaluate(OVERFLOW_SCRIPT)
+        raise AssertionError(f"Page overflow at {label}: {json.dumps(offenders)}")
     await page.add_script_tag(
         path=str(
             Path(__file__).resolve().parents[1] / "node_modules/axe-core/axe.min.js"

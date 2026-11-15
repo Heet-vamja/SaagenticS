@@ -122,9 +122,9 @@ function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="report-frame min-h-screen bg-background text-foreground">
       <header className="nav-glass sticky top-0 z-40 border-b border-border/60">
-        <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-4 px-4 sm:px-8">
+        <div className="mx-auto flex min-h-16 max-w-5xl items-center justify-between gap-3 px-3 min-[360px]:px-4 sm:px-8">
           <Brand />
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1">
             <ThemeToggle />
             <Button asChild size="sm" className="max-[359px]:px-3">
               <Link href="/#scan">
