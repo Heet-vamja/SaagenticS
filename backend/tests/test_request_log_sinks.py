@@ -122,3 +122,18 @@ def test_bigquery_schema_matches_the_logged_event():
     schema = Path(__file__).resolve().parents[2] / "deploy/bigquery/agent_requests.schema.json"
     columns = {column["name"] for column in json.loads(schema.read_text())}
     assert columns == {field.name for field in fields(RequestEvent)}
+
+
+def test_client_hash_is_keyed_even_without_a_configured_secret():
+    import hashlib
+
+    from pydantic import SecretStr
+
+    from app.services.request_log import client_hash
+
+    unkeyed = Settings(verification_secret=SecretStr(""))
+    value = client_hash("203.0.113.7", unkeyed)
+    assert value != hashlib.sha256(b"edge:203.0.113.7").hexdigest()
+    assert value == client_hash("203.0.113.7", unkeyed)  # Stable within a process.
+    keyed = Settings(verification_secret=SecretStr("operator-secret"))
+    assert client_hash("203.0.113.7", keyed) != value

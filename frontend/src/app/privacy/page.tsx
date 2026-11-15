@@ -48,9 +48,9 @@ const sections: LegalSection[] = [
         <p>
           We also store report-related actions, such as copying a fix,
           downloading an asset, marking a change applied, requesting a re-scan,
-          and submitting optional usefulness or price-interest feedback.
-          Technical request information may be processed in application or
-          hosting logs for operation and abuse prevention.
+          and submitting optional usefulness feedback. Technical request
+          information may be processed in application or hosting logs for
+          operation and abuse prevention.
         </p>
         <p>
           Separately configured browser-agent tests may retain action summaries,
@@ -98,6 +98,41 @@ const sections: LegalSection[] = [
           hosted inference. Model observations are designed to exclude
           credentials and form input values; public page text may still contain
           personal information.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "agent-lane",
+    title: "AgentLane router and agent lane (in development)",
+    content: (
+      <>
+        <p>
+          These features are in development and apply only to sites whose
+          operator has set them up. When an operator routes a domain through the
+          AgentLane router, requests to that domain pass through our service.
+          Requests from people are forwarded to the operator’s site unchanged
+          and are not logged by the router. Requests whose user agent identifies
+          a known AI agent or crawler are logged with the agent name and type,
+          the user-agent string, the request method, the path without its query
+          string, the response status, timing and size, whether the agent lane
+          answered, any agent action called, and a keyed hash of the client
+          network address. Raw addresses and query strings are not stored.
+          Logged requests are grouped into sessions per agent and kept in the
+          application database and, if the operator enables it, copied to Google
+          BigQuery.
+        </p>
+        <p>
+          To build an agent lane, we render a bounded number of public pages of
+          the operator’s site (50 by default) and send the public page text, and
+          the public data those pages load, to Google’s Gemini API to extract
+          products, prices, policies and common tasks. To label sessions, we
+          send Gemini each session’s request list (agent name, times, methods,
+          paths, statuses and actions, without client hashes). Agent QA sends
+          screenshots of the operator’s own site to Gemini Computer Use. Google
+          processes this content under its Gemini API terms, which differ
+          between free and paid plans; operators should review them. Session
+          labels are model judgments and are shown as such.
         </p>
       </>
     ),
@@ -160,7 +195,9 @@ const sections: LegalSection[] = [
           in the application database. Separately configured agent screenshots
           are stored with execution artifacts. Report access expires according
           to the deployment settings, but expiry does not automatically delete
-          the underlying scan records, exports, logs, or backups.
+          the underlying scan records, exports, logs, or backups. Router logs,
+          agent sessions, agent lane versions and QA results are kept until the
+          operator removes them.
         </p>
         <p>
           A production retention schedule and deletion contact are not yet

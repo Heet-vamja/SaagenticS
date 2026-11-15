@@ -134,6 +134,34 @@ const sections: LegalSection[] = [
     ),
   },
   {
+    id: "agent-lane",
+    title: "AgentLane router and agent lane (in development)",
+    content: (
+      <>
+        <p>
+          Route only domains you own or control. By routing a domain through the
+          AgentLane router you authorize us to forward its traffic, log requests
+          from AI agents and crawlers, render its public pages and send that
+          public content to Google’s Gemini API, as described in the{" "}
+          <Link href="/privacy#agent-lane">Privacy Policy</Link>. Where the law
+          requires it, you are responsible for telling your visitors about this
+          processing, for example in your own privacy notice.
+        </p>
+        <p>
+          The agent lane presents facts taken from your public site. A version
+          is published only after its prices match your site; review it before
+          and after publishing. Only user-initiated AI agents receive the agent
+          lane; search crawlers always receive your original site. Suggested
+          fixes are never applied automatically. These features are in
+          development and have no availability commitment: if the agent lane is
+          unavailable, requests pass through to your site, but routing a domain
+          through any proxy can affect its availability, so keep the ability to
+          point your DNS back to your origin.
+        </p>
+      </>
+    ),
+  },
+  {
     id: "data",
     title: "Your data and report access",
     content: (

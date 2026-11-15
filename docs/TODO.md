@@ -32,8 +32,9 @@ when done; link the commit or doc that closed them if useful.
 
 ## Product and copy
 
-- Privacy policy and terms do not yet cover edge router logging (agent requests, hashed
-  client identity) or agent variants.
+- Review the new "AgentLane router and agent lane" sections in `/privacy` and `/terms`
+  (drafted 2026-11-15 from the code's actual behavior). Operator name, contact and
+  jurisdiction are still placeholders in `frontend/src/lib/legal.ts`.
 - Landing still labels the agent lane "In development"; update only when it is live for
   a real customer.
 - Set a real `EDGE_DASHBOARD_TOKEN` in `.env` (local runs used a temporary value).

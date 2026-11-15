@@ -3,6 +3,7 @@
 import hashlib
 import hmac
 import logging
+import secrets
 import threading
 import time
 from dataclasses import dataclass
@@ -40,12 +41,16 @@ class RequestLogSink(Protocol):
     def write(self, events: list[RequestEvent]) -> None: ...
 
 
+# Used when no VERIFICATION_SECRET is configured. A plain hash of an IPv4 address can be
+# reversed by trying every address, so the fallback key is random per process: hashes stay
+# stable within a run (enough for 30-minute sessions) and are never reversible.
+_FALLBACK_KEY = secrets.token_bytes(32)
+
+
 def client_hash(identity: str, settings: Settings) -> str:
-    """Keyed hash when a secret is configured; never store the raw client address."""
-    key = settings.verification_secret.get_secret_value().encode()
-    if key:
-        return hmac.new(key, f"edge:{identity}".encode(), hashlib.sha256).hexdigest()
-    return hashlib.sha256(f"edge:{identity}".encode()).hexdigest()
+    """Keyed hash of the client identity; the raw client address is never stored."""
+    key = settings.verification_secret.get_secret_value().encode() or _FALLBACK_KEY
+    return hmac.new(key, f"edge:{identity}".encode(), hashlib.sha256).hexdigest()
 
 
 class PostgresRequestLogSink:
