@@ -82,11 +82,65 @@ def action_json_schema() -> dict:
     }
 
 
+# JSON Schema keywords Gemini's structured output accepts. `maxItems`, string lengths,
+# `additionalProperties` and `$ref` are rejected (HTTP 400, confirmed live); they stay
+# enforced by the local Pydantic validation that follows every reply.
+_GEMINI_SCHEMA_KEYS = {
+    "type",
+    "properties",
+    "required",
+    "items",
+    "enum",
+    "description",
+    "minItems",
+    "minimum",
+    "maximum",
+    "format",
+}
+
+
+def gemini_response_schema(schema: dict) -> dict:
+    """Pydantic JSON schema → the subset Gemini's structured output accepts:
+    references inlined, optional values as `nullable`, unsupported keywords dropped."""
+    definitions = schema.get("$defs", {})
+
+    def walk(node):
+        if isinstance(node, list):
+            return [walk(item) for item in node]
+        if not isinstance(node, dict):
+            return node
+        if "$ref" in node:
+            return walk(definitions[node["$ref"].rsplit("/", 1)[-1]])
+        if "anyOf" in node:
+            options = [option for option in node["anyOf"] if option.get("type") != "null"]
+            result = walk(options[0]) if len(options) == 1 else {"anyOf": walk(options)}
+            if len(options) < len(node["anyOf"]):
+                result = {**result, "nullable": True}
+            if "description" in node:
+                result["description"] = node["description"]
+            return result
+        result = {}
+        for key, value in node.items():
+            if key == "properties":
+                result[key] = {name: walk(child) for name, child in value.items()}
+            elif key == "items":
+                result[key] = walk(value)
+            elif key in _GEMINI_SCHEMA_KEYS:
+                result[key] = value
+        if "const" in node:
+            result["enum"] = [node["const"]]
+        return result
+
+    return walk(schema)
+
+
 class OpenAICompatibleProvider:
     """Shared bounded chat-completions and action-validation implementation."""
 
     provider_name = "openai-compatible"
     max_response_bytes = 65536
+    # Constrained JSON decoding via `response_format`; only where the endpoint supports it.
+    structured_output = False
 
     def __init__(self, settings: Settings, transport=None, headers=None):
         self.settings = settings
@@ -446,6 +500,16 @@ class OpenAICompatibleProvider:
             **self._sampling_parameters(),
             "max_tokens": self.settings.agent_max_output_tokens,
         }
+        if self.structured_output:
+            # Small models ignore a schema given only as text; constrained decoding keeps
+            # the reply in shape. The local validation below still applies every limit.
+            body["response_format"] = {
+                "type": "json_schema",
+                "json_schema": {
+                    "name": schema.__name__,
+                    "schema": gemini_response_schema(schema.model_json_schema()),
+                },
+            }
         self._reserve_budget(body)
         data = await self._request(body)
         message, _ = self._choice(data)
@@ -562,6 +626,7 @@ class GeminiProvider(OpenAICompatibleProvider):
 
     provider_name = "gemini"
     endpoint = "https://generativelanguage.googleapis.com/v1beta/openai"
+    structured_output = True
 
     def __init__(self, settings: Settings, transport=None):
         parsed = urlsplit(settings.agent_llm_base_url.rstrip("/"))

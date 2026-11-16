@@ -20,7 +20,8 @@ from app.core.config import Settings
 from app.engines.agent.provider import InferenceError
 from app.engines.variants.evidence import origin_of
 
-ENDPOINT = "https://generativelanguage.googleapis.com/v1/interactions"
+# Text and image inputs are only accepted on v1beta (confirmed against the live API).
+ENDPOINT = "https://generativelanguage.googleapis.com/v1beta/interactions"
 VIEWPORT = (1280, 800)
 INSTRUCTIONS = """You are an AI agent testing whether a website lets agents complete a task.
 Task: {task}
@@ -42,20 +43,27 @@ class RunResult:
 
 
 def _tokens(data: dict) -> tuple[int, int]:
-    """Usage field names are not documented for this API; read the common shapes."""
+    """Billed input and output tokens. The live API reports `total_input_tokens`,
+    `total_output_tokens` and `total_thought_tokens` (thinking is billed as output);
+    `initial_input_tokens` repeats part of the input and is not added again."""
     usage = data.get("usage") or data.get("usageMetadata") or {}
     if not isinstance(usage, dict):
         return 0, 0
-    inputs = outputs = 0
-    for key, value in usage.items():
-        if not isinstance(value, int):
-            continue
-        name = key.lower()
-        if "input" in name or "prompt" in name:
-            inputs += value
-        elif "output" in name or "candidates" in name:
-            outputs += value
-    return inputs, outputs
+
+    def count(key: str) -> int:
+        value = usage.get(key)
+        return value if isinstance(value, int) else 0
+
+    if "total_input_tokens" in usage or "total_output_tokens" in usage:
+        return (
+            count("total_input_tokens"),
+            count("total_output_tokens") + count("total_thought_tokens"),
+        )
+    # Other shapes (older or OpenAI-style usage blocks).
+    return (
+        count("promptTokenCount") + count("prompt_tokens") + count("input_tokens"),
+        count("candidatesTokenCount") + count("completion_tokens") + count("output_tokens"),
+    )
 
 
 def _final_text(data: dict) -> str | None:
