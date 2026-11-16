@@ -46,7 +46,7 @@ coding-assistant, general-LLM and developer-ticket variants. Quoted evidence is
 redacted and labelled untrusted, with visual/behavior preservation constraints
 and a rescan acceptance step.
 
-Edit `backend/app/engines/fixes/templates/v1.1.json` for prompt wording. Preserve
+Edit `backend/app/engines/fixes/templates/v1.2.json` for prompt wording (v1.2 adds: take labels, prices and availability from the site's data, never hard-code them). Preserve
 versioned templates once shipped; create a new file/version and select it in
 `prompts.py` for substantive revisions. Add rule IDs under `rules`; unknown rules
 receive the generic evidence-and-recommendation template.

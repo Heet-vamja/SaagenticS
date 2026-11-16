@@ -5,7 +5,7 @@ from pathlib import Path
 
 from app.engines.agent.privacy import public_url, redact
 
-TEMPLATE = json.loads(Path(__file__).with_name("templates").joinpath("v1.1.json").read_text())
+TEMPLATE = json.loads(Path(__file__).with_name("templates").joinpath("v1.2.json").read_text())
 
 
 def generate_prompts(check, evidence):

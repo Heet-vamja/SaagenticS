@@ -450,7 +450,7 @@ def test_new_diagnostics_persist_generate_prompts_and_verify_on_rescan(
         "Missing-path probe returned a success response",
     }
     assert titles <= {item["title"] for item in center["fixes"]}
-    assert all(item["template_version"] == "fix-prompts-v1.1" for item in center["fixes"])
+    assert all(item["template_version"] == "fix-prompts-v1.2" for item in center["fixes"])
     payload = client.get(path).json()
     assert payload["standards_coverage"]["mapping_version"] == "1.2.0"
     assert payload["standards_coverage"]["spec_version"] == "2.0.1"
@@ -477,3 +477,10 @@ def test_new_diagnostics_persist_generate_prompts_and_verify_on_rescan(
     }
     assert titles <= confirmed
     assert client.get(f"/api/v1/free-reports/{next_token}").json()["score"] == score
+
+
+def test_prompts_say_to_derive_dynamic_values_instead_of_hard_coding():
+    from app.engines.fixes.prompts import TEMPLATE
+
+    assert TEMPLATE["version"] == "fix-prompts-v1.2"
+    assert "never hard-code the values you saw" in TEMPLATE["constraints"]
