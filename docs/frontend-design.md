@@ -461,3 +461,35 @@ API requests are blocked during that entry check. No scans, emails, payments or
 model calls are made. Screenshots default to `/private/tmp/agentreadiness-landing`.
 The observed layout-shift total was 0.000 in all six combinations. Lighthouse
 performance scores were not measured; no new runtime dependencies were added.
+
+## Free report: verdict, areas and one findings list
+
+The report answers four questions in order. *How am I doing?* A flat score dial and a
+one-sentence verdict that never claims more than the score measures (finding and
+reading pages). *Where am I weak?* A per-area breakdown is shown to everyone; an area
+without scoreable evidence says "Not scored" and still counts its findings, so a high
+score next to high-priority usability issues reads as intended. *What do I fix, and
+how?* One prioritized list (`components/report-findings.tsx`): each finding says why it
+matters, then one found/fix block on a code surface: the page it was seen on, the
+element we found (red tint) and the fix (lime tint), one above the other, so nothing
+has to align across columns. Before purchase, findings covered by the
+free preview carry their page, evidence and the prompt in three variants; the rest show
+the recommendation and a lock note (evidence stays a paid feature, as the API enforces).
+After purchase, findings show their evidence and point to the Fix Center. *Is $19 worth
+it?* The unlock panel lists exactly what this report's Fix Kit adds, from the preview
+counts. Severity is sentence case; code blocks keep ligatures off.
+
+After purchase the order is findings → Fix Center → "What was checked" → reference
+coverage, then the shared "Check our work" and agent-testing blocks. Findings add how
+many other pages failed the same check ("and 8 more pages"). The check list
+(`components/report-checks.tsx`) shows each check once with its result across the
+sampled pages ("Issue on 1 page", "Passed on 9 pages"), issues first, with the page by
+page results inside; informational and not-applicable checks sit behind a toggle. Fix
+Center rows name their page and use the report's area names.
+
+The downloadable PDF (`backend/app/services/report_pdf.py`, `render_free_html`) follows the
+same design: verdict and score dial, areas with "Not scored", findings as found/fix blocks
+with page counts, and checks grouped once per check, issues first. Rendering is offline, so
+Instrument Sans and JetBrains Mono are embedded from `backend/app/services/pdf_fonts/`
+(SIL OFL). The backend image has no source mount: rebuild it to pick up template changes.
+

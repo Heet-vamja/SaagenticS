@@ -107,3 +107,60 @@ def test_pdf_explains_policy_scope_and_escapes_identities():
     assert "not verified provider access" in html
     assert "&lt;script&gt;bot&lt;/script&gt;" in html
     assert "<script>bot</script>" not in html
+
+
+def test_free_pdf_matches_the_online_report():
+    def check(status, title, url):
+        return {
+            "category": "Navigation and interaction",
+            "status": status,
+            "title": title,
+            "description": "Fixture check.",
+            "url": url,
+            "evidence_summary": None,
+            "recommendation": None,
+        }
+
+    html = render_free_html(
+        {
+            "website": "https://www.example.com/",
+            "score": 92.4,
+            "score_status": "PRELIMINARY",
+            "status": "COMPLETED",
+            "pages_crawled": 2,
+            "pages_discovered": 40,
+            "pages_failed": 0,
+            "coverage": {"checks_passed": 1, "checks_failed": 2, "checks_inconclusive": 0},
+            "category_scores": [
+                {"name": "Discoverability", "score": 100, "evaluated": 4, "total": 4},
+                {"name": "Agent usability", "score": None, "evaluated": 0, "total": 0},
+            ],
+            "insights": [
+                {
+                    "category": "Agent usability",
+                    "severity": "HIGH",
+                    "title": "Controls lack accessible names",
+                    "description": "Fixture insight.",
+                    "evidence_url": "https://www.example.com/a",
+                    "evidence_summary": "Example inspected element: <button>",
+                    "recommendation": '<button aria-label="Menu">…</button>',
+                }
+            ],
+            "checks": [
+                check("FAIL", "Controls lack accessible names", "https://www.example.com/a"),
+                check("FAIL", "Controls lack accessible names", "https://www.example.com/b"),
+                check("PASS", "Links have accessible names", "https://www.example.com/a"),
+                check("INFO", "No MCP server card listed", "https://www.example.com/"),
+            ],
+        }
+    )
+    assert "Agents can find and read most of example.com." in html
+    assert "1 high-priority issue affects how agents use your pages" in html
+    assert "Not scored" in html
+    assert "and 1 more page" in html
+    assert "Issue on all 2 pages" in html
+    assert "Passed on 1 page" in html
+    assert "Informational and not applicable" in html
+    assert "font-family:'Instrument Sans'" in html
+    assert "data:font/woff2;base64," in html
+    assert "&lt;button&gt;" in html and "<button>" not in html
