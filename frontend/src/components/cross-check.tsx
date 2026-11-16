@@ -132,7 +132,7 @@ export function CrossCheck({ website }: { website: string }) {
             Compare with independent tools
           </h3>
           <p className="mt-2 text-[14px] leading-6 text-muted-foreground">
-            These projects are not affiliated with AgentLane and do not endorse
+            These projects are not affiliated with Aglanetic and do not endorse
             it. Their checks, weights and page samples differ from ours, so
             compare individual findings, not totals.
           </p>

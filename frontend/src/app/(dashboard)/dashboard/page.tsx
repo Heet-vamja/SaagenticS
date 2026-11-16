@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { OwnerDashboard } from "@/components/owner-dashboard";
 
 export const metadata: Metadata = {
-  title: "Dashboard | AgentLane",
+  title: "Dashboard | Aglanetic",
   robots: { index: false, follow: false },
 };
 

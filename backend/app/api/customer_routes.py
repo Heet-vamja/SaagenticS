@@ -34,6 +34,14 @@ class CodeInput(BaseModel):
     code: str = Field(min_length=6, max_length=6)
 
 
+class EarlyAccessInput(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    email: str = Field(min_length=3, max_length=254)
+    website_url: str = Field(min_length=1, max_length=2048)
+    # Honeypot: hidden from people, often filled in by bots.
+    company: str = Field("", max_length=200)
+
+
 def privacy(response):
     response.headers.update(
         {
@@ -207,3 +215,16 @@ def skip_payment(token: str, request: Request, response: Response, session: Sess
     session.commit()
     privacy(response)
     return {"development_payment_skipped": True}
+
+
+@router.post("/early-access", status_code=202)
+def early_access(data: EarlyAccessInput, request: Request, response: Response, session: SessionDep):
+    """Join the agent lane early-access list. The same answer for new and repeat requests."""
+    privacy(response)
+    if not data.company:
+        from app.services.early_access import request_early_access
+
+        request_early_access(
+            session, data.email, data.website_url, client_identity(request, get_settings())
+        )
+    return {"status": "received"}

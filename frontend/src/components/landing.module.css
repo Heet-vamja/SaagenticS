@@ -293,97 +293,11 @@
   font-size: 12.5px;
   font-weight: 500;
 }
-.score {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-top: 24px;
-}
-.score strong {
-  font-family: var(--font-heading), sans-serif;
-  font-size: 60px;
-  font-weight: 560;
-  line-height: 1;
-  letter-spacing: -0.04em;
-}
-.score span {
-  font-size: 15px;
-  color: var(--muted-foreground);
-}
-/* Ten segments: a plain meter, read at a glance, no gauge theatrics. */
-.meter {
-  display: grid;
-  grid-template-columns: repeat(10, minmax(0, 1fr));
-  gap: 4px;
-  margin-top: 16px;
-}
-.meter i {
-  height: 6px;
-  border-radius: 999px;
-  background: var(--muted);
-}
-.meter i[data-on] {
-  background: var(--foreground);
-  transform-origin: left center;
-  animation: meter-fill 0.42s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  animation-delay: calc(0.35s + var(--i, 0) * 0.09s);
-}
-@keyframes meter-fill {
-  from {
-    transform: scaleX(0);
-  }
-}
-.findings {
-  margin-top: 24px;
-  border-top: 1px solid var(--border);
-}
-.findings li {
-  animation: settle 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-  display: grid;
-  grid-template-columns: 22px minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 15px;
-}
-.findings li:nth-child(1) {
-  animation-delay: 0.75s;
-}
-.findings li:nth-child(2) {
-  animation-delay: 0.85s;
-}
-.findings li:nth-child(3) {
-  animation-delay: 0.95s;
-}
 @keyframes settle {
   from {
     opacity: 0;
     transform: translateY(8px);
   }
-}
-.mark {
-  display: grid;
-  width: 22px;
-  height: 22px;
-  place-items: center;
-  border-radius: 999px;
-}
-.mark[data-tone="danger"] {
-  background: var(--danger-soft);
-  color: var(--danger);
-}
-.mark[data-tone="warning"] {
-  background: var(--warning-soft);
-  color: var(--warning);
-}
-.mark[data-tone="success"] {
-  background: var(--success-soft);
-  color: var(--success);
-}
-.findings li > span:last-child {
-  font-size: 13px;
-  color: var(--muted-foreground);
 }
 .reportFoot {
   display: flex;
@@ -397,6 +311,78 @@
 .reportFoot strong {
   color: var(--foreground);
   font-weight: 600;
+}
+
+/* Live-requests card beside the hero copy: each request and the lane it takes. */
+.lanes {
+  margin-top: 4px;
+}
+.lanes li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 15px 0;
+  border-bottom: 1px solid var(--border);
+  animation: settle 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+.lanes li:nth-child(2) {
+  animation-delay: 0.15s;
+}
+.lanes li:nth-child(3) {
+  animation-delay: 0.3s;
+}
+.lanes li:nth-child(4) {
+  animation-delay: 0.45s;
+}
+.lanes li > span:first-child strong {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+}
+.lanes li > span:first-child span {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--muted-foreground);
+  overflow-wrap: anywhere;
+}
+.laneTo {
+  font-size: 13px;
+  color: var(--muted-foreground);
+  text-align: right;
+}
+.laneTag {
+  border-radius: 7px;
+  padding: 3px 9px;
+  background: var(--brand-lime);
+  color: var(--brand-ink);
+  font-size: 12.5px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.liveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 22px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: var(--card);
+  font-size: 13px;
+  font-weight: 500;
+}
+.liveBadge span {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--success);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--success) 18%, transparent);
+}
+.amountWords.amountWords {
+  font-size: clamp(1.75rem, 2.6vw, 2.25rem);
+  line-height: 1.15;
 }
 
 /* ── Website entry (hero and closing forms) ─────────────────────────── */
@@ -895,7 +881,7 @@
 /* ── Pricing ────────────────────────────────────────────────────────── */
 .prices {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
   margin-top: 56px;
 }
@@ -928,6 +914,106 @@
   font-weight: 500;
   color: var(--muted-foreground);
 }
+/* Agent lane early access: the paid card holds a short form instead of a price. */
+.planEarly .amount {
+  margin-top: 20px;
+}
+.earlyPitch {
+  margin-top: 12px;
+  font-size: 15px;
+  line-height: 1.6;
+  color: #b4b5b0;
+}
+.earlyForm {
+  display: grid;
+  gap: 8px;
+  margin-top: 24px;
+}
+.earlyForm label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #d9d9d4;
+}
+.earlyForm input {
+  min-height: 46px;
+  margin-bottom: 6px;
+  border: 1px solid #2a2d33;
+  border-radius: var(--radius-control);
+  padding: 0 14px;
+  background: #1d2025;
+  color: #f3f2ec;
+  font-size: 15px;
+}
+.earlyForm input::placeholder {
+  color: #8e9096;
+}
+.earlyForm input:focus-visible {
+  border-color: var(--brand-lime);
+  outline: 2px solid color-mix(in srgb, var(--brand-lime) 45%, transparent);
+  outline-offset: 1px;
+}
+.trap {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+.earlyError {
+  font-size: 13.5px;
+  color: #ff9fb2;
+}
+.earlyNote {
+  margin-top: 4px;
+  font-size: 12.5px;
+  color: #b4b5b0;
+}
+.earlyDone {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr);
+  gap: 12px;
+  margin-top: 24px;
+  border-radius: 16px;
+  padding: 16px;
+  background: color-mix(in srgb, var(--brand-lime) 12%, transparent);
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: #d9d9d4;
+}
+.earlyDone > span {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--brand-lime);
+  color: var(--brand-ink);
+}
+.earlyDone strong {
+  display: block;
+  color: #f3f2ec;
+  font-size: 16px;
+}
+.earlyDone a {
+  color: var(--brand-lime);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.earlyLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 14px;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 4px;
+}
+.earlyLink:hover {
+  text-decoration-color: currentColor;
+}
 .planHint {
   margin-top: 12px;
   font-size: 13.5px;
@@ -946,6 +1032,26 @@
   color: var(--brand-ink);
   font-size: 12.5px;
   font-weight: 600;
+}
+/* Only the agent lane carries the lime highlight in pricing. */
+.oneTimeQuiet.oneTimeQuiet {
+  background: var(--muted);
+  color: var(--muted-foreground);
+}
+.closingLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  color: var(--brand-lime);
+  font-size: 14.5px;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--brand-lime) 40%, transparent);
+  text-underline-offset: 4px;
+}
+.closingLink:hover {
+  text-decoration-color: currentColor;
 }
 .amount {
   display: flex;
@@ -1109,6 +1215,10 @@
 
 /* ── Responsive ─────────────────────────────────────────────────────── */
 @media (max-width: 1023px) {
+  .prices {
+    grid-template-columns: 1fr;
+    max-width: 560px;
+  }
   .heroGrid,
   .split {
     grid-template-columns: 1fr;
@@ -1210,9 +1320,6 @@
   }
   .report {
     padding: 20px;
-  }
-  .score strong {
-    font-size: 52px;
   }
 }
 @media (prefers-reduced-motion: reduce) {

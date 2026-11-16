@@ -186,6 +186,11 @@ export const api = {
       development_access?: boolean;
       development_skip_available?: boolean;
     }>(`/verification/status?website_url=${encodeURIComponent(website_url)}`),
+  requestEarlyAccess: (email: string, website_url: string, company = "") =>
+    request<{ status: "received" }>("/early-access", {
+      method: "POST",
+      body: JSON.stringify({ email, website_url, company }),
+    }),
   requestCode: (website_url: string, email?: string, candidate_id?: string) =>
     request<{ challenge_id: string; email_hint: string; expires_in: number }>(
       "/verification/request",

@@ -17,7 +17,6 @@ import {
   Globe2,
   LoaderCircle,
   Menu,
-  Minus,
   X,
 } from "lucide-react";
 import { api } from "@/lib/api";
@@ -28,6 +27,8 @@ import { InlineError } from "./states";
 import { ScanTransition } from "./scan-transition";
 import { DomainVerification } from "./domain-verification";
 import { AgentLaneShowcase } from "./agent-lane-showcase";
+import { AgentRace } from "./agent-race";
+import { EarlyAccessForm } from "./early-access";
 import { MarketingFooter } from "./marketing-nav";
 import { Reveal } from "./reveal";
 const subscribeToHydration = () => () => {};
@@ -205,27 +206,25 @@ const CHECKS = [
 ];
 
 const NAV_LINKS = [
+  ["Demo", "#demo"],
   ["How it works", "#how-it-works"],
+  ["Fix Kit", "#fix-kit"],
   ["Pricing", "#pricing"],
-  ["Agent lane", "#agent-lane"],
   ["Docs", "/docs"],
 ] as const;
 
 const STEPS = [
   {
-    title: "See what blocks agents",
-    price: "Free",
-    text: "Confirm your email and we inspect up to 10 public pages. You get a preliminary score, up to 10 priority issues and your first three fixes.",
+    title: "Connect your domain",
+    text: "One DNS record, or a Cloudflare connection. We set it up with you during early access. Your site, hosting and URLs stay exactly the same.",
   },
   {
-    title: "Fix it with exact steps",
-    price: "$19 once, per domain",
-    text: "Every finding with its evidence, copy-ready prompts for your coding assistant, asset drafts and a downloadable fix pack.",
+    title: "We build your agent lane",
+    text: "From your public pages: clean pages at the same addresses, llms.txt, structured data, and actions agents can call over an API or MCP. Every price and stock level is checked against your site before it goes live.",
   },
   {
-    title: "Check that it worked",
-    price: "Re-scans included for 30 days",
-    text: "Re-scan the same domain after you change something. A fix counts only when new evidence confirms it.",
+    title: "See every agent visit",
+    text: "Which agents came, what they tried to do, where they got stuck and what to fix. We re-test with real AI agents to prove it worked.",
   },
 ];
 
@@ -256,41 +255,49 @@ const PROMPTS = [
   {
     id: "assistant",
     label: "Coding assistant",
-    text: "On /trail-runner, give each size button its visible size as text (UK 7 to UK 10). Keep UK 10 disabled. Don’t change the layout or styling.",
+    text: "On /trail-runner, label each size button with its size as visible text (for example “UK 9”), taken from the product’s size data. Disable a size whenever its stock is zero, so the buttons follow your inventory. Don’t change the layout or styling.",
   },
   {
     id: "general",
     label: "General AI",
-    text: "The size buttons on my product page have no text, so AI agents can’t tell the sizes apart. Show me how to give each button its size as visible text and keep the sold-out size disabled.",
+    text: "The size buttons on my product page have no text, so AI agents can’t tell the sizes apart. Show me how to render each size’s name on its button from the product data, and disable the button whenever that size has no stock.",
   },
   {
     id: "ticket",
     label: "Dev ticket",
-    text: "Size picker on /trail-runner: buttons have no accessible names. Add the visible size (UK 7 to UK 10) to each button; keep UK 10 disabled. Done when a re-scan passes.",
+    text: "Size picker on /trail-runner: buttons have no accessible names. Render each size’s label (e.g. UK 9) from the product’s size data and set disabled when its stock is 0. Done when a re-scan passes.",
   },
 ] as const;
 
 const QUESTIONS = [
   [
-    "Does the free scan run real AI agents?",
-    "Not yet. Today’s report uses deterministic checks of your public pages, content, access policies and markup. Real browser-agent testing is planned for Christmas 2026 and is separate from the current report.",
+    "Will my visitors notice anything?",
+    "No. People always get your site as it is, from your own servers. Only AI agents acting for a person, like ChatGPT-User or Claude-User, are sent to the agent lane.",
+  ],
+  [
+    "Isn’t serving agents a different page cloaking?",
+    "Cloaking means showing search engines something different from people. We never do: Googlebot, Bingbot and other crawlers always see your original pages. The agent lane carries the same facts as your site, checked against it before every update.",
+  ],
+  [
+    "Which agents get the agent lane?",
+    "Agents that fetch a page because a person asked them to: ChatGPT-User, Claude-User, Perplexity-User, Google’s agents and similar. The list is versioned and kept up to date.",
+  ],
+  [
+    "What happens if Aglanetic goes down?",
+    "Your site keeps working. The lane fails open: if anything on our side is unavailable, every visitor, agent or person, is passed straight to your site. You can also pause the lane from your dashboard at any time.",
+  ],
+  [
+    "Do I need Cloudflare?",
+    "No. You can point one DNS record at us, or connect your Cloudflare account if you use it. During early access we do the setup with you.",
   ],
   [
     "Will this get my website recommended by ChatGPT?",
-    "We can identify technical barriers, not guarantee recommendations, rankings or visibility in any AI platform. The score reflects only the checks actually completed.",
-  ],
-  [
-    "Do you change anything on my website?",
-    "No. Scanning is read-only. You or your developer choose which fixes to apply. Asset drafts must be reviewed before publishing.",
-  ],
-  [
-    "Is the agent lane available today?",
-    "Not yet. It’s in development: an agent version of your site at the same URLs, actions agents can call, and a dashboard of agent visits and failures. The free scan and Fix Kit are available now, and the scan shows what the agent lane would fix.",
+    "We make your site easier for agents to read and use, and we measure it. We can’t promise recommendations or rankings in any AI platform.",
   ],
 ];
 
 // Illustrative names only; the scan does not test any specific model.
-// Logos keep each brand's color; the pill stays AgentLane lime.
+// Logos keep each brand's color; the pill stays brand lime.
 const AGENT_NAMES: {
   name: string;
   logo?: string;
@@ -370,56 +377,63 @@ function RotatingAgentName() {
   );
 }
 
-/** A calm example of the report beside the hero copy. Illustrative data only. */
-function ExampleReport() {
+// Illustrative requests on the demo store, routed the way the router routes them.
+const LANE_LOG = [
+  {
+    who: "Chrome",
+    what: "A person · /product/trail-runner",
+    to: "Your site, unchanged",
+    lane: false,
+  },
+  {
+    who: "ChatGPT-User",
+    what: "Agent · “Is the Trail Runner in UK 9?”",
+    to: "Agent lane",
+    lane: true,
+  },
+  {
+    who: "Claude-User",
+    what: "Agent · check_delivery 560001",
+    to: "Agent lane",
+    lane: true,
+  },
+  {
+    who: "Googlebot",
+    what: "Search crawler · /",
+    to: "Your site, never cloaked",
+    lane: false,
+  },
+];
+
+/** Requests arriving at one site and the lane each one takes. Illustrative. */
+function LaneLog() {
   return (
     <figure
       className={styles.report}
-      aria-label="Example readiness report with illustrative data"
+      aria-label="Example: requests to one site and the lane each takes"
     >
       <div className={styles.reportTop}>
-        <span className={styles.reportSite}>northstar.example</span>
+        <span className={styles.reportSite}>
+          northstar.example · live requests
+        </span>
         <span className={styles.example}>Example</span>
       </div>
-      <p className={styles.score}>
-        <strong>42</strong>
-        <span>out of 100 · agent readiness</span>
-      </p>
-      <div className={styles.meter} aria-hidden="true">
-        {Array.from({ length: 10 }, (_, i) => (
-          <i
-            key={i}
-            data-on={i < 4 ? "" : undefined}
-            style={{ "--i": i } as React.CSSProperties}
-          />
+      <ul className={styles.lanes}>
+        {LANE_LOG.map((row) => (
+          <li key={row.who}>
+            <span>
+              <strong>{row.who}</strong>
+              <span>{row.what}</span>
+            </span>
+            <span className={row.lane ? styles.laneTag : styles.laneTo}>
+              {row.to}
+            </span>
+          </li>
         ))}
-      </div>
-      <ul className={styles.findings}>
-        <li>
-          <span className={styles.mark} data-tone="danger">
-            <X size={12} strokeWidth={2.6} aria-hidden="true" />
-          </span>
-          <span>Size buttons have no names</span>
-          <span>Issue</span>
-        </li>
-        <li>
-          <span className={styles.mark} data-tone="warning">
-            <Minus size={12} strokeWidth={2.6} aria-hidden="true" />
-          </span>
-          <span>Navigation names need review</span>
-          <span>Review</span>
-        </li>
-        <li>
-          <span className={styles.mark} data-tone="success">
-            <Check size={12} strokeWidth={2.6} aria-hidden="true" />
-          </span>
-          <span>Sitemap is reachable</span>
-          <span>Pass</span>
-        </li>
       </ul>
       <figcaption className={styles.reportFoot}>
         <span>
-          <strong>3 fixes</strong> ready for your developer
+          <strong>2 agents</strong> served in the last minute
         </span>
         <span>Illustrative</span>
       </figcaption>
@@ -427,8 +441,6 @@ function ExampleReport() {
   );
 }
 
-/** One size picker three ways: as a person sees it, as an agent receives it
- * today, and as an agent receives it once the Fix Kit's change is in. */
 /** Fixed markup as [before, added, after]: the added text is highlighted. */
 const FIXED_SIZES = [
   ['<div class="sizes">', "", ""],
@@ -680,6 +692,10 @@ export function Landing() {
       <section ref={hero} className={styles.hero} id="scan">
         <div className={`${styles.wrap} ${styles.heroGrid}`}>
           <div>
+            <p className={styles.liveBadge}>
+              <span aria-hidden="true" />
+              The agent lane is live
+            </p>
             <h1 className={styles.headline}>
               <span className={`hero-title-row ${styles.row}`}>
                 Be the website
@@ -692,20 +708,27 @@ export function Landing() {
               </span>
             </h1>
             <p className={styles.heroLede}>
-              Find what blocks AI agents on your public pages, hand your
-              developer the fix, and check that it worked.
+              Aglanetic gives AI agents their own lane to your site. People see
+              it exactly as it is. ChatGPT, Claude and other agents get a
+              version they can read and act on, and you see every visit.
             </p>
             <WebsiteInput />
+            <a href="#early-access" className={styles.earlyLink}>
+              Want the agent lane on your site? Request early access{" "}
+              <ArrowRight size={14} aria-hidden="true" />
+            </a>
           </div>
-          <ExampleReport />
+          <LaneLog />
         </div>
       </section>
+
+      <AgentRace />
 
       <section className={styles.section} aria-labelledby="problem-title">
         <div className={styles.wrap}>
           <div className={`${styles.split} ${styles.splitTop}`}>
             <Reveal>
-              <p className={styles.label}>The problem</p>
+              <p className={styles.label}>Why it happens</p>
               <h2 id="problem-title" className={styles.title}>
                 Your site works for people. <span>Agents fail quietly.</span>
               </h2>
@@ -728,9 +751,6 @@ export function Landing() {
               </ol>
             </Reveal>
           </div>
-          <Reveal className={styles.compare}>
-            <PersonVersusAgent />
-          </Reveal>
         </div>
       </section>
 
@@ -743,7 +763,7 @@ export function Landing() {
           <Reveal>
             <p className={styles.label}>How it works</p>
             <h2 id="how-title" className={styles.title}>
-              Find it. Fix it. Check it again.
+              Connect. We build the lane. You watch it work.
             </h2>
           </Reveal>
           <ol className={styles.steps}>
@@ -751,64 +771,54 @@ export function Landing() {
               <Reveal as="li" key={step.title} delay={i * 80}>
                 <span className={styles.stepNumber}>0{i + 1}</span>
                 <h3>{step.title}</h3>
-                <p className={styles.stepPrice}>{step.price}</p>
                 <p>{step.text}</p>
               </Reveal>
             ))}
           </ol>
-          <Reveal className={styles.checks}>
-            <p className={styles.label}>What the free scan checks</p>
-            <ul>
-              {CHECKS.map((check) => (
-                <li key={check}>{check}</li>
-              ))}
-            </ul>
-            <p className={styles.checksNote}>
-              Static evidence finds likely barriers; it doesn’t prove an AI
-              agent can finish a task.{" "}
-              <Link href="/docs">
-                Read about coverage <ArrowUpRight size={13} />
-              </Link>
-            </p>
-          </Reveal>
         </div>
       </section>
+
+      <AgentLaneShowcase />
 
       <section
         id="fix-kit"
         className={`${styles.section} ${styles.kit}`}
         aria-labelledby="kit-title"
       >
-        <div className={`${styles.wrap} ${styles.split}`}>
-          <Reveal>
-            <p className={styles.label}>Inside the Fix Kit</p>
-            <h2 id="kit-title" className={styles.title}>
-              Every fix comes with proof and a prompt.
-            </h2>
-            <p className={styles.intro}>
-              Hand it to your developer or paste it into your coding assistant.
-              Then re-scan: a fix counts only when new evidence confirms it.
-            </p>
-            <ul className={styles.proof}>
-              {PRINCIPLES.map(([title, text]) => (
-                <li key={title}>
-                  <span aria-hidden="true">
-                    <Check size={13} strokeWidth={3} />
-                  </span>
-                  <p>
-                    <strong>{title}</strong> {text}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          </Reveal>
-          <Reveal delay={100}>
-            <FixKitPreview />
+        <div className={styles.wrap}>
+          <div className={styles.split}>
+            <Reveal>
+              <p className={styles.label}>Prefer to fix it yourself?</p>
+              <h2 id="kit-title" className={styles.title}>
+                The Fix Kit: every fix with proof and a prompt.
+              </h2>
+              <p className={styles.intro}>
+                Start with the free scan, then hand each fix to your developer
+                or paste it into your coding assistant. A fix counts only when a
+                re-scan confirms it.
+              </p>
+              <ul className={styles.proof}>
+                {PRINCIPLES.map(([title, text]) => (
+                  <li key={title}>
+                    <span aria-hidden="true">
+                      <Check size={13} strokeWidth={3} />
+                    </span>
+                    <p>
+                      <strong>{title}</strong> {text}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </Reveal>
+            <Reveal delay={100}>
+              <FixKitPreview />
+            </Reveal>
+          </div>
+          <Reveal className={styles.compare}>
+            <PersonVersusAgent />
           </Reveal>
         </div>
       </section>
-
-      <AgentLaneShowcase />
 
       <section
         id="pricing"
@@ -819,7 +829,7 @@ export function Landing() {
           <Reveal>
             <p className={styles.label}>Pricing</p>
             <h2 id="pricing-title" className={styles.title}>
-              Start free. Pay once when you want the kit.
+              Start free. Go as far as you need.
             </h2>
           </Reveal>
           <div className={styles.prices}>
@@ -853,14 +863,12 @@ export function Landing() {
               </Button>
               <p className={styles.planHint}>Email code, no account.</p>
             </Reveal>
-            <Reveal
-              as="article"
-              delay={100}
-              className={`${styles.plan} ${styles.planPaid}`}
-            >
+            <Reveal as="article" delay={80} className={styles.plan}>
               <div className={styles.planTop}>
                 <p className={styles.planName}>Fix Kit</p>
-                <span className={styles.oneTime}>One-time payment</span>
+                <span className={`${styles.oneTime} ${styles.oneTimeQuiet}`}>
+                  One-time payment
+                </span>
               </div>
               <p className={styles.amount}>
                 <strong>$19</strong>
@@ -883,7 +891,7 @@ export function Landing() {
                   included for 30 days
                 </li>
               </ul>
-              <Button asChild variant="lime" size="lg">
+              <Button asChild size="lg">
                 <a href="#scan">
                   Get the Fix Kit <ArrowRight size={16} />
                 </a>
@@ -892,11 +900,47 @@ export function Landing() {
                 Starts with a free scan of your domain.
               </p>
             </Reveal>
+            <Reveal
+              as="article"
+              delay={160}
+              id="early-access"
+              className={`${styles.plan} ${styles.planPaid} ${styles.planEarly}`}
+            >
+              <div className={styles.planTop}>
+                <p className={styles.planName}>Agent lane</p>
+                <span className={styles.oneTime}>Early access</span>
+              </div>
+              <p className={styles.amount}>
+                <strong className={styles.amountWords}>
+                  Be one of the first sites agents can really use.
+                </strong>
+              </p>
+              <p className={styles.earlyPitch}>
+                We’re setting up a small number of sites by hand, with you. Tell
+                us where to start.
+              </p>
+              <EarlyAccessForm />
+            </Reveal>
           </div>
           <p className={styles.priceNote}>
             Email verification required. Assets are generated only when
-            supported by your crawl. AI agent testing is coming separately.
+            supported by your crawl.
           </p>
+          <Reveal className={styles.checks}>
+            <p className={styles.label}>What the free scan checks</p>
+            <ul>
+              {CHECKS.map((check) => (
+                <li key={check}>{check}</li>
+              ))}
+            </ul>
+            <p className={styles.checksNote}>
+              Static evidence finds likely barriers; it doesn’t prove an AI
+              agent can finish a task.{" "}
+              <Link href="/docs">
+                Read about coverage <ArrowUpRight size={13} />
+              </Link>
+            </p>
+          </Reveal>
         </div>
       </section>
 
@@ -930,10 +974,13 @@ export function Landing() {
           <Reveal className={styles.closingCard}>
             <h2>Find out what agents run into on your site.</h2>
             <WebsiteInput compact />
+            <a href="#early-access" className={styles.closingLink}>
+              Want us to run an agent lane for you? Request early access{" "}
+              <ArrowRight size={14} aria-hidden="true" />
+            </a>
             <p className={styles.disclosure}>
-              Static checks only. Agent names and logos are examples, belong to
-              their owners and don’t endorse AgentLane; the scan doesn’t test
-              specific models.
+              The free scan uses static checks. Agent names and logos are
+              examples, belong to their owners and don’t endorse Aglanetic.
             </p>
           </Reveal>
         </div>

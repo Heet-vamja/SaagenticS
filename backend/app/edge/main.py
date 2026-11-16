@@ -154,7 +154,7 @@ def create_app(
             return error(400, "invalid_host", "The request host is not valid")
         site = await site_for(host)
         if site is None:
-            return error(404, "unknown_site", "This host is not served by AgentLane")
+            return error(404, "unknown_site", "This host is not served by Aglanetic")
 
         user_agent = request.headers.get("user-agent") or ""
         visitor = classify(user_agent)

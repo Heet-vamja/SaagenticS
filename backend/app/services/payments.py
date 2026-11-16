@@ -107,7 +107,7 @@ def checkout(session, token, cookie, identity):
             "line_items[0][quantity]": "1",
             "line_items[0][price_data][currency]": "usd",
             "line_items[0][price_data][unit_amount]": "1900",
-            "line_items[0][price_data][product_data][name]": f"AgentLane full report — {verification.domain}",
+            "line_items[0][price_data][product_data][name]": f"Aglanetic full report — {verification.domain}",
             "line_items[0][price_data][product_data][description]": "Full static report, fix guidance and 30 days of same-domain re-scans. AI agent testing is coming Christmas 2026.",
             "success_url": f"{base}/free-reports/{token}?checkout=success",
             "cancel_url": f"{base}/free-reports/{token}?checkout=cancelled",

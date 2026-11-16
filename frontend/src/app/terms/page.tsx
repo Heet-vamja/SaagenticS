@@ -4,9 +4,9 @@ import { LegalPage, type LegalSection } from "@/components/legal-page";
 import { LEGAL_DETAILS } from "@/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Terms & Conditions | AgentLane",
+  title: "Terms & Conditions | Aglanetic",
   description:
-    "Terms for responsible website scanning, readiness reports, generated fixes, and use of AgentLane.",
+    "Terms for responsible website scanning, readiness reports, generated fixes, and use of Aglanetic.",
 };
 const sections: LegalSection[] = [
   {
@@ -15,7 +15,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          These Terms & Conditions describe the conditions for using AgentLane,
+          These Terms & Conditions describe the conditions for using Aglanetic,
           including website scans, reports, generated fix materials, and paid
           domain report unlocks. Real browser-agent testing is coming Christmas
           2026 and is not included in the current purchase. Use the service only
@@ -36,7 +36,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          AgentLane inspects public website content and technical signals to
+          Aglanetic inspects public website content and technical signals to
           identify potential barriers for AI agents. Reports can include
           preliminary scores, findings, evidence, deterministic fix prompts,
           generated asset drafts, and re-scan comparisons. Availability and
@@ -135,12 +135,12 @@ const sections: LegalSection[] = [
   },
   {
     id: "agent-lane",
-    title: "AgentLane router and agent lane (in development)",
+    title: "Aglanetic router and agent lane",
     content: (
       <>
         <p>
           Route only domains you own or control. By routing a domain through the
-          AgentLane router you authorize us to forward its traffic, log requests
+          Aglanetic router you authorize us to forward its traffic, log requests
           from AI agents and crawlers, render its public pages and send that
           public content to Google’s Gemini API, as described in the{" "}
           <Link href="/privacy#agent-lane">Privacy Policy</Link>. Where the law
@@ -188,7 +188,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          Original AgentLane branding, interface design, and website content
+          Original Aglanetic branding, interface design, and website content
           belong to their respective rights holders. Do not copy branding,
           remove attribution notices, impersonate the service, or use the
           interface in a misleading way.

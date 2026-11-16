@@ -147,11 +147,11 @@ def send_code(email, code, domain):
     if not settings.smtp_username or not password or not settings.smtp_from:
         raise HTTPException(503, "Email delivery is not configured yet")
     message = EmailMessage()
-    message["Subject"] = "Your AgentLane verification code"
+    message["Subject"] = "Your Aglanetic verification code"
     message["From"] = settings.smtp_from
     message["To"] = email
     message.set_content(
-        f"Your verification code is {code}.\n\nIt allows a read-only AgentLane scan of {domain}. It expires in 10 minutes.\n\nOnly enter it on the AgentLane website if you requested this scan. Do not forward or share it. If you did not request this, ignore this email. No scan starts until verification succeeds."
+        f"Your verification code is {code}.\n\nIt allows a read-only Aglanetic scan of {domain}. It expires in 10 minutes.\n\nOnly enter it on the Aglanetic website if you requested this scan. Do not forward or share it. If you did not request this, ignore this email. No scan starts until verification succeeds."
     )
     try:
         context = ssl.create_default_context()

@@ -94,7 +94,7 @@ const FOOTER_GROUPS: {
     links: [
       { label: "How it works", href: "/#how-it-works" },
       { label: "Pricing", href: "/#pricing" },
-      { label: "Agent lane (in development)", href: "/#agent-lane" },
+      { label: "Agent lane", href: "/#agent-lane" },
     ],
   },
   {
@@ -167,7 +167,7 @@ export function MarketingFooter() {
       </div>
       <div className="border-t">
         <div className="marketing-wrap flex flex-wrap items-center justify-between gap-3 py-6 text-[13px] text-muted-foreground">
-          <p>© {LEGAL_DETAILS.copyrightYear} AgentLane. All rights reserved.</p>
+          <p>© {LEGAL_DETAILS.copyrightYear} Aglanetic. All rights reserved.</p>
           <p>Read-only checks. No changes are made to your website.</p>
         </div>
       </div>

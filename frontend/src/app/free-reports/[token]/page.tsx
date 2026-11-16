@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { FreeScanReport } from "@/components/free-scan-report";
 
 export const metadata: Metadata = {
-  title: "Your free readiness report | AgentLane",
+  title: "Your free readiness report | Aglanetic",
   robots: { index: false, follow: false },
   referrer: "no-referrer",
 };

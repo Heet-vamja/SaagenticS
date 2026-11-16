@@ -1,14 +1,10 @@
-/* Agent lane (in development): words left, the routing card right. Matches the
-   landing's section rhythm in landing.module.css. */
+/* What we build: four pieces of the agent lane with real excerpts, then the
+   pre-launch check. Matches the landing's section rhythm in landing.module.css. */
 .section {
   padding: 128px 0;
   border-top: 1px solid var(--border);
 }
 .wrap {
-  display: grid;
-  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-  gap: 72px;
-  align-items: center;
   width: min(1200px, calc(100% - 40px));
   margin-inline: auto;
 }
@@ -18,133 +14,101 @@
   color: var(--muted-foreground);
 }
 .title {
+  max-width: 22ch;
   margin-top: 14px;
   font-size: clamp(2rem, 3.8vw, 3rem);
   font-weight: 560;
   line-height: 1.08;
   letter-spacing: -0.03em;
 }
-.title span {
-  color: var(--muted-foreground);
-}
 .intro {
-  max-width: 46ch;
-  margin-top: 20px;
+  max-width: 60ch;
+  margin-top: 18px;
   font-size: 18px;
   line-height: 1.6;
   color: var(--muted-foreground);
 }
-.routes {
+.pieces {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 44px;
+}
+.pieces li {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 24px;
-  padding: 8px;
+  border-radius: 18px;
   background: var(--card);
 }
-.routes li {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: center;
-  gap: 12px;
-  padding: 18px 20px;
-}
-.routes li + li:not([data-lane]) {
-  border-top: 1px solid var(--border);
-}
-.routes li[data-lane] {
-  border-radius: 16px;
-  background: var(--accent-soft);
-}
-.routes li[data-lane] + li {
-  border-top: 0;
-}
-.who {
-  font-weight: 500;
-}
-.routes li[data-lane] .who {
-  color: var(--signal);
-}
-.to {
-  font-size: 14px;
-  color: var(--muted-foreground);
-}
-.routes li[data-lane] .to {
-  position: relative;
-  border-radius: 8px;
-  padding: 4px 10px;
-  background: var(--brand-lime);
-  color: var(--brand-ink);
-  font-size: 13.5px;
+.pieces h3 {
+  padding: 18px 18px 0;
+  font-size: 16px;
   font-weight: 600;
 }
-/* The routes arrive one by one, then the agent lane's tag pings a few times:
-   requests are flowing through it. Paused until the card is revealed. */
-.routes li {
-  animation: route-in 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-.routes li:nth-child(2) {
-  animation-delay: 0.12s;
-}
-.routes li:nth-child(3) {
-  animation-delay: 0.24s;
-}
-.routes li[data-lane] .to::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  box-shadow: 0 0 0 2px var(--brand-lime);
-  opacity: 0;
-  animation: lane-ping 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) 0.8s 3;
-}
-@keyframes route-in {
-  from {
-    opacity: 0;
-    transform: translateX(-10px);
-  }
-}
-@keyframes lane-ping {
-  0% {
-    opacity: 0.9;
-    transform: scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: scale(1.35, 1.6);
-  }
-}
-:global(.reveal-pending) .routes li,
-:global(.reveal-pending) .routes li[data-lane] .to::after {
-  animation-play-state: paused;
-}
-@media (prefers-reduced-motion: reduce) {
-  .routes li,
-  .routes li[data-lane] .to::after {
-    animation: none;
-  }
-}
-.note {
-  margin-top: 16px;
-  font-size: 14px;
-  line-height: 1.6;
+.pieces p {
+  flex: 1;
+  padding: 4px 18px 0;
+  font-size: 13.5px;
+  line-height: 1.5;
   color: var(--muted-foreground);
 }
+.pieces pre {
+  margin: 16px 14px 14px;
+  border-radius: 10px;
+  padding: 12px;
+  background: var(--brand-ink);
+  color: #e9e8e1;
+  font:
+    11.5px/1.65 var(--font-code),
+    monospace;
+  font-variant-ligatures: none;
+  /* Wrap rather than scroll: a scrolling box would need to be keyboard-focusable. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+:global([data-theme="dark"]) .pieces pre {
+  background: var(--muted);
+  color: var(--foreground);
+}
+.checked {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 24px;
+  margin-top: 18px;
+  border-radius: 16px;
+  padding: 16px 20px;
+  background: var(--accent-soft);
+  font-size: 14.5px;
+}
+.checked ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  font-size: 13.5px;
+  color: var(--muted-foreground);
+}
+.checked li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.checked li svg {
+  color: var(--signal);
+}
 @media (max-width: 1023px) {
-  .wrap {
-    grid-template-columns: 1fr;
-    gap: 48px;
+  .pieces {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
-@media (max-width: 760px) {
+@media (max-width: 560px) {
+  .pieces {
+    grid-template-columns: 1fr;
+  }
   .section {
     padding: 88px 0;
-  }
-}
-@media (max-width: 480px) {
-  .routes li {
-    grid-template-columns: 1fr;
-    gap: 8px;
-  }
-  .to {
-    justify-self: start;
   }
 }

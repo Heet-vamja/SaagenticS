@@ -180,7 +180,7 @@ def handle_mcp(message: Any, store_name: str, catalog: Catalog, rules, as_of: st
             {
                 "protocolVersion": version,
                 "capabilities": {"tools": {"listChanged": False}},
-                "serverInfo": {"name": f"AgentLane · {store_name}"[:100], "version": "0.1.0"},
+                "serverInfo": {"name": f"Aglanetic · {store_name}"[:100], "version": "0.1.0"},
                 "instructions": "Read-only store tools. Prices and stock are as of the last "
                 "published snapshot; the store's checkout is authoritative.",
             },

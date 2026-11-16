@@ -39,7 +39,21 @@ async def main():
                     await page.goto(BASE, wait_until="networkidle")
                     await page.evaluate("document.fonts.ready")
                     await page.get_by_role(
-                        "figure", name="Example readiness report with illustrative data"
+                        "figure", name="Example: requests to one site and the lane each takes"
+                    ).wait_for()
+                    # Reduced motion shows the demo's finished state: both answers visible.
+                    race = page.get_by_role("region", name="One request. Two very different trips.")
+                    await race.get_by_text("Unsure.", exact=True).wait_for()
+                    await race.get_by_text("Done.", exact=True).wait_for()
+                    # The task switcher replays another task; reduced motion shows its end.
+                    await race.get_by_role("button", name="Cheapest running shoe").click()
+                    await race.get_by_text("Wrong.", exact=True).wait_for()
+                    assert await race.get_by_role(
+                        "button", name="Cheapest running shoe"
+                    ).get_attribute("aria-pressed") == "true"
+                    await race.get_by_role("button", name="Stock and delivery").click()
+                    await page.get_by_role(
+                        "list", name="What we built for the demo store"
                     ).wait_for()
                     assert await page.evaluate(
                         "document.documentElement.scrollWidth <= innerWidth"
@@ -122,7 +136,7 @@ async def main():
                     assert not errors, errors
                     await context.close()
                     print(
-                        f"PASS {width}px/{theme}: layout, contrast, CLS={cls:.3f}, example report, person vs agent, saved theme, domain verification entry",
+                        f"PASS {width}px/{theme}: layout, contrast, CLS={cls:.3f}, live requests, agent demo, what we build, person vs agent, saved theme, domain verification entry",
                         flush=True,
                     )
         finally:

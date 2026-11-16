@@ -38,7 +38,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     lifespan=lifespan,
-    title="AgentLane API",
+    title="Aglanetic API",
     version="0.1.0",
     responses={code: {"model": ErrorResponse} for code in (404, 422, 500, 501, 503)},
 )
@@ -72,6 +72,7 @@ async def customer_surface(request: Request, call_next):
             for prefix in (
                 "/api/v1/free-reports/",
                 "/api/v1/verification/",
+                "/api/v1/early-access",
                 "/api/v1/webhooks/stripe",
                 "/api/v1/dashboard/",  # Owner dashboard; every route requires its token.
             )

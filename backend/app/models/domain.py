@@ -411,6 +411,19 @@ class WebsiteVerification(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
+class EarlyAccessRequest(Base):
+    """A request to join the agent lane early-access list. One row per email and domain."""
+
+    __tablename__ = "early_access_requests"
+    __table_args__ = (UniqueConstraint("email", "domain", name="uq_early_access_email_domain"),)
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    email: Mapped[str] = mapped_column(String(320))
+    domain: Mapped[str] = mapped_column(String(255), index=True)
+    website_url: Mapped[str] = mapped_column(String(2048))
+    identity_hash: Mapped[str] = mapped_column(String(64))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class DomainOrder(Base):
     __tablename__ = "domain_orders"
     id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)

@@ -85,8 +85,8 @@ def render_html(report):
         if report.get("agent_tasks") or components.get("agent_score") is not None
         else "Static checks only. Agent task success is not evaluated."
     )
-    return f"""<!doctype html><html><head><meta charset="utf-8"><title>AgentLane report</title><style>{_font_faces()}
-    @page{{size:A4;margin:18mm}}body{{font-family:'Instrument Sans',Arial,sans-serif;color:#0E1013;font-size:11px;line-height:1.6}}h1{{font-size:30px;line-height:1.1}}h2{{margin-top:28px;font-size:19px}}h3{{font-size:14px}}.score{{font-size:48px}}.notice{{padding:12px;background:#F6F5EF;border-left:3px solid #CBF34A}}table{{width:100%;border-collapse:collapse}}td{{border-bottom:1px solid #dfded9;padding:7px}}article{{break-inside:avoid;border-top:1px solid #dfded9;padding:16px 0}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;font:10px/1.6 'JetBrains Mono',monospace;font-variant-ligatures:none;padding:10px;background:#faf9f6}}small{{color:#62646A}}p{{overflow-wrap:anywhere}}</style></head><body><small>AgentLane · Readiness report</small><h1>{text(report["project"]["name"])}</h1><p>{text(report["project"]["website_url"])}</p><div class="score">{text(report["scan"].get("overall_score"))}<small> / 100</small></div><p class="notice">{score_notice} {"Partial coverage: some checks were inconclusive." if summary.get("provisional") else ""} This is not a full accessibility certification or a guarantee that an agent can complete tasks.</p><table>{categories}</table><h2>Agent task results</h2>{tasks or "<p>No agent task results are available.</p>"}<h2>Top priority fixes</h2><ol>{priorities}</ol><h2>Findings and evidence</h2>{findings or "<p>No findings recorded. Check coverage before interpreting this result.</p>"}<p>Export includes up to 100 findings. Use JSON or CSV for all findings. Static checks use the versioned {text(summary.get("version") or "static rubric")} rubric.</p></body></html>"""
+    return f"""<!doctype html><html><head><meta charset="utf-8"><title>Aglanetic report</title><style>{_font_faces()}
+    @page{{size:A4;margin:18mm}}body{{font-family:'Instrument Sans',Arial,sans-serif;color:#0E1013;font-size:11px;line-height:1.6}}h1{{font-size:30px;line-height:1.1}}h2{{margin-top:28px;font-size:19px}}h3{{font-size:14px}}.score{{font-size:48px}}.notice{{padding:12px;background:#F6F5EF;border-left:3px solid #CBF34A}}table{{width:100%;border-collapse:collapse}}td{{border-bottom:1px solid #dfded9;padding:7px}}article{{break-inside:avoid;border-top:1px solid #dfded9;padding:16px 0}}pre{{white-space:pre-wrap;overflow-wrap:anywhere;font:10px/1.6 'JetBrains Mono',monospace;font-variant-ligatures:none;padding:10px;background:#faf9f6}}small{{color:#62646A}}p{{overflow-wrap:anywhere}}</style></head><body><small>Aglanetic · Readiness report</small><h1>{text(report["project"]["name"])}</h1><p>{text(report["project"]["website_url"])}</p><div class="score">{text(report["scan"].get("overall_score"))}<small> / 100</small></div><p class="notice">{score_notice} {"Partial coverage: some checks were inconclusive." if summary.get("provisional") else ""} This is not a full accessibility certification or a guarantee that an agent can complete tasks.</p><table>{categories}</table><h2>Agent task results</h2>{tasks or "<p>No agent task results are available.</p>"}<h2>Top priority fixes</h2><ol>{priorities}</ol><h2>Findings and evidence</h2>{findings or "<p>No findings recorded. Check coverage before interpreting this result.</p>"}<p>Export includes up to 100 findings. Use JSON or CSV for all findings. Static checks use the versioned {text(summary.get("version") or "static rubric")} rubric.</p></body></html>"""
 
 
 async def pdf_export(report):
@@ -415,7 +415,9 @@ body{margin:0;font-family:'Instrument Sans',Arial,sans-serif;font-size:10.5px;li
 .muted{color:#62646A}.danger{color:#C2183F}.warning{color:#9A5200}
 p{margin:0;overflow-wrap:anywhere}
 header{display:flex;justify-content:space-between;align-items:center;padding-bottom:14px;border-bottom:1px solid #E2E0D6}
-.brand{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;letter-spacing:-.01em}
+.brand{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:400;letter-spacing:-.03em}
+.word svg{display:inline-block;width:.13em;height:.74em;margin:0 .04em;vertical-align:baseline}
+.word b{font-weight:700}
 .doc{font-size:9.5px;color:#62646A}
 h1{margin:22px 0 4px;font-size:30px;font-weight:560;letter-spacing:-.035em;line-height:1.05;overflow-wrap:anywhere}
 h2{margin:26px 0 10px;font-size:17px;font-weight:600;letter-spacing:-.02em}
@@ -473,8 +475,8 @@ td p{font-size:9px}
 .background span{font-size:8.5px}
 """
     )
-    return f"""<!doctype html><html><head><meta charset='utf-8'><title>AgentLane report · {text(domain)}</title><style>{style}</style></head><body>
-<header><div class='brand'>{LOGO}AgentLane</div><div class='doc'>Website readiness report</div></header>
+    return f"""<!doctype html><html><head><meta charset='utf-8'><title>Aglanetic report · {text(domain)}</title><style>{style}</style></head><body>
+<header><div class='brand'>{LOGO}<span class='word'>ag<svg viewBox='0 0 12 74' aria-hidden='true'><path d='M6 6v13M6 30v14M6 55v13' fill='none' stroke='#0E1013' stroke-width='12' stroke-linecap='round'/></svg><b>ane</b>tic</span></div><div class='doc'>Website readiness report</div></header>
 <h1>{text(domain)}</h1><p class='muted'>Public pages only · read-only checks · rubric {text(report.get("score_version"))}</p>
 {dev_note}{failed_note}
 <section class='summary'><div class='hero'><div class='dial'>{ring}<div><strong>{score_value if score_value is not None else "—"}</strong><small>out of 100</small></div></div>
@@ -486,7 +488,7 @@ td p{font-size:9px}
 {policy_section}
 <section class='new-page'><h2>What was checked</h2><p class='muted'>{text(crawled, "0")} pages checked in a bounded sample ({text(discovered, "0")} discovered, {text(report.get("pages_failed"), "0")} failed). Each check appears once with its result across those pages, issues first.</p>
 {"".join(check_sections) or "<p class='empty-state'>No check details available.</p>"}{background_table}{truncation_note}</section>
-<p class='note'>Generated by AgentLane. This report reflects only checks with evidence available at scan time.</p></body></html>"""
+<p class='note'>Generated by Aglanetic. This report reflects only checks with evidence available at scan time.</p></body></html>"""
 
 
 async def free_pdf_export(report):
@@ -511,7 +513,7 @@ async def _render_pdf(html):
                     print_background=True,
                     display_header_footer=True,
                     header_template="<span></span>",
-                    footer_template='<div style="font:8px Arial,sans-serif;color:#62646A;width:100%;text-align:center">AgentLane · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
+                    footer_template='<div style="font:8px Arial,sans-serif;color:#62646A;width:100%;text-align:center">Aglanetic · <span class="pageNumber"></span> / <span class="totalPages"></span></div>',
                 )
             finally:
                 await browser.close()

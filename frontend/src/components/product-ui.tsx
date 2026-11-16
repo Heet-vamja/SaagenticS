@@ -14,7 +14,7 @@ import { useEffect, useState, useSyncExternalStore } from "react";
 import type { LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/** AgentLane mark: a lime tile with an ink lane vanishing into an "A". */
+/** Aglanetic mark: a split lane, one for people and one curving off for agents. */
 export function LogoMark({
   size = 32,
   className,
@@ -51,19 +51,42 @@ export function LogoMark({
     </svg>
   );
 }
+/** Aglanetic wordmark: "agentic" with a lane inside. The "l" is a dashed lane
+ * marker (three equal dashes) and only "lane" is bold, so the two words read at a glance. */
+export function Wordmark({ className }: { className?: string }) {
+  return (
+    <span
+      className={cn("whitespace-nowrap tracking-[-.03em]", className)}
+      aria-hidden="true"
+    >
+      <span className="font-normal">ag</span>
+      <svg
+        viewBox="0 0 12 74"
+        className="mx-[.04em] inline-block h-[.74em] w-[.13em] align-baseline"
+        focusable="false"
+      >
+        <path
+          d="M6 6v13M6 30v14M6 55v13"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={12}
+          strokeLinecap="round"
+        />
+      </svg>
+      <span className="font-bold">ane</span>
+      <span className="font-normal">tic</span>
+    </span>
+  );
+}
 export function Brand({ compact = false }: { compact?: boolean }) {
   return (
     <Link
       href="/"
-      aria-label="AgentLane home"
+      aria-label="Aglanetic home"
       className="inline-flex shrink-0 items-center gap-2.5"
     >
       <LogoMark />
-      {!compact && (
-        <span className="font-display text-[19px] font-extrabold tracking-[-.022em]">
-          AgentLane
-        </span>
-      )}
+      {!compact && <Wordmark className="text-[20px]" />}
     </Link>
   );
 }

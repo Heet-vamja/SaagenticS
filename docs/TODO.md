@@ -36,8 +36,12 @@ when done; link the commit or doc that closed them if useful.
 - Review the new "AgentLane router and agent lane" sections in `/privacy` and `/terms`
   (drafted 2026-11-15 from the code's actual behavior). Operator name, contact and
   jurisdiction are still placeholders in `frontend/src/lib/legal.ts`.
-- Landing still labels the agent lane "In development"; update only when it is live for
-  a real customer.
+- The landing demo ("One request. Two very different trips.", `components/agent-race.tsx`)
+  is an illustrative replay of the demo store's real problems; its agent-lane answers are
+  real. Replace the timings and step counts with measured agent-QA runs once QA has run.
+- Agent-lane responses are sent with `cache-control: public, max-age=60`; make them
+  private/no-store before customer domains go live (a customer's cache must never serve
+  the agent version to a person).
 - Set a real `EDGE_DASHBOARD_TOKEN` in `.env` (local runs used a temporary value).
 
 ## Engineering hygiene

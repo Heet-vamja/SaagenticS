@@ -145,7 +145,7 @@ export function Shell({ children }: { children: ReactNode }) {
                 Terms & Conditions
               </Link>
             </nav>
-            <p className="mt-3">© {LEGAL_DETAILS.copyrightYear} AgentLane.</p>
+            <p className="mt-3">© {LEGAL_DETAILS.copyrightYear} Aglanetic.</p>
           </div>
         )}
       </div>

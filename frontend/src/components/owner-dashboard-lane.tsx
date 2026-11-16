@@ -275,7 +275,7 @@ export function AddSiteForm({
               spellCheck={false}
             />
             <span className={styles.hint}>
-              The domain visitors use. Point it at the AgentLane router.
+              The domain visitors use. Point it at the Aglanetic router.
             </span>
           </label>
           <label>

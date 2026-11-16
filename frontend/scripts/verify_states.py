@@ -118,6 +118,23 @@ async def landing_and_reports(page):
     await page.get_by_role("button", name="Try again").click()
     await page.get_by_text("Preliminary static readiness", exact=True).wait_for()
 
+    # Landing early-access form: the request is posted and the visitor sees a confirmation.
+    sent = []
+
+    async def early_access(route):
+        sent.append(route.request.post_data_json)
+        await route.fulfill(status=202, json={"status": "received"})
+
+    await page.route("**/api/v1/early-access", early_access)
+    await page.goto(BASE + "/#early-access", wait_until="networkidle")
+    form_card = page.locator("#early-access")
+    await form_card.get_by_label("Work email").fill("owner@store.fixture")
+    await form_card.get_by_label("Your website").fill("store.fixture")
+    await form_card.get_by_role("button", name="Request early access").click()
+    await form_card.get_by_text("You’re on the list.", exact=True).wait_for()
+    assert sent == [{"email": "owner@store.fixture", "website_url": "store.fixture", "company": ""}]
+    await check_page(page, "early-access-confirmed", screenshot=False)
+
     # Before purchase: free fixes fold into the findings; the offer counts what it adds.
     locked = {**report("COMPLETED"), "full_report_unlocked": False}
     locked["insights"] = locked["insights"] + [{

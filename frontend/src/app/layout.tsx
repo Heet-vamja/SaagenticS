@@ -26,7 +26,7 @@ const agent = Funnel_Display({
   display: "swap",
 });
 export const metadata: Metadata = {
-  title: "AgentLane — Can AI agents use your website?",
+  title: "Aglanetic — Can AI agents use your website?",
   description:
     "Find technical barriers for AI agents. Verify your email, get a static readiness score, and unlock the full report for $19.",
 };

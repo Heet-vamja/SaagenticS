@@ -103,10 +103,10 @@ export function AccessPolicyPanel({
         </div>
         {incomplete && (
           <p className="mt-4 rounded-2xl bg-warning-soft p-4 text-[13px] leading-6 text-foreground">
-            Website owner? Review the recorded response and allowlist AgentLane
-            or its deployment IP if appropriate. Preserve security protections.
-            We do not bypass access restrictions; an inaccessible page is not
-            evidence that every AI agent is blocked.
+            Website owner? Review the recorded response and allowlist our
+            crawler (AgentReadinessBot) or its deployment IP if appropriate.
+            Preserve security protections. We do not bypass access restrictions;
+            an inaccessible page is not evidence that every AI agent is blocked.
           </p>
         )}
       </div>

@@ -76,7 +76,7 @@ export default function DocumentationPage() {
           </p>
           <h1 className="display-lg mx-auto mt-6 max-w-[16ch]">
             A practical guide to{" "}
-            <span className="text-primary">AgentLane.</span>
+            <span className="text-primary">Aglanetic.</span>
           </h1>
           <p className="lede mx-auto mt-6 max-w-2xl">
             Start with your SaaS website, inspect the evidence, give your

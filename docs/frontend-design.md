@@ -493,3 +493,46 @@ with page counts, and checks grouped once per check, issues first. Rendering is 
 Instrument Sans and JetBrains Mono are embedded from `backend/app/services/pdf_fonts/`
 (SIL OFL). The backend image has no source mount: rebuild it to pick up template changes.
 
+## Landing: the agent lane is live (2026-11-16)
+
+The landing now leads with the product. The hero adds a "The agent lane is live" badge and
+a live-requests card (each request and the lane it takes, illustrative). Right after it,
+`AgentRace` replays one task on the demo store: the site as it is (JavaScript-only page,
+offer pop-up, unlabeled sizes, delivery behind a login, shown in a mini browser) against the
+agent lane (two steps, shown as the lines it reads). The agent-lane answers are the demo
+store's real responses; the timings are an illustrative replay until measured QA runs replace
+them. It plays once in view, has Replay, and reduced motion shows the finished state; steps
+never change layout. "How it works" is now connect → we build the lane → see every visit. The
+proof section shows numbers measured on the demo store. Pricing has three plans: free scan,
+Fix Kit and the agent lane in early access (no price; the free scan is the way in).
+
+Revision the same day: the demo is visual, not a step list: a mock product page with a
+cursor (pop-up, question marks over unlabeled sizes, a login wall) against the agent lane's
+request chips and answer cards, one live caption per side and a time bar. "Built on a real
+store" became "What we build": four tiles (agent pages, llms.txt, structured data,
+actions) with real excerpts from the demo store's build, and the pre-launch check. The agent
+lane plan is an early-access form (email and website, `POST /api/v1/early-access`, stored in
+`early_access_requests`; same answer for new and repeat requests, honeypot, rate limit), with
+a link to it under the hero's scan box. The Fix Kit example prompt takes sizes and
+availability from the product data rather than naming a size to disable.
+
+Product review (same day): one story, the managed lane first and do-it-yourself second.
+Order: hero → demo (`#demo`) → why it happens (three failures only) → how the lane works →
+what we build → "Prefer to fix it yourself?" (Fix Kit, with the trail-runner before/after as
+its proof) → pricing ("Start free. Go as far as you need."; only the agent lane is lime) →
+FAQ → closing (scan, plus an early-access link). Nav: Demo · How it works · Fix Kit · Pricing ·
+Docs. The actions tile names both surfaces, REST and the MCP server (`POST /mcp`).
+
+Demo, third pass: visitors pick one of three tasks (stock and delivery, cheapest running
+shoe, return policy), each a separate scene (product page, product grid, policy page). The
+browser side counts screenshots with a flash on each, and two tasks end in a plausible wrong
+or incomplete answer rather than a dead end. The lane side shows "done, waiting +Ns" while
+the browser agent is still working. A scoreboard (time, steps, screenshots, answer) replaces
+the time bars. Every agent-lane answer is the demo store's real one; animation timing comes
+from requestAnimationFrame timestamps.
+Motion pass: a thought bubble follows the browser agent's cursor, clicks leave a ripple,
+loading skeletons shimmer, the pop-up dims the page, the login wall shakes; header progress
+bars fill (slow red, fast lime); a lime lane line flows down the agent side while it works,
+request chips get a light sweep, the lane's answer types out, and the scoreboard counts up.
+All of it is off under reduced motion.
+

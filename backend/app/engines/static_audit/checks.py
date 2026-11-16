@@ -59,7 +59,7 @@ def normalize_access_check(check: dict) -> dict:
                 title="Robots policy permits our crawler"
                 if permitted
                 else "Robots policy restricts our crawler",
-                description="This is the declared robots.txt permission for the AgentLane crawler on the sampled path, not proof of access or restriction for ChatGPT or other providers.",
+                description="This is the declared robots.txt permission for the Aglanetic crawler on the sampled path, not proof of access or restriction for ChatGPT or other providers.",
             )
         elif absent:
             result.update(status="INFO", title="No robots policy was published")

@@ -3,9 +3,9 @@ import { LegalPage, type LegalSection } from "@/components/legal-page";
 import { LEGAL_DETAILS } from "@/lib/legal";
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | AgentLane",
+  title: "Privacy Policy | Aglanetic",
   description:
-    "How AgentLane handles submitted websites, scan evidence, report links, and browser preferences.",
+    "How Aglanetic handles submitted websites, scan evidence, report links, and browser preferences.",
 };
 const sections: LegalSection[] = [
   {
@@ -14,7 +14,7 @@ const sections: LegalSection[] = [
     content: (
       <>
         <p>
-          AgentLane helps website operators identify technical barriers that may
+          Aglanetic helps website operators identify technical barriers that may
           affect AI agents. This policy describes the current website-scanning
           service and its related reports.
         </p>
@@ -104,23 +104,22 @@ const sections: LegalSection[] = [
   },
   {
     id: "agent-lane",
-    title: "AgentLane router and agent lane (in development)",
+    title: "Aglanetic router and agent lane",
     content: (
       <>
         <p>
-          These features are in development and apply only to sites whose
-          operator has set them up. When an operator routes a domain through the
-          AgentLane router, requests to that domain pass through our service.
-          Requests from people are forwarded to the operator’s site unchanged
-          and are not logged by the router. Requests whose user agent identifies
-          a known AI agent or crawler are logged with the agent name and type,
-          the user-agent string, the request method, the path without its query
-          string, the response status, timing and size, whether the agent lane
-          answered, any agent action called, and a keyed hash of the client
-          network address. Raw addresses and query strings are not stored.
-          Logged requests are grouped into sessions per agent and kept in the
-          application database and, if the operator enables it, copied to Google
-          BigQuery.
+          These features apply only to sites whose operator has set them up.
+          When an operator routes a domain through the Aglanetic router,
+          requests to that domain pass through our service. Requests from people
+          are forwarded to the operator’s site unchanged and are not logged by
+          the router. Requests whose user agent identifies a known AI agent or
+          crawler are logged with the agent name and type, the user-agent
+          string, the request method, the path without its query string, the
+          response status, timing and size, whether the agent lane answered, any
+          agent action called, and a keyed hash of the client network address.
+          Raw addresses and query strings are not stored. Logged requests are
+          grouped into sessions per agent and kept in the application database
+          and, if the operator enables it, copied to Google BigQuery.
         </p>
         <p>
           To build an agent lane, we render a bounded number of public pages of
@@ -135,6 +134,20 @@ const sections: LegalSection[] = [
           labels are model judgments and are shown as such.
         </p>
       </>
+    ),
+  },
+  {
+    id: "early-access",
+    title: "Early access requests",
+    content: (
+      <p>
+        When you request early access to the agent lane, we store the email
+        address and website you enter, when you sent the request and a hashed
+        identifier of your connection (used only to limit repeated requests). We
+        use them to contact you about setting up the agent lane for that
+        website, and for nothing else. Ask us to delete your request at any
+        time.
+      </p>
     ),
   },
   {
