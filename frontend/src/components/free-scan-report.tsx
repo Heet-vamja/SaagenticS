@@ -6,34 +6,28 @@ import type { ReactNode } from "react";
 import {
   ArrowRight,
   ArrowUpRight,
-  Bot,
   Check,
   CheckCircle2,
   ChevronDown,
   Circle,
   Download,
-  Copy,
   FileSearch,
   Globe2,
-  Info,
   LoaderCircle,
   ShieldCheck,
 } from "lucide-react";
 import { api, ApiError } from "@/lib/api";
-import type {
-  FreeReport,
-  FreeReportCheck,
-  FreeReportInsight,
-} from "@/lib/types";
+import type { CustomerFix, FreeReport, FreeReportInsight } from "@/lib/types";
 import { useResource } from "@/lib/use-resource";
 import { Brand, domainOf, Status, ThemeToggle } from "./product-ui";
 import { MarketingFooter } from "./marketing-nav";
 import { Button } from "./ui/button";
 import { InlineError } from "./states";
-import { FreeFixKit } from "./free-fix-kit";
+import { AssetDrafts, FindingList } from "./report-findings";
+import { ReportSummary } from "./report-summary";
+import { CheckResults, checkTotals, failingPages } from "./report-checks";
 import { CustomerFixes } from "./customer-fixes";
 import { ScanTransition } from "./scan-transition";
-import { ReadinessScore } from "./readiness-score";
 import { AccessPolicyPanel } from "./access-policy-panel";
 import { ReportUnlock, ReportVerification } from "./report-unlock";
 import { StandardsCoverage } from "./standards-coverage";
@@ -63,61 +57,6 @@ const stages = [
   },
 ];
 
-function reportCategory(value: string) {
-  return value
-    .replaceAll("_", " ")
-    .toLowerCase()
-    .replace(/^\w/, (letter) => letter.toUpperCase());
-}
-
-function insightCategoryIcon(category: string) {
-  const normalized = category.toLowerCase();
-  if (/discover|crawl|robots|sitemap/.test(normalized)) return Globe2;
-  if (/structured|schema|content/.test(normalized)) return FileSearch;
-  if (/navigation|interaction|accessibility|agent/.test(normalized))
-    return ShieldCheck;
-  return Info;
-}
-
-function whyInsightMatters(insight: FreeReportInsight) {
-  const finding = `${insight.title} ${insight.description}`.toLowerCase();
-  if (
-    /accessible name|accessible label|form field|button.*name|link.*name/.test(
-      finding,
-    )
-  )
-    return "An accessible name helps an agent identify what this control does before choosing whether to use it.";
-  if (/keyboard|clickable|native semantics/.test(finding))
-    return "Native controls expose familiar roles and interaction behavior that browser tools can identify more reliably.";
-  if (/javascript|rendered comparison|server-render/.test(finding))
-    return "If key content appears only after scripts run, some crawlers and agents may miss it or wait longer to understand the page.";
-  if (
-    /challenge|captcha|bot protection|restricted|crawler access/.test(finding)
-  )
-    return "A challenge or access rule can stop an automated visitor before it reaches the page. This result reflects only the evidence in this scan.";
-  if (/robots/.test(finding))
-    return "The inspected robots rule affects this scanner’s access; other agents may follow different rules. Review the specific rule before changing it.";
-  if (/sitemap/.test(finding))
-    return "A sitemap can help crawlers discover pages directly, while internal links remain another discovery path.";
-  if (/llms\.txt/.test(finding))
-    return "llms.txt is an optional proposal. Its absence alone does not show that agents cannot discover or use your site.";
-  if (/json-ld|structured data|schema/.test(finding))
-    return "Valid structured data can make page entities easier for compatible tools to interpret; it does not replace readable page content.";
-  if (/http|response|redirect|error/.test(finding))
-    return "Unexpected responses or redirects can prevent an agent from reaching the content it was trying to inspect.";
-
-  const category = insight.category.toLowerCase();
-  if (/discover|crawl/.test(category))
-    return "Agents can only use pages they can discover and access.";
-  if (/structured|schema|content/.test(category))
-    return "Clear structure helps agents identify the information a page contains.";
-  if (/navigation|interaction|accessibility|agent/.test(category))
-    return "Accessible names and predictable controls help agents choose the right interaction.";
-  if (/reliability/.test(category))
-    return "Consistent responses help agents tell whether a page loaded or an action failed.";
-  return "This may affect an agent’s ability to find, understand, or use this part of the site.";
-}
-
 function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="report-frame min-h-screen bg-background text-foreground">
@@ -145,216 +84,121 @@ function Frame({ children }: { children: ReactNode }) {
   );
 }
 
-function Insight({
-  insight,
-  index,
+function FindingsSection({
+  insights,
+  mode,
+  fixes = [],
+  loadingFixes = false,
+  pages,
 }: {
-  insight: FreeReportInsight;
-  index: number;
+  insights: FreeReportInsight[];
+  mode: "locked" | "unlocked";
+  fixes?: CustomerFix[];
+  loadingFixes?: boolean;
+  pages?: Record<string, string[]>;
 }) {
-  const [copyState, setCopyState] = useState("Copy fix");
-  const safeUrl =
-    insight.evidence_url && /^https?:\/\//i.test(insight.evidence_url)
-      ? insight.evidence_url
-      : null;
-  const severity = insight.severity.toUpperCase();
-  const severityStyle =
-    severity === "CRITICAL" || severity === "HIGH"
-      ? "bg-danger-soft text-danger"
-      : severity === "MEDIUM"
-        ? "bg-warning-soft text-warning"
-        : "bg-muted text-muted-foreground";
+  const titles = new Set(insights.map((insight) => insight.title));
+  const free = fixes.filter((fix) => titles.has(fix.title)).length;
+  const locked = mode === "locked" && insights.length > free;
   return (
-    <article className="group flex flex-col py-5 first:pt-6 last:pb-6">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <span className="grid size-8 shrink-0 place-items-center rounded-full bg-ink font-mono text-[12px] font-semibold text-ink-foreground dark:bg-foreground dark:text-background">
-          {String(index + 1).padStart(2, "0")}
-        </span>
-        <span
-          className={`rounded-full px-2.5 py-1 text-[12.5px] font-semibold ${severityStyle}`}
-        >
-          {severity} priority
-        </span>
-      </div>
-
-      <p className="eyebrow mb-1.5">Observed issue</p>
-      <h4 className="text-[17px] leading-snug sm:text-[19px]">
-        {insight.title}
-      </h4>
-      <p className="mt-2 flex-1 text-[14px] leading-6 text-muted-foreground">
-        {insight.description}
+    <section className="mt-16 sm:mt-20" aria-labelledby="insights-heading">
+      <p className="eyebrow">Findings</p>
+      <h2 id="insights-heading" className="display-md mt-2">
+        {insights.length ? "What to fix first" : "No priority problems found"}
+      </h2>
+      <p className="mt-3 max-w-2xl text-[15.5px] leading-7 text-muted-foreground">
+        {!insights.length
+          ? "The inspected sample didn’t produce a priority finding. Untested checks are not passes."
+          : `${insights.length} ${insights.length === 1 ? "finding" : "findings"}, highest impact first.` +
+            (mode === "unlocked"
+              ? " Ready prompts, asset drafts and progress tracking are in your Fix Center below."
+              : loadingFixes
+                ? " Preparing your free fixes…"
+                : free === insights.length
+                  ? " Each comes with a complete fix, free."
+                  : free === 1
+                    ? " One of them comes with a complete fix, free."
+                    : free
+                      ? ` ${free} of them come with a complete fix, free.`
+                      : "")}
       </p>
-
-      {insight.recommendation && (
-        <div className="mt-4 rounded-2xl bg-action-soft p-4 dark:bg-accent-soft">
-          <p className="text-[13px] font-semibold text-muted-foreground">
-            How to fix it
-          </p>
-          <p className="mt-2 whitespace-pre-wrap break-words text-[14px] leading-6 text-foreground">
-            {insight.recommendation}
-          </p>
-          <button
-            type="button"
-            className="mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-card px-3.5 text-[13px] font-semibold text-foreground shadow-[var(--shadow-card)] transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
-            aria-live="polite"
-            onClick={async () => {
-              try {
-                await navigator.clipboard.writeText(
-                  `${insight.title}\n\n${insight.recommendation}`,
-                );
-                setCopyState("Copied");
-              } catch {
-                setCopyState("Copy unavailable — select the text above");
-              }
-            }}
-          >
-            <Copy size={12} /> {copyState}
-          </button>
+      {insights.length > 0 && (
+        <div className="mt-7">
+          <FindingList
+            insights={insights}
+            fixes={fixes}
+            mode={mode}
+            pages={pages}
+          />
         </div>
       )}
-      {(safeUrl || insight.evidence_summary) && (
-        <details className="group/evidence mt-4 border-t pt-3 text-xs">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-full py-1 font-semibold text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40">
-            Evidence & next step
-            <ChevronDown
-              size={14}
-              className="shrink-0 transition-transform group-open/evidence:rotate-180"
-            />
-          </summary>
-          <div className="mt-3 space-y-3 rounded-2xl bg-muted p-4 text-muted-foreground">
-            <div>
-              <p className="mb-1 text-[13px] font-semibold">
-                Why this matters for this finding
-              </p>
-              <p className="leading-5">{whyInsightMatters(insight)}</p>
-            </div>
-            {insight.evidence_summary && (
-              <div>
-                <p className="mb-1 text-[13px] font-semibold">
-                  What we observed
-                </p>
-                <p className="whitespace-pre-wrap break-words leading-5">
-                  {insight.evidence_summary}
-                </p>
-              </div>
-            )}
-            {safeUrl && (
-              <div>
-                <p className="mb-1 text-[13px] font-semibold">Affected page</p>
-                <a
-                  href={safeUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex max-w-full items-center gap-1.5 break-all font-mono text-[12px] text-foreground underline decoration-border underline-offset-4 hover:decoration-foreground"
-                >
-                  {safeUrl}
-                  <ArrowUpRight size={11} className="shrink-0" />
-                </a>
-              </div>
-            )}
-          </div>
-        </details>
+      {locked && !loadingFixes && (
+        <p className="mt-3 text-[13.5px] leading-6 text-muted-foreground">
+          Locked findings still show what to change. The Fix Kit adds the
+          affected page, the evidence and a ready prompt.
+        </p>
       )}
-    </article>
+    </section>
   );
 }
 
-const checkStatus = {
-  PASS: { label: "Passed", style: "text-success bg-success-soft" },
-  FAIL: { label: "Issue observed", style: "text-warning bg-warning-soft" },
-  UNKNOWN: { label: "Not assessed", style: "text-muted-foreground bg-muted" },
-  INFO: { label: "Informational", style: "text-muted-foreground bg-muted" },
-  NOT_APPLICABLE: {
-    label: "Not applicable",
-    style: "text-muted-foreground bg-muted",
-  },
-} as const;
-
-function CheckResults({
-  checks,
-  truncated,
+/** Before purchase: the findings with the free fixes folded in, then the offer,
+ * which counts exactly what the Fix Kit adds for this report. */
+function LockedFindings({
+  token,
+  data,
+  insights,
+  onUnlocked,
 }: {
-  checks: FreeReportCheck[];
-  truncated: boolean;
+  token: string;
+  data: FreeReport;
+  insights: FreeReportInsight[];
+  onUnlocked: () => void;
 }) {
-  const groups = new Map<string, FreeReportCheck[]>();
-  for (const check of checks) {
-    groups.set(check.category, [...(groups.get(check.category) ?? []), check]);
-  }
-  if (checks.length === 0) {
-    return (
-      <p className="mt-4 text-xs leading-6 text-muted-foreground">
-        No individual check results were available for this scan. Review the
-        scan status and try again if the website was unreachable.
-      </p>
-    );
-  }
+  const load = useCallback(() => api.fixPreview(token), [token]);
+  const { data: preview, error, retry } = useResource(load);
+  const fixes = preview?.fixes ?? [];
+  const titles = new Set(fixes.map((fix) => fix.title));
   return (
-    <div className="mt-5 space-y-6">
-      {[...groups.entries()].map(([category, rows]) => (
-        <section key={category} aria-label={`${category} checks`}>
-          <h3 className="mb-2.5 text-[15px]">{category}</h3>
-          <div className="divide-y overflow-hidden rounded-2xl border bg-background">
-            {rows.map((check, index) => {
-              const status = checkStatus[check.status];
-              const safeUrl =
-                check.url && /^https?:\/\//i.test(check.url) ? check.url : null;
-              return (
-                <details
-                  key={`${check.title}-${safeUrl ?? "site"}-${index}`}
-                  className="group/check px-4"
-                >
-                  <summary className="flex cursor-pointer list-none flex-wrap items-center justify-between gap-3 py-3.5 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40">
-                    <span className="min-w-0 flex-1 text-[14px] font-medium">
-                      {check.title}
-                    </span>
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-[12px] font-bold ${status.style}`}
-                    >
-                      {status.label}
-                    </span>
-                  </summary>
-                  <div className="space-y-3 border-t py-3 text-[13px] leading-5 text-muted-foreground">
-                    <p>{check.description}</p>
-                    {check.evidence_summary && (
-                      <p>
-                        <span className="font-medium text-foreground">
-                          Observed:
-                        </span>
-                        {check.evidence_summary}
-                      </p>
-                    )}
-                    {safeUrl && (
-                      <a
-                        href={safeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block break-all font-mono text-[12px] underline decoration-border underline-offset-4"
-                      >
-                        {safeUrl}
-                      </a>
-                    )}
-                    {check.recommendation && (
-                      <p>
-                        <span className="font-medium text-foreground">
-                          What to review:
-                        </span>
-                        {check.recommendation}
-                      </p>
-                    )}
-                  </div>
-                </details>
-              );
-            })}
-          </div>
-        </section>
-      ))}
-      {truncated && (
-        <p className="text-[12px] text-muted-foreground">
-          The report shows the first 300 check results.
-        </p>
+    <>
+      <FindingsSection
+        insights={insights}
+        mode="locked"
+        fixes={fixes}
+        loadingFixes={!preview && !error}
+      />
+      {error && (
+        <div className="mt-4">
+          <InlineError>
+            {error.message}{" "}
+            <button type="button" className="underline" onClick={retry}>
+              Retry free fixes
+            </button>
+          </InlineError>
+        </div>
       )}
-    </div>
+      {preview && <AssetDrafts assets={preview.assets} />}
+      <ReportUnlock
+        token={token}
+        website={data.website}
+        scoreAvailable={data.score !== null}
+        developmentSkipAvailable={data.development_skip_available}
+        onUnlocked={onUnlocked}
+        offer={
+          preview
+            ? {
+                findings: insights.length,
+                lockedFindings: insights.filter(
+                  (insight) => !titles.has(insight.title),
+                ).length,
+                remainingFixes: preview.remaining_fixes,
+                remainingAssets: preview.remaining_assets,
+                truncated: preview.truncated,
+              }
+            : undefined
+        }
+      />
+    </>
   );
 }
 
@@ -468,18 +312,6 @@ export function FreeScanReport({ token }: { token: string }) {
     stages.findIndex((stage) => stage.phase === data.phase),
   );
   const insights = data.insights.slice(0, 10);
-  const insightGroups = insights.reduce<
-    Array<{
-      category: string;
-      rows: Array<{ insight: FreeReportInsight; index: number }>;
-    }>
-  >((groups, insight, index) => {
-    const group = groups.find((item) => item.category === insight.category);
-    if (group) group.rows.push({ insight, index });
-    else
-      groups.push({ category: insight.category, rows: [{ insight, index }] });
-    return groups;
-  }, []);
 
   return (
     <Frame>
@@ -488,7 +320,9 @@ export function FreeScanReport({ token }: { token: string }) {
           <div className="min-w-0">
             <p className="chip">
               <span className="chip-dot" aria-hidden="true" />
-              Your free readiness report
+              {unlocked
+                ? "Your readiness report"
+                : "Your free readiness report"}
             </p>
             <h1 className="display-lg mt-5 break-words">
               {domainOf(data.website)}
@@ -640,289 +474,70 @@ export function FreeScanReport({ token }: { token: string }) {
                 </p>
               </div>
             )}
-            <section className="surface-float overflow-hidden">
-              <div className="report-summary grid items-start gap-8 p-6 sm:grid-cols-[auto_1fr] sm:gap-12 sm:p-10">
-                <div className="report-score-stage grid place-items-center rounded-[24px] p-5 sm:p-7">
-                  <ReadinessScore value={scoreValue} color={scoreColor} />
-                </div>
-                <div className="min-w-0">
-                  <span className="report-score-label mb-4 inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[12px] font-bold">
-                    <Info size={12} />
-                    {data.score === null
-                      ? "Score unavailable"
-                      : partial
-                        ? "Partial static assessment"
-                        : "Preliminary static readiness"}
-                  </span>
-                  <h2 className="display-md">
-                    {data.score === null
-                      ? "There isn’t enough evidence yet."
-                      : "A clearer view of your website."}
-                  </h2>
-                  <p className="mt-3 max-w-xl text-[15px] leading-7 text-muted-foreground">
-                    {data.score === null
-                      ? "This scan did not gather enough confirmed evidence to calculate a static score. Review coverage and any observed issues below."
-                      : `We checked ${data.pages_crawled} public ${data.pages_crawled === 1 ? "page" : "pages"} and observed ${data.coverage.checks_failed} ${data.coverage.checks_failed === 1 ? "issue" : "issues"}. Use the evidence and fix guidance below to decide what to improve first.`}
-                  </p>
-                  <div
-                    className="mt-5 flex flex-wrap gap-2"
-                    aria-label="Score coverage"
-                  >
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[12px] font-medium text-muted-foreground">
-                      <CheckCircle2 size={13} className="text-success" />
-                      {data.coverage.evaluated} of {data.coverage.total}{" "}
-                      scoreable checks evaluated
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[12px] font-medium text-muted-foreground">
-                      <Globe2 size={12} /> {data.pages_crawled}{" "}
-                      {data.pages_crawled === 1 ? "page" : "pages"} crawled
-                    </span>
-                    <span className="inline-flex items-center gap-1.5 rounded-full bg-muted px-3 py-1.5 text-[12px] font-medium text-muted-foreground">
-                      <Bot size={12} /> Agent tests · Christmas 2026
-                    </span>
-                  </div>
-                  <details className="mt-4 text-xs text-muted-foreground">
-                    <summary className="cursor-pointer py-1 font-semibold text-primary">
-                      How this score works
-                    </summary>
-                    <p className="mt-2 leading-6">{data.score_explanation}</p>
-                  </details>
-                </div>
-              </div>
-              <div className="grid grid-cols-1 border-t sm:grid-cols-3">
-                {[
-                  [
-                    CheckCircle2,
-                    data.coverage.checks_passed,
-                    "Checks passed",
-                    "text-success",
-                  ],
-                  [
-                    Info,
-                    data.coverage.checks_failed,
-                    "Issues observed",
-                    "text-warning",
-                  ],
-                  [
-                    Circle,
-                    data.coverage.checks_inconclusive,
-                    "Inconclusive",
-                    "text-muted-foreground",
-                  ],
-                ].map(([Icon, count, label, color]) => {
-                  const I = Icon as typeof CheckCircle2;
-                  return (
-                    <div
-                      key={String(label)}
-                      className="border-b px-6 py-5 last:border-0 sm:border-b-0 sm:border-r sm:px-8 sm:py-6"
-                    >
-                      <div
-                        className={`mb-1.5 flex items-center gap-2 ${String(color)}`}
-                      >
-                        <I size={16} strokeWidth={2.2} />
-                        <span className="font-display text-[34px] font-extrabold leading-none tracking-[-.025em] text-foreground">
-                          {Number(count)}
-                        </span>
-                      </div>
-                      <p className="text-[13px] font-medium leading-5 text-muted-foreground">
-                        {String(label)}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            </section>
-
-            <section
-              className="mt-16 sm:mt-20"
-              aria-labelledby="insights-heading"
-            >
-              <div className="mb-1 flex flex-wrap items-end justify-between gap-3">
-                <div>
-                  <p className="eyebrow text-primary">Priority areas</p>
-                  <h2 id="insights-heading" className="display-md mt-2">
-                    {insights.length
-                      ? "What to improve first"
-                      : "No priority problems found"}
-                  </h2>
-                  {insights.length > 0 && (
-                    <p className="mt-3 max-w-xl text-[15px] leading-7 text-muted-foreground">
-                      Up to 10 priority issues with practical fixes, free. Start
-                      here, then re-check your changes.
-                    </p>
-                  )}
-                </div>
-                {insights.length > 0 && (
-                  <p className="rounded-full bg-muted px-3 py-1.5 text-[13px] font-medium text-muted-foreground">
-                    {insights.length} priority{" "}
-                    {insights.length === 1 ? "finding" : "findings"} across{" "}
-                    {insightGroups.length}{" "}
-                    {insightGroups.length === 1 ? "area" : "areas"}
-                  </p>
-                )}
-              </div>
-              {insights.length ? (
-                <div
-                  className={`mt-7 grid items-start gap-5 ${insightGroups.length > 1 ? "md:grid-cols-2" : ""}`}
-                >
-                  {insightGroups.map(({ category, rows }) => {
-                    const CategoryIcon = insightCategoryIcon(category);
-                    return (
-                      <section
-                        key={category}
-                        className="report-category surface overflow-hidden"
-                        aria-label={`${reportCategory(category)} insights`}
-                      >
-                        <header className="flex items-center gap-3 border-b px-5 py-4">
-                          <span
-                            className="icon-tile size-10 shrink-0 rounded-xl"
-                            data-tone={
-                              CategoryIcon === Globe2
-                                ? "lime"
-                                : CategoryIcon === FileSearch
-                                  ? "ink"
-                                  : CategoryIcon === Info
-                                    ? "ink"
-                                    : undefined
-                            }
-                          >
-                            <CategoryIcon size={18} strokeWidth={2} />
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="eyebrow">Audit area</p>
-                            <h3 className="mt-0.5 break-words text-[16px] leading-snug">
-                              {reportCategory(category)}
-                            </h3>
-                          </div>
-                          <span className="rounded-full bg-muted px-2.5 py-1 font-mono text-[12px] font-medium text-muted-foreground">
-                            {String(rows.length).padStart(2, "0")}
-                          </span>
-                        </header>
-                        <div className="divide-y px-5">
-                          {rows.map(({ insight, index }) => (
-                            <Insight
-                              key={`${index}-${insight.title}-${insight.evidence_url ?? "site"}`}
-                              insight={insight}
-                              index={index}
-                            />
-                          ))}
-                        </div>
-                      </section>
-                    );
-                  })}
-                </div>
-              ) : (
-                <div className="surface mt-7 flex items-start gap-4 p-6">
-                  <span
-                    className="icon-tile size-10 shrink-0 rounded-xl"
-                    data-tone="lime"
-                  >
-                    <CheckCircle2 size={19} />
-                  </span>
-                  <p className="text-[15px] leading-7 text-muted-foreground">
-                    {data.score === null
-                      ? "We need more accessible page evidence before we can identify useful insights. Try again once your website is reachable."
-                      : "The inspected sample didn’t produce a priority finding. Review the coverage below; untested checks are not passes."}
-                  </p>
-                </div>
-              )}
-            </section>
+            <ReportSummary
+              data={data}
+              scoreValue={scoreValue}
+              scoreColor={scoreColor}
+              partial={partial}
+            />
 
             {unlocked ? (
-              <CustomerFixes token={token} />
-            ) : (
               <>
-                <FreeFixKit token={token} />
-                <ReportUnlock
-                  token={token}
-                  website={data.website}
-                  scoreAvailable={data.score !== null}
-                  developmentSkipAvailable={data.development_skip_available}
-                  onUnlocked={retry}
+                <FindingsSection
+                  insights={insights}
+                  mode="unlocked"
+                  pages={failingPages(data.checks)}
                 />
-              </>
-            )}
-            {unlocked && data.standards_coverage && (
-              <StandardsCoverage coverage={data.standards_coverage} />
-            )}
-            <CrossCheck website={data.website} />
-            <div className="mt-6">
-              <AgentComingSoon compact />
-            </div>
-
-            {unlocked && (
-              <details className="group/checked surface mt-6 overflow-hidden">
-                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-6 py-5 font-display text-[17px] font-bold tracking-[-.02em] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/40">
-                  What was checked{" "}
-                  <ChevronDown
-                    size={18}
-                    className="shrink-0 text-muted-foreground transition-transform group-open/checked:rotate-180"
-                  />
-                </summary>
-                <div className="border-t px-6 pb-6 pt-2">
-                  {data.category_scores.map((category) => (
-                    <div
-                      key={category.name}
-                      className="grid grid-cols-[1fr_auto] items-center gap-x-5 gap-y-2 border-b py-4 last:border-0"
-                    >
-                      <div>
-                        <h3 className="text-[15px]">{category.name}</h3>
-                        <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
-                          {category.name === "Agent usability"
-                            ? "Real AI agent tasks were not run · excluded from this score"
-                            : category.tested
-                              ? `${category.evaluated} of ${category.total} score-eligible checks had a confirmed result · ${category.weight}% base weight`
-                              : "No score-eligible checks were available · see the check results below"}
-                        </p>
-                      </div>
-                      <span className="font-mono text-xs font-medium text-foreground">
-                        {category.score !== null
-                          ? `${Math.round(category.score)}/100`
-                          : category.tested
-                            ? "Inconclusive"
-                            : "Untested"}
-                      </span>
-                      {category.tested && category.score !== null && (
-                        <div className="col-span-2 h-2 overflow-hidden rounded-full bg-muted">
-                          <span
-                            className="block h-full rounded-full bg-primary"
-                            style={{
-                              width: `${Math.max(0, Math.min(100, category.score))}%`,
-                            }}
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  <div className="mt-4 flex items-start gap-2 text-[13px] leading-6 text-muted-foreground">
-                    <Globe2 size={14} className="mt-1 shrink-0" />
-                    <p>
+                <CustomerFixes token={token} />
+                <details className="group/checked surface mt-10 overflow-hidden">
+                  <summary className="flex cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 px-6 py-5 focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-inset focus-visible:ring-ring/40">
+                    <span className="font-display text-[17px] font-bold tracking-[-.02em]">
+                      What was checked
+                    </span>
+                    <span className="text-[13px] text-muted-foreground">
+                      {checkTotals(data.checks).checks} checks across{" "}
+                      {data.pages_crawled}{" "}
+                      {data.pages_crawled === 1 ? "page" : "pages"}, issues
+                      first
+                    </span>
+                    <ChevronDown
+                      size={18}
+                      className="ml-auto shrink-0 text-muted-foreground transition-transform group-open/checked:rotate-180"
+                    />
+                  </summary>
+                  <div className="border-t px-6 pb-6 pt-4">
+                    <p className="flex items-start gap-2 text-[13px] leading-6 text-muted-foreground">
+                      <Globe2 size={14} className="mt-1 shrink-0" />
                       {data.pages_crawled}{" "}
                       {data.pages_crawled === 1 ? "page was" : "pages were"}{" "}
                       checked in a bounded sample ({data.pages_discovered}{" "}
                       discovered, {data.pages_failed} failed). This static
                       assessment does not prove that an AI agent can or cannot
-                      complete a task. It does not guarantee visibility in AI
-                      platforms.
+                      complete a task, and it does not guarantee visibility in
+                      AI platforms.
                     </p>
-                  </div>
-                  <div className="mt-6 border-t pt-5">
-                    <div className="flex flex-wrap gap-x-4 gap-y-2 text-[12px] text-muted-foreground">
-                      <span>
-                        {data.coverage.checks_informational} informational
-                      </span>
-                      <span>
-                        {data.coverage.checks_not_applicable} not applicable
-                      </span>
-                    </div>
                     <CheckResults
                       checks={data.checks}
                       truncated={data.checks_truncated}
                     />
                   </div>
-                </div>
-              </details>
+                </details>
+                {data.standards_coverage && (
+                  <StandardsCoverage coverage={data.standards_coverage} />
+                )}
+              </>
+            ) : (
+              <LockedFindings
+                token={token}
+                data={data}
+                insights={insights}
+                onUnlocked={retry}
+              />
             )}
+            <CrossCheck website={data.website} />
+            <div className="mt-6">
+              <AgentComingSoon compact />
+            </div>
           </>
         )}
         <p className="mt-10 flex items-center justify-center gap-1.5 text-center text-[13px] leading-5 text-muted-foreground">

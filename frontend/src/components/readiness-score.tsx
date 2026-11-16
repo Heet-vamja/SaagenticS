@@ -61,7 +61,7 @@ export function ReadinessScore({
       </svg>
       <div className="report-score-value">
         <span style={{ color }}>{score === null ? "—" : score}</span>
-        <span>OUT OF 100</span>
+        <span>out of 100</span>
       </div>
     </div>
   );

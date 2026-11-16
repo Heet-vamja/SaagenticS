@@ -1,7 +1,8 @@
 """Isolated frontend state fixtures; every API response is mocked in the browser and no
 fixture data is written to the backend.
 
-Covers: an address the API refuses, missing and failing reports with retry, the
+Covers: an address the API refuses, missing and failing reports with retry, a locked
+report (free fixes in the findings, prompt tabs, the counted offer), the
 customer-release redirects, and the owner dashboard (sign-in, rejected token, first
 site, job lifecycle with polling that stops, and a fully populated overview).
 """
@@ -116,6 +117,45 @@ async def landing_and_reports(page):
     state["down"] = False
     await page.get_by_role("button", name="Try again").click()
     await page.get_by_text("Preliminary static readiness", exact=True).wait_for()
+
+    # Before purchase: free fixes fold into the findings; the offer counts what it adds.
+    locked = {**report("COMPLETED"), "full_report_unlocked": False}
+    locked["insights"] = locked["insights"] + [{
+        "category": "Content understanding", "severity": "MEDIUM",
+        "title": "JSON-LD could not be validated",
+        "description": "JSON syntax or schema.org context checks failed.",
+        "evidence_url": None, "evidence_summary": None,
+        "recommendation": "Use valid JSON with an @context and @type.",
+    }]
+    prompts = {key: f"{key} prompt for the size picker" for key in
+               ("coding_assistant", "general_llm", "developer_ticket")}
+    preview = {
+        "fixes": [{
+            "key": "fix-1", "title": "Controls lack accessible names", "category": "Actionability",
+            "severity": "HIGH", "url": "https://example.com/trail-runner",
+            "evidence": "Example inspected element: <button type=button role=>",
+            "recommendation": "Give the control a clear accessible name.",
+            "template_version": "fix-prompts-v1.1", "prompts": prompts, "status": "OPEN",
+        }],
+        "assets": [], "remaining_fixes": 2, "remaining_assets": 1, "truncated": False,
+    }
+
+    async def locked_report(route):
+        await route.fulfill(json=preview if "fix-preview" in route.request.url else locked)
+
+    await page.route("**/api/v1/free-reports/locked**", locked_report)
+    await page.goto(BASE + "/free-reports/locked", wait_until="networkidle")
+    await page.get_by_role("heading", name="What to fix first").wait_for()
+    await page.get_by_text("One of them comes with a complete fix, free.", exact=False).wait_for()
+    await page.get_by_text("Free fix", exact=True).wait_for()
+    await page.get_by_role("tab", name="Dev ticket").click()
+    assert await page.get_by_role("tab", name="Dev ticket").get_attribute("aria-selected") == "true"
+    await page.get_by_role("heading", name="Fix the other 1 finding, then prove it.").wait_for()
+    await page.get_by_text("2 more ready prompts and 1 asset draft", exact=True).wait_for()
+    await page.get_by_role("button", name="Unlock the Fix Kit").wait_for()
+    await page.locator("summary").filter(has_text="JSON-LD could not be validated").click()
+    await page.get_by_role("link", name="See what’s included").wait_for()
+    await check_page(page, "report-locked", screenshot=False)
 
     await page.goto(BASE + "/agent-tests/any", wait_until="networkidle")
     await page.get_by_label("Real AI agent testing, coming Christmas 2026").first.wait_for()
@@ -273,7 +313,8 @@ async def main():
             await context.close()
             await dashboard(browser)
             print(
-                "PASS refused address, expired/unavailable report with retry, customer-release "
+                "PASS refused address, expired/unavailable report with retry, locked report "
+                "with free fixes and offer, customer-release "
                 "redirects, dashboard sign-in/rejected token/first site/job lifecycle/full overview/"
                 "site settings (routing, delivery rules, removal).",
                 flush=True,

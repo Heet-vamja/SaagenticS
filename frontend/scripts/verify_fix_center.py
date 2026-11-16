@@ -153,11 +153,13 @@ async def run():
             assert abs(ring_top - expanded_top) < 1, (ring_top, expanded_top)
             await page.get_by_text("How this score works", exact=True).click()
             await page.get_by_text("What was checked", exact=True).click()
-            duplicate_rows = page.locator("details.group\\/check").filter(has_text="No known bot challenge signal was observed")
-            assert await duplicate_rows.count() == 2
-            await duplicate_rows.first.locator("summary").click()
-            assert await duplicate_rows.first.get_attribute("open") is not None
-            assert await duplicate_rows.last.get_attribute("open") is None
+            # One row per check; both measurements of the same page stay listed inside it.
+            check = page.locator("details.group\\/check").filter(has_text="No known bot challenge signal was observed")
+            assert await check.count() == 1
+            await check.locator("summary").click()
+            assert await check.get_attribute("open") is not None
+            await check.get_by_text("raw markup was inspected.").wait_for()
+            await check.get_by_text("rendered markup was inspected.").wait_for()
             await page.get_by_text("What was checked", exact=True).click()
             fix = page.locator("details").filter(has_text="Preview prompt").first
             await fix.locator("summary").first.click()

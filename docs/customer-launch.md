@@ -230,7 +230,10 @@ No confirmed issues or usable pages means no fabricated sample. Existing
 expiry, revocation, domain and mailbox rules apply. Full Fix Center, presets,
 ZIP/PDF exports, event tracking and re-scans retain their paid access checks.
 
-The free UI allows copying selected prompts and copying/downloading returned
-asset drafts locally. This does not unlock other asset URLs or call an LLM.
+The free report folds these fixes into its single findings list: a finding with a
+free fix shows its page, evidence and the prompt in all three variants (tabs, copy);
+other findings show their short recommendation and a lock note. The unlock panel
+quotes the preview's remaining counts. The free UI allows copying selected prompts
+and copying/downloading returned asset drafts locally. This does not unlock other asset URLs or call an LLM.
 The existing 10 short issue recommendations remain available; this preview adds
 three practical, complete items from the paid kit so users can try the workflow.

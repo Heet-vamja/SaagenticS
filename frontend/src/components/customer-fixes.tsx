@@ -37,6 +37,15 @@ const statusLabels = {
   STILL_FAILING: "Still failing",
 };
 
+/** The fix engine's categories, named like the report's score areas. */
+function fixArea(category: string) {
+  const areas: Record<string, string> = {
+    Actionability: "Agent usability",
+    Readability: "Content understanding",
+  };
+  return areas[category] ?? category;
+}
+
 export function CustomerFixes({ token }: { token: string }) {
   const router = useRouter();
   const [preset, setPreset] = useState<RobotsPreset>("keep_existing");
@@ -208,8 +217,8 @@ export function CustomerFixes({ token }: { token: string }) {
               className="min-h-9 appearance-none rounded-full border bg-card py-1.5 pl-3.5 pr-9 font-medium text-foreground focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
             >
               <option value="coding_assistant">Coding assistant</option>
-              <option value="general_llm">General LLM</option>
-              <option value="developer_ticket">Developer ticket</option>
+              <option value="general_llm">General AI</option>
+              <option value="developer_ticket">Dev ticket</option>
             </select>
           </label>
         </div>
@@ -222,11 +231,17 @@ export function CustomerFixes({ token }: { token: string }) {
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className="eyebrow block">
-                    {fix.category} · {fix.severity.toLowerCase()} priority
+                    {fixArea(fix.category)} · {fix.severity.toLowerCase()}{" "}
+                    priority
                   </span>
                   <span className="mt-1 block text-[15px] font-semibold">
                     {fix.title}
                   </span>
+                  {fix.url && (
+                    <span className="mt-0.5 block truncate font-mono text-[12px] text-muted-foreground">
+                      {fix.url.replace(/^https?:\/\//, "")}
+                    </span>
+                  )}
                   <span
                     className={`mt-1.5 inline-block rounded-full px-2.5 py-0.5 text-[12px] font-bold ${fix.status === "FIX_APPLIED" ? "bg-accent-soft text-signal" : fix.status === "STILL_FAILING" ? "bg-warning-soft text-warning" : fix.status === "PROMPT_COPIED" ? "bg-action-soft text-foreground" : "bg-muted text-muted-foreground"}`}
                   >

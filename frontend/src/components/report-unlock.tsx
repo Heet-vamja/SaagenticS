@@ -13,6 +13,41 @@ import { useResource } from "@/lib/use-resource";
 import { Button } from "./ui/button";
 import { DomainVerification } from "./domain-verification";
 import { InlineError } from "./states";
+import { domainOf } from "./product-ui";
+
+/** What this report's Fix Kit adds, counted from the free preview. */
+export type FixKitOffer = {
+  findings: number;
+  lockedFindings: number;
+  remainingFixes: number;
+  remainingAssets: number;
+  truncated: boolean;
+};
+
+function plural(count: number, one: string, many = `${one}s`) {
+  return `${count} ${count === 1 ? one : many}`;
+}
+
+function offerLines(offer: FixKitOffer | undefined, domain: string) {
+  const prompts = offer
+    ? [
+        offer.remainingFixes > 0 &&
+          `${offer.remainingFixes}${offer.truncated ? "+" : ""} more ready ${offer.remainingFixes === 1 ? "prompt" : "prompts"}`,
+        offer.remainingAssets > 0 &&
+          plural(offer.remainingAssets, "asset draft"),
+      ].filter(Boolean)
+    : [];
+  return [
+    offer && offer.findings > 0
+      ? `Page and evidence for all ${plural(offer.findings, "finding")}`
+      : "Page and evidence for every finding",
+    prompts.length
+      ? prompts.join(" and ")
+      : "Every ready prompt and validated asset draft",
+    "PDF report and a downloadable fix pack",
+    `Re-scan ${domain} free for 30 days`,
+  ];
+}
 
 export function ReportUnlock({
   token,
@@ -20,12 +55,14 @@ export function ReportUnlock({
   scoreAvailable,
   developmentSkipAvailable,
   onUnlocked,
+  offer,
 }: {
   token: string;
   website: string;
   scoreAvailable: boolean;
   developmentSkipAvailable?: boolean;
   onUnlocked: () => void;
+  offer?: FixKitOffer;
 }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -74,33 +111,33 @@ export function ReportUnlock({
     >
       <div className="grid gap-8 p-7 sm:p-10 md:grid-cols-[1fr_auto] md:items-center md:gap-12">
         <div>
-          <p className="eyebrow text-white">Your next step</p>
+          <p className="eyebrow text-white/75">The full Fix Kit</p>
           <h2 className="display-md mt-3 text-white">
-            A starting point is good.
-            <br />
-            The complete Fix Kit is <span className="mark-lime">$19.</span>
+            {offer && offer.lockedFindings > 0
+              ? `Fix the other ${plural(offer.lockedFindings, "finding")}, then prove it.`
+              : "Fix everything we found, then prove it."}
           </h2>
-          <p className="mt-4 max-w-lg text-[15px] leading-7 text-white/90">
-            Keep your free sample. Unlock the remaining findings, detailed page
-            evidence, copy-ready developer prompts, validated asset drafts, and
-            downloadable reports. Re-scan this domain free for 30 days.
+          <ul className="mt-5 grid gap-2.5 text-[15px] leading-6 text-white/90">
+            {offerLines(offer, domainOf(website)).map((line) => (
+              <li key={line} className="flex items-start gap-2.5">
+                <Check
+                  size={16}
+                  className="mt-1 shrink-0 text-[var(--brand-accent-on-dark)]"
+                  aria-hidden="true"
+                />
+                {line}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-4 text-[13px] text-white/75">
+            Your free fixes stay yours either way.
           </p>
-          <div className="mt-5 flex flex-wrap gap-2 text-[13px] font-semibold text-white">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5">
-              <Check size={14} className="text-[var(--brand-accent-on-dark)]" />{" "}
-              One-time payment
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5">
-              <Check size={14} className="text-[var(--brand-accent-on-dark)]" />{" "}
-              Same-domain re-scans for 30 days
-            </span>
-          </div>
         </div>
         <div className="rounded-[22px] bg-card p-6 text-foreground shadow-[var(--shadow-float)] md:min-w-64 md:text-center">
-          <p className="mb-4 font-display text-[56px] font-extrabold leading-none tracking-[-.03em]">
+          <p className="mb-4 font-display text-[56px] font-semibold leading-none tracking-[-.03em]">
             $19
-            <span className="ml-1.5 font-sans text-[13px] font-semibold tracking-normal text-muted-foreground">
-              USD
+            <span className="ml-1.5 font-sans text-[13px] font-medium tracking-normal text-muted-foreground">
+              USD, once
             </span>
           </p>
           <Button
@@ -141,7 +178,7 @@ export function ReportUnlock({
             ) : (
               <LockKeyhole size={14} />
             )}{" "}
-            Unlock full report <ArrowRight size={14} />
+            Unlock the Fix Kit <ArrowRight size={14} />
           </Button>
           <p className="mt-3 text-[12px] font-medium text-muted-foreground">
             Secure checkout with Stripe

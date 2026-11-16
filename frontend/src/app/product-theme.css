@@ -49,21 +49,6 @@ select:not([multiple]):not([size]) {
 .report-summary h2 {
   letter-spacing: -0.022em;
 }
-/* Soft spotlight behind the score ring (Apple-style product stage). */
-.report-score-stage {
-  background:
-    radial-gradient(
-      120% 90% at 30% 10%,
-      color-mix(in srgb, var(--lime) 30%, transparent),
-      transparent 60%
-    ),
-    radial-gradient(
-      100% 100% at 90% 100%,
-      color-mix(in srgb, var(--primary) 16%, transparent),
-      transparent 65%
-    ),
-    var(--muted);
-}
 .report-score-label {
   background: var(--accent-soft);
   border-color: transparent;
@@ -98,11 +83,132 @@ select:not([multiple]):not([size]) {
   font-variant-numeric: tabular-nums;
 }
 .report-score-value > span:last-child {
-  font:
-    500 11px var(--font-code),
-    monospace;
-  letter-spacing: 0.14em;
+  font-size: 13px;
   color: var(--muted-foreground);
+}
+/* Score by area: a plain bar per area; an unscored area gets a dashed track. */
+.report-areas li + li {
+  border-top: 1px solid var(--border);
+}
+@media (min-width: 480px) {
+  .report-areas li + li {
+    border-top: 0;
+  }
+  .report-areas li:nth-child(n + 3) {
+    border-top: 1px solid var(--border);
+  }
+  .report-areas li:nth-child(odd) {
+    border-right: 1px solid var(--border);
+  }
+}
+@media (min-width: 1024px) {
+  .report-areas li:nth-child(n + 3) {
+    border-top: 0;
+  }
+  .report-areas li {
+    border-right: 1px solid var(--border);
+  }
+  .report-areas li:last-child {
+    border-right: 0;
+  }
+}
+.report-areas li[data-unscored] {
+  background: color-mix(in srgb, var(--muted) 45%, transparent);
+}
+.report-area-bar {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--muted);
+}
+.report-area-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--foreground);
+}
+.report-area-bar[data-empty] {
+  background: repeating-linear-gradient(
+    90deg,
+    var(--border) 0 6px,
+    transparent 6px 10px
+  );
+}
+/* Findings: severity as colored text, evidence on paper, the fix on ink. */
+.report-severity[data-tone="danger"] {
+  color: var(--danger);
+}
+.report-severity[data-tone="warning"] {
+  color: var(--warning);
+}
+.report-severity[data-tone="muted"] {
+  color: var(--muted-foreground);
+}
+/* What we found and its fix, one above the other on a code block: nothing to align
+   across columns, and it reads like a diff. */
+.report-diff {
+  overflow: hidden;
+  border-radius: 14px;
+  background: var(--ink);
+  color: var(--ink-foreground);
+}
+[data-theme="dark"] .report-diff {
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--foreground);
+}
+.report-diff-page {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #ffffff14;
+  color: #b4b5b0;
+  font-size: 12.5px;
+  text-decoration: none;
+}
+.report-diff-page:hover {
+  color: #ffffff;
+}
+.report-diff-page:focus-visible {
+  outline: 2px solid var(--brand-lime);
+  outline-offset: -2px;
+}
+.report-diff-row {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 12px;
+  align-items: baseline;
+  padding: 10px 14px;
+}
+.report-diff-row > span {
+  font-size: 12px;
+  font-weight: 600;
+}
+.report-diff-row code {
+  font:
+    12.5px/1.6 var(--font-code),
+    monospace;
+  font-variant-ligatures: none;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.report-diff-row p {
+  font-size: 14px;
+  line-height: 1.6;
+}
+.report-diff-row[data-kind="found"] {
+  background: color-mix(in srgb, #ff7a98 12%, transparent);
+}
+.report-diff-row[data-kind="found"] > span {
+  color: #ff9fb2;
+}
+.report-diff-row[data-kind="fix"] {
+  background: color-mix(in srgb, var(--brand-lime) 9%, transparent);
+}
+.report-diff-row[data-kind="fix"] > span {
+  color: var(--brand-lime);
 }
 /* Vivid unlock panel: violet stage with a lime call to action. */
 .report-unlock {

@@ -567,6 +567,7 @@
   font:
     13px/1.7 var(--font-code),
     monospace;
+  font-variant-ligatures: none;
   white-space: pre-wrap;
 }
 :global([data-theme="dark"]) .versusAgent pre,
@@ -821,6 +822,7 @@
   font:
     12.5px/1.7 var(--font-code),
     monospace;
+  font-variant-ligatures: none;
   white-space: pre-wrap;
 }
 :global([data-theme="dark"]) .fixEvidence pre {
